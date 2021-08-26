@@ -21,6 +21,7 @@ const unlockedAccAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
 
 describe("Metaverse-Farmer", () => {
     it("should work", async () => {
+        let tx, receipt
         const [deployer, client, treasury, community, strategist, biconomy, admin] = await ethers.getSigners()
 
         // Deploy AXS-ETH
@@ -77,12 +78,14 @@ describe("Metaverse-Farmer", () => {
         await USDTContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
         await USDCContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
         await DAIContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
+        tx = await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
+        // await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        // await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
 
         // Invest
-        await mvfVault.invest()
+        // await mvfVault.connect(admin).invest()
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPool(true)))
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
         // console.log(ethers.utils.formatEther(
@@ -97,15 +100,19 @@ describe("Metaverse-Farmer", () => {
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
 
-        // Withdraw
-        const portionShare = (await mvfVault.balanceOf(client.address)).div("3")
-        await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
-        await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
-        await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
+        // // Test emergency withdraw
+        // await mvfVault.connect(admin).emergencyWithdraw()
+        // await mvfVault.connect(admin).reinvest()
 
-        // Check balance
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6))
-        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6))
-        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18))
+        // // Withdraw
+        // const portionShare = (await mvfVault.balanceOf(client.address)).div("3")
+        // await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
+        // await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
+        // await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
+
+        // // Check balance
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18))
     })
 })

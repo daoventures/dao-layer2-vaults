@@ -260,23 +260,33 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint tokenAmtInVault = token.balanceOf(address(this));
         if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
         if (withdrawAmt <= tokenAmtInVault) {
+            // console.log(withdrawAmt);
+            // console.log(tokenAmtInVault);
             if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
-            uint WETHAmtBefore = WETH.balanceOf(address(this));
-
             uint sharePerc = share * 1e18 / _totalSupply;
-            // withdrawAXSETH(sharePerc);
-            // withdrawSLPETH(sharePerc);
-            withdrawILVETH(sharePerc);
-            // withdrawGHSTETH(sharePerc);
-            withdrawREVVETH(sharePerc);
-            withdrawMVIETH(sharePerc);
+            if (!paused()) {
+                uint WETHAmtBefore = WETH.balanceOf(address(this));
+                
+                // withdrawAXSETH(sharePerc);
+                // withdrawSLPETH(sharePerc);
+                // console.log("checkpoint1");
+                withdrawILVETH(sharePerc);
+                // console.log("checkpoint2");
+                // withdrawGHSTETH(sharePerc);
+                withdrawREVVETH(sharePerc);
+                withdrawMVI(sharePerc);
 
-            uint WETHAmtAfter = WETH.balanceOf(address(this));
-            withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                WETHAmtAfter - WETHAmtBefore, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-            ))[1];
+                uint WETHAmtAfter = WETH.balanceOf(address(this));
+                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+                    WETHAmtAfter - WETHAmtBefore, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+                ))[1];
+            } else {
+                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+                    WETH.balanceOf(address(this)) * sharePerc / 1e18, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+                ))[1];
+            }
         }
         // emit withdrawAmt
     }
@@ -302,8 +312,15 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function withdrawILVETH(uint sharePerc) private {
+        // console.log("-----");
+        // console.log(ILVETHVault.balanceOf(address(this)));
+        // console.log(sharePerc);
+        // console.log(ILVETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         uint ILVETHAmt = ILVETHVault.withdraw(ILVETHVault.balanceOf(address(this)) * sharePerc / 1e18);
+        // console.log(ILVETHAmt);
         (uint ILVAmt,) = sushiRouter.removeLiquidity(address(ILV), address(WETH), ILVETHAmt, 0, 0, address(this), block.timestamp);
+        // console.log(ILVAmt);
+        // console.log("-----");
         sushiRouter.swapExactTokensForTokens(ILVAmt, 0, getPath(address(ILV), address(WETH)), address(this), block.timestamp);
     }
 
@@ -327,14 +344,14 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uniV2Router.swapExactTokensForTokens(REVVAmt, 0, getPath(address(REVV), address(WETH)), address(this), block.timestamp);
     }
 
-    function withdrawMVIETH(uint sharePerc) private {
+    function withdrawMVI(uint sharePerc) private {
         uniV2Router.swapExactTokensForTokens(
             MVI.balanceOf(address(this)) * sharePerc / 1e18, 0, getPath(address(MVI), address(WETH)), address(this), block.timestamp
         );
     }
 
     // TODO: rebalancing
-    function invest() external whenNotPaused {
+    function invest() public whenNotPaused {
         collectProfit();
         transferOutFees();
 
@@ -449,8 +466,25 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function emergencyWithdraw() external {
+    function reimburse(uint index, address token) external onlyOwnerOrAdmin {
+        // TODO: withdraw from farm & swap to Stablecoin
+    }
 
+    function emergencyWithdraw() external onlyOwnerOrAdmin {
+        _pause();
+
+        uint fullPerc = 1e18;
+        // withdrawAXSETH(fullPerc);
+        // withdrawSLPETH(fullPerc);
+        withdrawILVETH(fullPerc);
+        // withdrawGHSTETH(fullPerc);
+        withdrawREVVETH(fullPerc);
+        withdrawMVI(fullPerc);
+    }
+
+    function reinvest() external onlyOwnerOrAdmin {
+        _unpause();
+        invest();
     }
 
     function sushiSwap(address from, address to, uint amount) private returns (uint) {
@@ -552,6 +586,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
         uint ETHPriceInUSD = getETHPriceInUSD();
+        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
         uint farmsPoolInUSD = getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +

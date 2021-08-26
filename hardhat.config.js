@@ -1,7 +1,6 @@
 require("@nomiclabs/hardhat-waffle")
 require("@nomiclabs/hardhat-etherscan")
 require('@openzeppelin/hardhat-upgrades');
-require("solidity-coverage");
 require("dotenv").config()
 
 module.exports = {
