@@ -96,12 +96,20 @@ describe("Metaverse-Farmer", () => {
         //     .div(ethers.utils.parseEther("1"))
         // )) // User share in USD
         // console.log(ethers.utils.formatEther(await mvfVault.getPricePerFullShare())) // LP token price
-        // console.log((await mvfVault.getCurrentCompositionPerc()).toString());
+        // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString());
 
         // // Check Stablecoins keep in vault
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
+
+        // Collect profit
+
+        // Transfer out fees
+        // await mvfVault.transferOutFees()
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6))
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6))
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6))
 
         // // Test reimburse
         // await mvfVault.reimburse(5, USDTAddr, ethers.utils.parseUnits("1000", 6))

@@ -179,12 +179,12 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         networkFeeTier2 = [50000*1e18+1, 100000*1e18];
         customNetworkFeeTier = 1000000*1e18;
-        // networkFeePerc = [100, 75, 50];
-        networkFeePerc = [0, 75, 50];
+        networkFeePerc = [100, 75, 50];
+        // networkFeePerc = [0, 75, 50];
         customNetworkFeePerc = 25;
 
         // percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
-        percKeepInVault = [0, 0, 0]; // USDT, USDC, DAI
+        percKeepInVault = [0, 0, 0];
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
@@ -306,9 +306,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             if (USDTAmt * 1e12 > _fees) {
                 token = USDT;
                 USDTAmt = USDTAmt - _fees / 1e12;
+                _fees = _fees / 1e12;
             } else if (USDCAmt * 1e12 > _fees) {
                 token = USDC;
                 USDCAmt = USDCAmt - _fees / 1e12;
+                _fees = _fees / 1e12;
             } else if (DAIAmt > _fees) {
                 token = DAI;
                 DAIAmt = DAIAmt - _fees;
