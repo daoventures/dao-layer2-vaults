@@ -105,7 +105,6 @@ interface IStrategy {
     function reinvest() external;
     function watermark() external view returns (uint);
     function getAllPool(bool includeVestedILV) external view returns (uint);
-
 }
 
 contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
@@ -161,12 +160,12 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         networkFeeTier2 = [50000*1e18+1, 100000*1e18];
         customNetworkFeeTier = 1000000*1e18;
-        // networkFeePerc = [100, 75, 50];
-        networkFeePerc = [0, 75, 50];
+        networkFeePerc = [100, 75, 50];
+        // networkFeePerc = [0, 75, 50];
         customNetworkFeePerc = 25;
 
-        // percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
-        percKeepInVault = [0, 0, 0];
+        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        // percKeepInVault = [0, 0, 0];
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
@@ -238,8 +237,8 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             msg.sender == address(this), "Only authorized caller"
         );
 
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
         uint WETHAmt = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
         strategy.invest(WETHAmt);
@@ -254,6 +253,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             msg.sender == owner(), "Only authorized caller"
         );
         uint fee = strategy.collectProfitAndUpdateWatermark();
+        // console.log(fee);
         if (fee > 0) fees = fees + fee;
     }
 

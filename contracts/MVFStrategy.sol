@@ -431,6 +431,8 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD(false);
         uint lastWatermark = watermark;
+        // console.log(currentWatermark);
+        // console.log(lastWatermark);
         if (lastWatermark == 0) { // First invest or after emergency withdrawal
             watermark = currentWatermark;
         } else {
@@ -444,10 +446,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
 
     /// @param signs True for positive, false for negative
     function adjustWatermark(uint amount, bool signs) external onlyVault {
-        // console.log(watermark);
         watermark = signs == true ? watermark + amount : watermark - amount;
-        // console.log(watermark);
-        // console.log("-----");
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
@@ -569,11 +568,14 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     /// @notice This function return only farms TVL in ETH
     function getAllPool(bool includeVestedILV) public view returns (uint) {
         uint[] memory pools = getEachPool(includeVestedILV);
-        return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[	5]; 
+        // console.log(pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]);
+        // console.log(getETHPriceInUSD());
+        return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]; 
     }
 
     function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
         uint ETHPriceInUSD = getETHPriceInUSD();
+        // console.log(getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8);
         return getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
     }
 

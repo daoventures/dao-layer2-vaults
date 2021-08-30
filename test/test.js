@@ -88,7 +88,7 @@ describe("Metaverse-Farmer", () => {
         // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
 
         // Invest
-        // await mvfVault.connect(admin).invest()
+        await mvfVault.connect(admin).invest()
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPool(true)))
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
         // console.log(ethers.utils.formatEther(
@@ -99,6 +99,7 @@ describe("Metaverse-Farmer", () => {
         // console.log(ethers.utils.formatEther(await mvfVault.getPricePerFullShare())) // LP token price
         // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString());
         // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
+        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
 
         // // Check Stablecoins keep in vault
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
@@ -106,6 +107,15 @@ describe("Metaverse-Farmer", () => {
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
 
         // Collect profit
+        // const MVIUnlockedAddr = "0x6b9dfc960299166df15ab8a85f054c69e2be2353"
+        // await network.provider.request({method: "hardhat_impersonateAccount", params: [MVIUnlockedAddr]})
+        // const MVIUnlockedAcc = await ethers.getSigner(MVIUnlockedAddr)
+        // const MVIContract = new ethers.Contract(MVIAddr, IERC20_ABI, MVIUnlockedAcc)
+        // await MVIContract.transfer(mvfStrategy.address, ethers.utils.parseEther("10"))
+        // await mvfVault.connect(admin).collectProfitAndUpdateWatermark()
+        // console.log(ethers.utils.formatEther(await mvfVault.fees()))
+        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
+        // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
 
         // Transfer out fees
         // await mvfVault.transferOutFees()
@@ -125,15 +135,15 @@ describe("Metaverse-Farmer", () => {
         // await mvfVault.connect(admin).emergencyWithdraw()
         // await mvfVault.connect(admin).reinvest()
 
-        // Withdraw
-        const portionShare = (await mvfVault.balanceOf(client.address)).div("3")
-        await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
-        await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
-        await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
+        // // Withdraw
+        // const portionShare = (await mvfVault.balanceOf(client.address)).mul("3").div("10")
+        // await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
+        // await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
+        // await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
 
-        // // Check balance
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18))
+        // // // Check balance
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 8840.665719
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 8812.592316
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 8796.753128959816850542
     })
 })
