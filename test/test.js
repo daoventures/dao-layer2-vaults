@@ -85,9 +85,10 @@ describe("Metaverse-Farmer", () => {
         // console.log(receipt.gasUsed.toString())
         await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
+        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
 
         // Invest
-        await mvfVault.connect(admin).invest()
+        // await mvfVault.connect(admin).invest()
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPool(true)))
         // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
         // console.log(ethers.utils.formatEther(
@@ -97,6 +98,7 @@ describe("Metaverse-Farmer", () => {
         // )) // User share in USD
         // console.log(ethers.utils.formatEther(await mvfVault.getPricePerFullShare())) // LP token price
         // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString());
+        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
 
         // // Check Stablecoins keep in vault
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
@@ -107,9 +109,9 @@ describe("Metaverse-Farmer", () => {
 
         // Transfer out fees
         // await mvfVault.transferOutFees()
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6))
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6))
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6))
 
         // // Test reimburse
         // await mvfVault.reimburse(5, USDTAddr, ethers.utils.parseUnits("1000", 6))
@@ -129,9 +131,9 @@ describe("Metaverse-Farmer", () => {
         await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
         await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
 
-        // Check balance
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6))
-        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6))
-        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18))
+        // // Check balance
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18))
     })
 })

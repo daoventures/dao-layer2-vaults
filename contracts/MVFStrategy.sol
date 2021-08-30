@@ -129,7 +129,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable constant MVI = IERC20Upgradeable(0x72e364F2ABdC788b7E918bc238B21f109Cd634D7);
 
     IERC20Upgradeable constant AXSETH = IERC20Upgradeable(0x0C365789DbBb94A29F8720dc465554c587e897dB);
-    IERC20Upgradeable constant SLPETH = IERC20Upgradeable(0x0CfBeD8f2248D2735203f602BE0cAe5a3131ec68);
+    IERC20Upgradeable constant SLPETH = IERC20Upgradeable(0x8597fa0773888107E2867D36dd87Fe5bAFeAb328);
     IERC20Upgradeable constant ILVETH = IERC20Upgradeable(0x6a091a3406E0073C3CD6340122143009aDac0EDa);
     IERC20Upgradeable constant GHSTETH = IERC20Upgradeable(0xFbA31F01058DB09573a383F26a088f23774d4E5d);
     IPair constant REVVETH = IPair(0x724d5c9c618A2152e99a45649a3B8cf198321f46);
@@ -154,8 +154,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     uint public GHSTETHTokenId;
 
     address public vault;
-    uint public watermark;
-    uint public fees;
+    uint public watermark; // In USD (18 decimals)
 
     address public treasuryWallet;
     address public communityWallet;
@@ -203,22 +202,22 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         // DAI.safeApprove(address(sushiRouter), type(uint).max);
 
         AXS.safeApprove(address(sushiRouter), type(uint).max);
-        // SLP.safeApprove(address(sushiRouter), type(uint).max);
+        SLP.safeApprove(address(sushiRouter), type(uint).max);
         ILV.safeApprove(address(sushiRouter), type(uint).max);
         GHST.safeApprove(address(uniV3Router), type(uint).max);
-        SLP.safeApprove(address(uniV3Router), type(uint).max);
         REVV.safeApprove(address(uniV2Router), type(uint).max);
         MVI.safeApprove(address(uniV2Router), type(uint).max);
 
         AXSETH.safeApprove(address(sushiRouter), type(uint).max);
         AXSETH.safeApprove(address(AXSETHVault), type(uint).max);
+        SLPETH.safeApprove(address(sushiRouter), type(uint).max);
+        SLPETH.safeApprove(address(SLPETHVault), type(uint).max);
         ILVETH.safeApprove(address(sushiRouter), type(uint).max);
         ILVETH.safeApprove(address(ILVETHVault), type(uint).max);
         REVVETH.safeApprove(address(uniV2Router), type(uint).max);
     }
 
     function invest(uint WETHAmt) external onlyVault {
-        collectProfit();
         WETH.safeTransferFrom(vault, address(this), WETHAmt);
 
         uint[] memory pools = getEachPool(false);
@@ -429,8 +428,26 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         );
     }
 
-    function collectProfit() public onlyVault returns (uint profit) {
-        // TODO: collect profit based on water mark
+    function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
+        uint currentWatermark = getAllPoolInUSD(false);
+        uint lastWatermark = watermark;
+        if (lastWatermark == 0) { // First invest or after emergency withdrawal
+            watermark = currentWatermark;
+        } else {
+            if (currentWatermark > lastWatermark) {
+                uint profit = currentWatermark - lastWatermark;
+                fee = profit * 1 / 5; // 20%
+                watermark = currentWatermark - fee;
+            }
+        }
+    }
+
+    /// @param signs True for positive, false for negative
+    function adjustWatermark(uint amount, bool signs) external onlyVault {
+        // console.log(watermark);
+        watermark = signs == true ? watermark + amount : watermark - amount;
+        // console.log(watermark);
+        // console.log("-----");
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
@@ -454,6 +471,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         withdrawREVVETH(1e18);
         withdrawMVI(1e18);
         WETH.safeTransfer(vault, WETH.balanceOf(address(this)));
+        watermark = 0;
     }
 
     function sushiSwap(address from, address to, uint amount) private returns (uint) {
@@ -551,7 +569,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     /// @notice This function return only farms TVL in ETH
     function getAllPool(bool includeVestedILV) public view returns (uint) {
         uint[] memory pools = getEachPool(includeVestedILV);
-        return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]; 
+        return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[	5]; 
     }
 
     function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
