@@ -2,10 +2,7 @@
 pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "hardhat/console.sol";
@@ -90,15 +87,6 @@ interface IUniV3Router {
     ) external view returns (uint96, address, address, address, uint24, int24, int24, uint128, uint256, uint256, uint128, uint128);
 }
 
-interface IMasterChef {
-    function deposit(uint pid, uint amount) external;
-    function withdraw(uint pid, uint amount) external;
-}
-
-interface IWETH is IERC20Upgradeable {
-    function withdraw(uint amount) external;
-}
-
 interface IDaoL1Vault is IERC20Upgradeable {
     function deposit(uint amount) external;
     function withdraw(uint share) external returns (uint);
@@ -113,14 +101,9 @@ interface IChainlink {
 
 contract MVFStrategy is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using SafeERC20Upgradeable for IWETH;
     using SafeERC20Upgradeable for IPair;
 
-    // IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    // IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    // IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IWETH constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20Upgradeable constant AXS = IERC20Upgradeable(0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b);
     IERC20Upgradeable constant SLP = IERC20Upgradeable(0xCC8Fa225D80b9c7D42F96e9570156c65D6cAAa25);
     IERC20Upgradeable constant ILV = IERC20Upgradeable(0x767FE9EDC9E0dF98E07454847909b5E959D7ca0E);
@@ -150,7 +133,6 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     uint constant REVVETHTargetPerc = 1000;
     uint constant MVITargetPerc = 2500;
 
-    uint public SLPETHTokenId;
     uint public GHSTETHTokenId;
 
     address public vault;
@@ -161,22 +143,34 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     address public strategist;
     address public admin;
 
-    // event here
+    event TargetComposition (uint AXSETHTargetPool, uint SLPETHTargetPool, uint ILVETHTargetPool, uint GHSTETHTargetPool, uint REVVETHTargetPool, uint MVITargetPool);
+    event CurrentComposition (uint AXSETHCurrentPool, uint SLPETHCurrentPool, uint ILVETHCurrentPool, uint GHSTETHCurrentPool, uint REVVETHCurrentPool, uint MVICurrentPool);
+    event InvestAXSETH(uint WETHAmt, uint AXSETHAmt);
+    event InvestSLPETH(uint WETHAmt, uint SLPETHAmt);
+    event InvestILVETH(uint WETHAmt, uint ILVETHAmt);
+    event InvestGHSTETH(uint WETHAmt, uint GHSTAmt);
+    event InvestREVVETH(uint WETHAmt, uint REVVETHAmt);
+    event InvestMVI(uint WETHAmt, uint MVIAmt);
+    event Withdraw(uint amount, uint WETHAmt);
+    event WithdrawAXSETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawSLPETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawILVETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawGHSTETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawREVVETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawMVI(uint lpTokenAmt, uint WETHAmt);
+    event CollectProfitAndUpdateWatermark(uint currentWatermark, uint lastWatermark, uint fee);
+    event AdjustWatermark(uint currentWatermark, uint lastWatermark);
+    event Reimburse(uint WETHAmt);
+    event EmergencyWithdraw(uint WETHAmt);
 
     modifier onlyVault {
         require(msg.sender == vault, "Only vault");
         _;
     }
 
-    modifier onlyOwnerOrAdmin {
-        require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
-        _;
-    }
-
     function initialize(
         address _AXSETHVault, address _SLPETHVault, address _ILVETHVault, address _GHSTETHVault,
-        // address _treasuryWallet, address _communityWallet, address _admin, address _strategist, address _biconomy,
-        uint _SLPETHTokenId, uint _GHSTETHTokenId
+        uint _GHSTETHTokenId
     ) external initializer {
         __Ownable_init();
 
@@ -185,21 +179,11 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         ILVETHVault = IDaoL1Vault(_ILVETHVault);
         GHSTETHVault = IDaoL1Vault(_GHSTETHVault);
 
-        // treasuryWallet = _treasuryWallet;
-        // communityWallet = _communityWallet;
-        // admin = _admin;
-        // strategist = _strategist;
-
-        SLPETHTokenId = _SLPETHTokenId;
         GHSTETHTokenId = _GHSTETHTokenId;
 
         WETH.safeApprove(address(sushiRouter), type(uint).max);
         WETH.safeApprove(address(uniV2Router), type(uint).max);
         WETH.safeApprove(address(uniV3Router), type(uint).max);
-
-        // USDT.safeApprove(address(sushiRouter), type(uint).max);
-        // USDC.safeApprove(address(sushiRouter), type(uint).max);
-        // DAI.safeApprove(address(sushiRouter), type(uint).max);
 
         AXS.safeApprove(address(sushiRouter), type(uint).max);
         SLP.safeApprove(address(sushiRouter), type(uint).max);
@@ -315,30 +299,30 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
             else if (farmIndex == 4) investREVVETH(WETHAmt / 2);
             else investMVI(WETHAmt);
         }
+
+        emit TargetComposition(AXSETHTargetPool, SLPETHTargetPool, ILVETHTargetPool, GHSTETHTargetPool, REVVETHTargetPool, MVITargetPool);
+        emit CurrentComposition(pools[0], pools[1], pools[2], pools[3], pools[4], pools[5]);
     }
 
     function investAXSETH(uint WETHAmt) private {
         uint AXSAmt = sushiSwap(address(WETH), address(AXS), WETHAmt);
-        (,,uint AXSETHLpAmt) = sushiRouter.addLiquidity(address(AXS), address(WETH), AXSAmt, WETHAmt, 0, 0, address(this), block.timestamp);
-        AXSETHVault.deposit(AXSETHLpAmt);
+        (,,uint AXSETHAmt) = sushiRouter.addLiquidity(address(AXS), address(WETH), AXSAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        AXSETHVault.deposit(AXSETHAmt);
+        emit InvestAXSETH(WETHAmt, AXSETHAmt);
     }
 
     function investSLPETH(uint WETHAmt) private {
-        uint SLPAmt = uniV3Swap(address(WETH), address(SLP), 3000, WETHAmt);
-        uniV3Router.increaseLiquidity(IUniV3Router.IncreaseLiquidityParams({
-            tokenId: SLPETHTokenId,
-            amount0Desired: SLPAmt,
-            amount1Desired: WETHAmt,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        }));
+        uint SLPAmt = sushiSwap(address(WETH), address(SLP), WETHAmt);
+        (,,uint SLPETHAmt) = sushiRouter.addLiquidity(address(SLP), address(WETH), SLPAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        SLPETHVault.deposit(SLPETHAmt);
+        emit InvestSLPETH(WETHAmt, SLPETHAmt);
     }
 
     function investILVETH(uint WETHAmt) private {
         uint ILVAmt = sushiSwap(address(WETH), address(ILV), WETHAmt);
         (,,uint ILVETHAmt) = sushiRouter.addLiquidity(address(ILV), address(WETH), ILVAmt, WETHAmt, 0, 0, address(this), block.timestamp);
         ILVETHVault.deposit(ILVETHAmt);
+        emit InvestILVETH(WETHAmt, ILVETHAmt);
     }
 
     function investGHSTETH(uint WETHAmt) private {
@@ -351,15 +335,18 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
             amount1Min: 0,
             deadline: block.timestamp
         }));
+        emit InvestGHSTETH(WETHAmt, GHSTAmt);
     }
 
     function investREVVETH(uint WETHAmt) private {
         uint REVVAmt = uniV2Swap(address(WETH), address(REVV), WETHAmt);
-        uniV2Router.addLiquidity(address(REVV), address(WETH), REVVAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        (,,uint REVVETHAmt) = uniV2Router.addLiquidity(address(REVV), address(WETH), REVVAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        emit InvestREVVETH(WETHAmt, REVVETHAmt);
     }
 
     function investMVI(uint WETHAmt) private {
-        uniV2Swap(address(WETH), address(MVI), WETHAmt);
+        uint MVIAmt = uniV2Swap(address(WETH), address(MVI), WETHAmt);
+        emit InvestMVI(WETHAmt, MVIAmt);
     }
 
     /// @param amount Amount to withdraw in USD
@@ -374,65 +361,63 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         withdrawMVI(sharePerc);
         WETHAmt = WETH.balanceOf(address(this)) - WETHAmtBefore;
         WETH.safeTransfer(vault, WETHAmt);
+        emit Withdraw(amount, WETHAmt);
     }
 
     function withdrawAXSETH(uint sharePerc) private {
         uint AXSETHAmt = AXSETHVault.withdraw(AXSETHVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint AXSAmt,) = sushiRouter.removeLiquidity(address(AXS), address(WETH), AXSETHAmt, 0, 0, address(this), block.timestamp);
-        sushiRouter.swapExactTokensForTokens(AXSAmt, 0, getPath(address(AXS), address(WETH)), address(this), block.timestamp);
+        (uint AXSAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(AXS), address(WETH), AXSETHAmt, 0, 0, address(this), block.timestamp);
+        uint _WETHAmt = sushiSwap(address(AXS), address(WETH), AXSAmt);
+        emit WithdrawAXSETH(AXSETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawSLPETH(uint sharePerc) private {
-        uint _SLPETHTokenId = SLPETHTokenId;
-        (,,,,,,,uint128 SLPETHTotalAmt,,,,) = uniV3Router.positions(_SLPETHTokenId);
-        uint128 SLPETHAmt = SLPETHTotalAmt * uint128(sharePerc) / 1e18;
-        (uint SLPAmt,) = uniV3Router.decreaseLiquidity(IUniV3Router.DecreaseLiquidityParams({
-            tokenId: _SLPETHTokenId,
-            liquidity: SLPETHAmt,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        }));
-        uniV3Swap(address(SLP), address(WETH), 3000, SLPAmt);
+        uint SLPETHAmt = SLPETHVault.withdraw(SLPETHVault.balanceOf(address(this)) * sharePerc / 1e18);
+        (uint SLPAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(SLP), address(WETH), SLPETHAmt, 0, 0, address(this), block.timestamp);
+        uint _WETHAmt = sushiSwap(address(SLP), address(WETH), SLPAmt);
+        emit WithdrawSLPETH(SLPETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawILVETH(uint sharePerc) private {
         uint ILVETHAmt = ILVETHVault.withdraw(ILVETHVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint ILVAmt,) = sushiRouter.removeLiquidity(address(ILV), address(WETH), ILVETHAmt, 0, 0, address(this), block.timestamp);
-        (sushiRouter.swapExactTokensForTokens(ILVAmt, 0, getPath(address(ILV), address(WETH)), address(this), block.timestamp))[1];
+        (uint ILVAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(ILV), address(WETH), ILVETHAmt, 0, 0, address(this), block.timestamp);
+        uint _WETHAmt = sushiSwap(address(ILV), address(WETH), ILVAmt);
+        emit WithdrawILVETH(ILVETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawGHSTETH(uint sharePerc) private {
         uint _GHSTETHTokenId = GHSTETHTokenId;
         (,,,,,,,uint128 GHSTETHTotalAmt,,,,) = uniV3Router.positions(_GHSTETHTokenId);
         uint128 GHSTETHAmt = GHSTETHTotalAmt * uint128(sharePerc) / 1e18;
-        (uint GHSTAmt,) = uniV3Router.decreaseLiquidity(IUniV3Router.DecreaseLiquidityParams({
+        (uint GHSTAmt, uint WETHAmt) = uniV3Router.decreaseLiquidity(IUniV3Router.DecreaseLiquidityParams({
             tokenId: _GHSTETHTokenId,
             liquidity: GHSTETHAmt,
             amount0Min: 0,
             amount1Min: 0,
             deadline: block.timestamp
         }));
-        uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt);
+        uint _WETHAmt = uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt);
+        emit WithdrawGHSTETH(GHSTETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawREVVETH(uint sharePerc) private {
         uint REVVETHAmt = REVVETH.balanceOf(address(this)) * sharePerc / 1e18;
-        (uint REVVAmt,) = uniV2Router.removeLiquidity(address(REVV), address(WETH), REVVETHAmt, 0, 0, address(this), block.timestamp);
-        uniV2Router.swapExactTokensForTokens(REVVAmt, 0, getPath(address(REVV), address(WETH)), address(this), block.timestamp);
+        (uint REVVAmt, uint WETHAmt) = uniV2Router.removeLiquidity(address(REVV), address(WETH), REVVETHAmt, 0, 0, address(this), block.timestamp);
+        uint _WETHAmt = uniV2Swap(address(REVV), address(WETH), REVVAmt);
+        emit WithdrawREVVETH(REVVETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawMVI(uint sharePerc) private {
-        uniV2Router.swapExactTokensForTokens(
-            MVI.balanceOf(address(this)) * sharePerc / 1e18, 0, getPath(address(MVI), address(WETH)), address(this), block.timestamp
-        );
+        uint MVIAmt = MVI.balanceOf(address(this)) * sharePerc / 1e18;
+        uint WETHAmt = (uniV2Router.swapExactTokensForTokens(
+            MVIAmt, 0, getPath(address(MVI), address(WETH)), address(this), block.timestamp
+        ))[1];
+        emit WithdrawMVI(MVIAmt, WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD(false);
         uint lastWatermark = watermark;
-        // console.log(currentWatermark);
-        // console.log(lastWatermark);
         if (lastWatermark == 0) { // First invest or after emergency withdrawal
             watermark = currentWatermark;
         } else {
@@ -442,15 +427,18 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
                 watermark = currentWatermark - fee;
             }
         }
+        emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
 
     /// @param signs True for positive, false for negative
     function adjustWatermark(uint amount, bool signs) external onlyVault {
+        uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
+        emit AdjustWatermark(watermark, lastWatermark);
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
-    function reimburse(uint farmIndex, uint amount) external onlyOwnerOrAdmin returns (uint WETHAmt) {
+    function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint WETHAmt) {
         if (farmIndex == 0) withdrawAXSETH(amount * 1e18 / getAXSETHPool());
         else if (farmIndex == 1) withdrawSLPETH(amount * 1e18 / getSLPETHPool());
         else if (farmIndex == 2) withdrawILVETH(amount * 1e18 / getILVETHPool(false));
@@ -459,9 +447,10 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         else if (farmIndex == 5) withdrawMVI(amount * 1e18 / getMVIPool());
         WETHAmt = WETH.balanceOf(address(this));
         WETH.safeTransfer(vault, WETHAmt);
+        emit Reimburse(WETHAmt);
     }
 
-    function emergencyWithdraw() external onlyOwnerOrAdmin {
+    function emergencyWithdraw() external onlyVault {
         // 1e18 == 100% of share
         // withdrawAXSETH(1e18);
         // withdrawSLPETH(1e18);
@@ -469,8 +458,10 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         // withdrawGHSTETH(1e18);
         withdrawREVVETH(1e18);
         withdrawMVI(1e18);
-        WETH.safeTransfer(vault, WETH.balanceOf(address(this)));
+        uint WETHAmt = WETH.balanceOf(address(this));
+        WETH.safeTransfer(vault, WETHAmt);
         watermark = 0;
+        emit EmergencyWithdraw(WETHAmt);
     }
 
     function sushiSwap(address from, address to, uint amount) private returns (uint) {
@@ -511,10 +502,6 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         path = new address[](2);
         path[0] = tokenA;
         path[1] = tokenB;
-    }
-
-    function getETHPriceInUSD() private view returns (uint) {
-        return uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
     }
 
     function getAXSETHPool() private view returns (uint) {
@@ -568,20 +555,13 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     /// @notice This function return only farms TVL in ETH
     function getAllPool(bool includeVestedILV) public view returns (uint) {
         uint[] memory pools = getEachPool(includeVestedILV);
-        // console.log(pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]);
-        // console.log(getETHPriceInUSD());
         return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]; 
     }
 
     function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
-        uint ETHPriceInUSD = getETHPriceInUSD();
-        // console.log(getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8);
+        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
         return getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
     }
-
-    // function getAllPoolInUSD() external view returns (uint) {
-    //     return getAllPoolInUSD(true);
-    // }
 
     function getCurrentCompositionPerc() external view returns (uint[] memory percentages) {
         uint[] memory pools = getEachPool(false);

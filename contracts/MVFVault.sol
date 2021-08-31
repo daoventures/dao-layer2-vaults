@@ -64,31 +64,31 @@ interface IUniV3Router {
     ) external returns (uint amountOut);
 
     struct IncreaseLiquidityParams {
-        uint256 tokenId;
-        uint256 amount0Desired;
-        uint256 amount1Desired;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        uint256 deadline;
+        uint tokenId;
+        uint amount0Desired;
+        uint amount1Desired;
+        uint amount0Min;
+        uint amount1Min;
+        uint deadline;
     }
     function increaseLiquidity(
        IncreaseLiquidityParams calldata params
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+    ) external returns (uint128 liquidity, uint amount0, uint amount1);
 
     struct DecreaseLiquidityParams {
-        uint256 tokenId;
+        uint tokenId;
         uint128 liquidity;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        uint256 deadline;
+        uint amount0Min;
+        uint amount1Min;
+        uint deadline;
     }
     function decreaseLiquidity(
         DecreaseLiquidityParams calldata params
-    ) external returns (uint256 amount0, uint256 amount1);
+    ) external returns (uint amount0, uint amount1);
 
     function positions(
-        uint256 tokenId
-    ) external view returns (uint96, address, address, address, uint24, int24, int24, uint128, uint256, uint256, uint128, uint128);
+        uint tokenId
+    ) external view returns (uint96, address, address, address, uint24, int24, int24, uint128, uint, uint, uint128, uint128);
 }
 
 interface IChainlink {
@@ -130,14 +130,24 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
+    uint totalDepositAmt;
 
     address public treasuryWallet;
     address public communityWallet;
     address public strategist;
     address public admin;
 
-    // TODO: event
-
+    event Deposit(address indexed caller, uint depositAmt);
+    event Withdraw(address indexed caller, uint withdrawAmt, uint sharesBurn);
+    event Invest(uint amount);
+    event TransferredOutFees(uint fees);
+    event Reimburse(uint farmIndex, address indexed token, uint amount);
+    event Reinvest(uint amount);
+    event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
+    event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
+    event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
+    event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
+    
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
         _;
@@ -178,10 +188,10 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
 
-        // uint pool = getAllPoolInUSD(true);
         address msgSender = _msgSender();
         token.safeTransferFrom(msgSender, address(this), amount);
         if (token == USDT || token == USDC) amount = amount * 1e12;
+        uint amtDeposit = amount;
 
         uint _networkFeePerc;
         if (amount < networkFeeTier2[0]) _networkFeePerc = networkFeePerc[0]; // Tier 1
@@ -192,12 +202,13 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         fees = fees + fee;
         amount = amount - fee;
 
-        addresses.push(msgSender);
-        depositAmt[msgSender] = depositAmt[msgSender] + amount;
+        if (depositAmt[msgSender] == 0) {
+            addresses.push(msgSender);
+            depositAmt[msgSender] = amount;
+        } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
+        totalDepositAmt = totalDepositAmt + amount;
 
-        // uint _totalSupply = totalSupply();
-        // uint share = _totalSupply == 0 ? amount : amount * _totalSupply / pool;
-        // _mint(msg.sender, share);
+        emit Deposit(msgSender, amtDeposit);
     }
 
     function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
@@ -227,7 +238,8 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 ))[1];
             }
         }
-        // emit withdrawAmt
+
+        emit Withdraw(msg.sender, withdrawAmt, share);
     }
 
     function invest() public whenNotPaused {
@@ -240,10 +252,12 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        uint WETHAmt = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
         strategy.invest(WETHAmt);
-        strategy.adjustWatermark(USDTAmt * 1e12 + USDCAmt * 1e12 + DAIAmt, true);
+        strategy.adjustWatermark(tokenAmtToInvest, true);
         distributeLPToken();
+
+        emit Invest(WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
@@ -253,12 +267,12 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             msg.sender == owner(), "Only authorized caller"
         );
         uint fee = strategy.collectProfitAndUpdateWatermark();
-        // console.log(fee);
         if (fee > 0) fees = fees + fee;
     }
 
     function distributeLPToken() private {
-        uint pool = getAllPoolInUSD(true);
+        uint pool;
+        if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -270,6 +284,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             depositAmt[depositAcc] = 0;
         }
         delete addresses;
+        totalDepositAmt = 0;
     }
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
@@ -305,11 +320,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             token.safeTransfer(strategist, _fees - _fee - _fee); // 20%
 
             fees = 0;
-            // emit TransferredOutFees(_fees); // Decimal follow _token
+            emit TransferredOutFees(_fees); // Decimal follow _token
         }
     }
 
-    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt) {
+    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest) {
         uint[] memory _percKeepInVault = percKeepInVault;
         uint pool = getAllPoolInUSD(false);
 
@@ -317,6 +332,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
             WETHAmt = sushiSwap(address(USDT), address(WETH), USDTAmt);
+            tokenAmtToInvest = USDTAmt * 1e12;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
@@ -324,6 +340,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
             uint _WETHAmt = sushiSwap(address(USDC), address(WETH), USDCAmt);
             WETHAmt = WETHAmt + _WETHAmt;
+            tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
 
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
@@ -331,6 +348,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             DAIAmt = DAIAmt - DAIAmtKeepInVault;
             uint _WETHAmt = sushiSwap(address(DAI), address(WETH), DAIAmt);
             WETHAmt = WETHAmt + _WETHAmt;
+            tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
     }
 
@@ -345,16 +363,23 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         WETHAmt = (sushiRouter.getAmountsOut(amount, getPath(token, address(WETH))))[1];
         WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
         sushiSwap(address(WETH), token, WETHAmt);
+        emit Reimburse(farmIndex, token, amount);
     }
 
-    function emergencyWithdraw() external onlyOwnerOrAdmin {
+    function emergencyWithdraw() external onlyOwnerOrAdmin whenNotPaused {
         _pause();
         strategy.emergencyWithdraw();
     }
 
     function reinvest() external onlyOwnerOrAdmin whenPaused {
         _unpause();
-        invest();
+
+        uint WETHAmt = WETH.balanceOf(address(this));
+        strategy.invest(WETHAmt);
+        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        strategy.adjustWatermark(WETHAmt * ETHPriceInUSD / 1e8, true);
+
+        emit Reinvest(WETHAmt);
     }
 
     function sushiSwap(address from, address to, uint amount) private returns (uint) {
@@ -374,14 +399,14 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
          */
         uint[] memory oldNetworkFeeTier2 = networkFeeTier2; // For event purpose
         networkFeeTier2 = _networkFeeTier2;
-        // emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
+        emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
     }
 
     function setCustomNetworkFeeTier(uint _customNetworkFeeTier) external onlyOwner {
         require(_customNetworkFeeTier > networkFeeTier2[1], "Must > tier 2");
         uint oldCustomNetworkFeeTier = customNetworkFeeTier; // For event purpose
         customNetworkFeeTier = _customNetworkFeeTier;
-        // emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
+        emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
     }
 
     function setNetworkFeePerc(uint[] calldata _networkFeePerc) external onlyOwner {
@@ -394,14 +419,14 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
          */
         uint[] memory oldNetworkFeePerc = networkFeePerc; // For event purpose
         networkFeePerc = _networkFeePerc;
-        // emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
+        emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
     }
 
     function setCustomNetworkFeePerc(uint _percentage) public onlyOwner {
         require(_percentage < networkFeePerc[2], "Not allow > tier 2");
         uint oldCustomNetworkFeePerc = customNetworkFeePerc; // For event purpose
         customNetworkFeePerc = _percentage;
-        // emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _percentage);
+        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _percentage);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {
