@@ -18,13 +18,167 @@ const sushiFarmAddr = "0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd"
 const illuviumAddr = "0x8B4d8443a0229349A9892D4F7CbE89eF5f843F72"
 
 const unlockedAccAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
+const AXSETHHolderAddr = "0x14b993eeD8E8Ff78195c7fDa865Ce6431ecaAEbA"
 
 describe("Metaverse-Farmer", () => {
-    it("should work", async () => {
-        let tx, receipt
-        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, owner] = await ethers.getSigners()
+    // it("should work", async () => {
+    //     let tx, receipt
+    //     const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, owner] = await ethers.getSigners()
 
-        // Deploy AXS-ETH
+    //     // Deploy AXS-ETH
+    //     const SushiL1Vault = await ethers.getContractFactory("DAOVaultOptionA", deployer)
+    //     const sushiL1Vault = await SushiL1Vault.deploy()
+    //     const sushiL1VaultArtifact = await artifacts.readArtifact("DAOVaultOptionA")
+    //     const sushiL1VaultInterface = new ethers.utils.Interface(sushiL1VaultArtifact.abi)
+
+    //     const SushiL1Factory = await ethers.getContractFactory("SushiOptionAFactory", deployer)
+    //     const sushiL1Factory = await SushiL1Factory.deploy(sushiL1Vault.address)
+        
+    //     const dataAXSETH = sushiL1VaultInterface.encodeFunctionData(
+    //         "initialize",
+    //         [
+    //             "DAOVaultAXSETH", "daoAXSETH", 231,
+    //             WETHAddr, USDCAddr, AXSETHAddr,
+    //             community.address, treasury.address, strategist.address, admin.address,
+    //             sushiFarmAddr, 1
+    //         ]
+    //     )
+    //     await sushiL1Factory.createVault(dataAXSETH)
+    //     const AXSETHVaultAddr = await sushiL1Factory.getVault(0)
+    //     const AXSETHVault = await ethers.getContractAt("DAOVaultOptionA", AXSETHVaultAddr, deployer)
+    //     // await AXSETHVault.transferOwnership(owner.address)
+        
+    //     // Deploy ILV-ETH
+    //     const ILVETHVaultFac = await ethers.getContractFactory("ILVETHVault", deployer)
+    //     const ILVETHVault = await ILVETHVaultFac.deploy()
+    //     await ILVETHVault.initialize("DAO L1 Sushi ILV-ETH", "daoSushiILV")
+    //     await ILVETHVault.transferOwnership(owner.address)
+        
+    //     // Main contract
+    //     const MVFStrategyFactory = await ethers.getContractFactory("MVFStrategy")
+    //     const mvfStrategy = await MVFStrategyFactory.deploy()
+    //     await mvfStrategy.initialize(AXSETHVaultAddr, deployer.address, ILVETHVault.address, deployer.address, 0)
+    //     const MVFVaultFactory = await ethers.getContractFactory("MVFVault")
+    //     const mvfVault = await MVFVaultFactory.deploy()
+    //     await mvfVault.initialize(
+    //         "DAO L2 Metaverse-Farmer", "daoMVF",
+    //         treasury.address, community.address, admin.address, strategist.address,
+    //         biconomy.address, mvfStrategy.address
+    //     )
+    //     await mvfStrategy.setVault(mvfVault.address)
+    //     await mvfVault.transferOwnership(owner.address)
+    //     await mvfStrategy.transferOwnership(owner.address)
+        
+    //     // Set whitelist
+    //     await AXSETHVault.whitelistContract(mvfVault.address, true)
+    //     await ILVETHVault.connect(owner).setWhitelistAddress(mvfVault.address, true)
+
+    //     // Unlock & transfer Stablecoins to client
+    //     network.provider.request({method: "hardhat_impersonateAccount", params: [unlockedAccAddr]})
+    //     const unlockedAcc = await ethers.getSigner(unlockedAccAddr)
+    //     const USDTContract = new ethers.Contract(USDTAddr, IERC20_ABI, unlockedAcc)
+    //     const USDCContract = new ethers.Contract(USDCAddr, IERC20_ABI, unlockedAcc)
+    //     const DAIContract = new ethers.Contract(DAIAddr, IERC20_ABI, unlockedAcc)
+    //     await USDTContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
+    //     await USDTContract.transfer(client2.address, ethers.utils.parseUnits("10000", 6))
+    //     await USDCContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
+    //     await USDCContract.transfer(client3.address, ethers.utils.parseUnits("10000", 6))
+    //     await DAIContract.transfer(client.address, ethers.utils.parseUnits("10000", 18))
+
+    //     // Deposit
+    //     await USDTContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
+    //     await USDCContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
+    //     await DAIContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
+    //     tx = await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+    //     // receipt = await tx.wait()
+    //     // console.log(receipt.gasUsed.toString())
+    //     await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+    //     await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
+    //     // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
+
+    //     // Invest
+    //     await mvfVault.connect(admin).invest()
+    //     // console.log(ethers.utils.formatEther(await mvfVault.getAllPool(true)))
+    //     // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
+    //     // console.log(ethers.utils.formatEther(
+    //     //     (await mvfVault.balanceOf(client.address))
+    //     //     .mul(await mvfVault.getPricePerFullShare())
+    //     //     .div(ethers.utils.parseEther("1"))
+    //     // )) // User share in USD
+    //     // console.log(ethers.utils.formatEther(await mvfVault.getPricePerFullShare())) // LP token price
+    //     // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString());
+    //     // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
+    //     // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
+
+    //     // // Check Stablecoins keep in vault
+    //     // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
+    //     // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
+    //     // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
+
+    //     // Second invest
+    //     await USDTContract.connect(client2).approve(mvfVault.address, ethers.constants.MaxUint256)
+    //     await USDCContract.connect(client3).approve(mvfVault.address, ethers.constants.MaxUint256)
+    //     await mvfVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+    //     await mvfVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+    //     await mvfVault.connect(admin).invest()
+    //     // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client2.address)))
+    //     // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client3.address)))
+
+    //     // Assume profit
+    //     const MVIUnlockedAddr = "0x6b9dfc960299166df15ab8a85f054c69e2be2353"
+    //     await network.provider.request({method: "hardhat_impersonateAccount", params: [MVIUnlockedAddr]})
+    //     const MVIUnlockedAcc = await ethers.getSigner(MVIUnlockedAddr)
+    //     const MVIContract = new ethers.Contract(MVIAddr, IERC20_ABI, MVIUnlockedAcc)
+    //     await MVIContract.transfer(mvfStrategy.address, ethers.utils.parseEther("10"))
+
+    //     // Collect profit
+    //     await mvfVault.connect(admin).collectProfitAndUpdateWatermark()
+    //     // console.log(ethers.utils.formatEther(await mvfVault.fees()))
+    //     // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
+    //     // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
+
+    //     // Transfer out fees
+    //     await mvfVault.connect(admin).transferOutFees()
+    //     // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6)) // 204.130064
+    //     // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6)) // 204.130064
+    //     // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6)) // 102.065034
+    //     // console.log(ethers.utils.formatEther(await mvfStrategy.watermark())) // 28759.3006489687525804
+    //     // console.log(ethers.utils.formatEther(await mvfVault.fees())) // 0.0
+
+    //     // // Test reimburse
+    //     // await mvfVault.connect(admin).reimburse(5, USDTAddr, ethers.utils.parseUnits("1000", 6))
+    //     // await mvfVault.connect(admin).reimburse(5, USDCAddr, ethers.utils.parseUnits("1000", 6))
+    //     // await mvfVault.connect(admin).reimburse(5, DAIAddr, ethers.utils.parseUnits("1000", 18))
+    //     // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
+    //     // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
+    //     // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
+
+    //     // // Test emergency withdraw
+    //     // await mvfVault.connect(admin).emergencyWithdraw()
+    //     // await mvfVault.connect(admin).reinvest()
+    //     // console.log(ethers.utils.formatEther(await mvfStrategy.watermark())) // 38234.1494749687525804
+
+    //     // // Withdraw
+    //     const portionShare = (await mvfVault.balanceOf(client.address)).div("3")
+    //     await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
+    //     // await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
+    //     // await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
+    //     console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10010.287234
+    //     // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 
+    //     // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 
+
+    //     await mvfVault.connect(client2).withdraw(mvfVault.balanceOf(client2.address), USDTAddr)
+    //     console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10017.97404
+        
+    //     await mvfVault.connect(client3).withdraw(mvfVault.balanceOf(client3.address), USDCAddr)
+    //     console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9984.832298
+    // })
+
+    it("should work for Sushi L1 AXSETH vault contract", async () => {
+        let tx, receipt
+        const [deployer, client, client2, client3, treasury, community, strategist, admin, multisig] = await ethers.getSigners()
+
+        // Deploy
         const SushiL1Vault = await ethers.getContractFactory("DAOVaultOptionA", deployer)
         const sushiL1Vault = await SushiL1Vault.deploy()
         const sushiL1VaultArtifact = await artifacts.readArtifact("DAOVaultOptionA")
@@ -36,7 +190,7 @@ describe("Metaverse-Farmer", () => {
         const dataAXSETH = sushiL1VaultInterface.encodeFunctionData(
             "initialize",
             [
-                "DAOVaultAXSETH", "daoAXSETH", 231,
+                "DAO L1 Sushi AXS-ETH", "daoSushiAXS", 231,
                 WETHAddr, USDCAddr, AXSETHAddr,
                 community.address, treasury.address, strategist.address, admin.address,
                 sushiFarmAddr, 1
@@ -45,129 +199,59 @@ describe("Metaverse-Farmer", () => {
         await sushiL1Factory.createVault(dataAXSETH)
         const AXSETHVaultAddr = await sushiL1Factory.getVault(0)
         const AXSETHVault = await ethers.getContractAt("DAOVaultOptionA", AXSETHVaultAddr, deployer)
-        // await AXSETHVault.transferOwnership(owner.address)
-        
-        // Deploy ILV-ETH
-        const ILVETHVaultFac = await ethers.getContractFactory("ILVETHVault", deployer)
-        const ILVETHVault = await ILVETHVaultFac.deploy()
-        await ILVETHVault.initialize("DAO L1 Sushi ILV-ETH", "daoSushiILV")
-        await ILVETHVault.transferOwnership(owner.address)
-        
-        // Main contract
-        const MVFStrategyFactory = await ethers.getContractFactory("MVFStrategy")
-        const mvfStrategy = await MVFStrategyFactory.deploy()
-        await mvfStrategy.initialize(AXSETHVaultAddr, deployer.address, ILVETHVault.address, deployer.address, 0)
-        const MVFVaultFactory = await ethers.getContractFactory("MVFVault")
-        const mvfVault = await MVFVaultFactory.deploy()
-        await mvfVault.initialize(
-            mvfStrategy.address, treasury.address, community.address, admin.address, strategist.address, biconomy.address,
-        )
-        await mvfStrategy.setVault(mvfVault.address)
-        await mvfVault.transferOwnership(owner.address)
-        await mvfStrategy.transferOwnership(owner.address)
-        
-        // Set whitelist
-        await AXSETHVault.whitelistContract(mvfVault.address, true)
-        await ILVETHVault.connect(owner).setWhitelistAddress(mvfVault.address, true)
+        await AXSETHVault.transferOwnership(multisig.address)
 
-        // Unlock & transfer Stablecoins to client
-        network.provider.request({method: "hardhat_impersonateAccount", params: [unlockedAccAddr]})
-        const unlockedAcc = await ethers.getSigner(unlockedAccAddr)
-        const USDTContract = new ethers.Contract(USDTAddr, IERC20_ABI, unlockedAcc)
-        const USDCContract = new ethers.Contract(USDCAddr, IERC20_ABI, unlockedAcc)
-        const DAIContract = new ethers.Contract(DAIAddr, IERC20_ABI, unlockedAcc)
-        await USDTContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
-        await USDTContract.transfer(client2.address, ethers.utils.parseUnits("10000", 6))
-        await USDCContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
-        await USDCContract.transfer(client3.address, ethers.utils.parseUnits("10000", 6))
-        await DAIContract.transfer(client.address, ethers.utils.parseUnits("10000", 18))
+        // Unlock & transfer
+        network.provider.request({method: "hardhat_impersonateAccount", params: [AXSETHHolderAddr]})
+        const unlockedAcc = await ethers.getSigner(AXSETHHolderAddr)
+        const AXSETHContract = new ethers.Contract(AXSETHAddr, IERC20_ABI, unlockedAcc)
+        await AXSETHContract.transfer(client.address, ethers.utils.parseEther("1"))
+        await AXSETHContract.transfer(client2.address, ethers.utils.parseEther("1"))
+
+        // Whitelist
+        await AXSETHVault.connect(admin).setWhitelistAddress(client.address, true)
 
         // Deposit
-        await USDTContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
-        await USDCContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
-        await DAIContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
-        tx = await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        await AXSETHContract.connect(client).approve(AXSETHVault.address, ethers.constants.MaxUint256)
+        tx = await AXSETHVault.connect(client).deposit(ethers.utils.parseEther("1"))
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString())
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
-        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
+        // console.log(ethers.utils.formatEther(await AXSETHVault.balanceOf(client.address)))
 
         // Invest
-        await mvfVault.connect(admin).invest()
-        // console.log(ethers.utils.formatEther(await mvfVault.getAllPool(true)))
-        // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
-        // console.log(ethers.utils.formatEther(
-        //     (await mvfVault.balanceOf(client.address))
-        //     .mul(await mvfVault.getPricePerFullShare())
-        //     .div(ethers.utils.parseEther("1"))
-        // )) // User share in USD
-        // console.log(ethers.utils.formatEther(await mvfVault.getPricePerFullShare())) // LP token price
-        // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString());
-        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
-        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
+        tx = await AXSETHVault.connect(admin).invest()
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
 
-        // // Check Stablecoins keep in vault
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
+        // Second deposit
+        await AXSETHContract.connect(client2).approve(AXSETHVault.address, ethers.constants.MaxUint256)
+        await AXSETHVault.connect(client2).deposit(ethers.utils.parseEther("1"))
+        // console.log(ethers.utils.formatEther(await AXSETHVault.balanceOf(client2.address)))
+
+        // Check fees
+        // console.log(ethers.utils.formatEther(await AXSETHContract.balanceOf(treasury.address)))
+        // console.log(ethers.utils.formatEther(await AXSETHContract.balanceOf(community.address)))
+        // console.log(ethers.utils.formatEther(await AXSETHContract.balanceOf(strategist.address)))
 
         // Second invest
-        await USDTContract.connect(client2).approve(mvfVault.address, ethers.constants.MaxUint256)
-        await USDCContract.connect(client3).approve(mvfVault.address, ethers.constants.MaxUint256)
-        await mvfVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
-        await mvfVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        await mvfVault.connect(admin).invest()
-        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client2.address)))
-        // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client3.address)))
+        tx = await AXSETHVault.connect(admin).invest()
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // console.log(ethers.utils.formatEther(await AXSETHVault.getAllPoolInUSD())) // TODO: not correct
 
-        // Assume profit
-        const MVIUnlockedAddr = "0x6b9dfc960299166df15ab8a85f054c69e2be2353"
-        await network.provider.request({method: "hardhat_impersonateAccount", params: [MVIUnlockedAddr]})
-        const MVIUnlockedAcc = await ethers.getSigner(MVIUnlockedAddr)
-        const MVIContract = new ethers.Contract(MVIAddr, IERC20_ABI, MVIUnlockedAcc)
-        await MVIContract.transfer(mvfStrategy.address, ethers.utils.parseEther("10"))
+        // Yield
+        // await AXSETHContract.transfer(AXSETHVault.address, ethers.utils.parseEther("1"))
+        tx = await AXSETHVault.connect(admin).yield()
+        receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
 
-        // Collect profit
-        await mvfVault.connect(admin).collectProfitAndUpdateWatermark()
-        // console.log(ethers.utils.formatEther(await mvfVault.fees()))
-        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark()))
-        // console.log(ethers.utils.formatEther(await mvfVault.getAllPoolInUSD()))
+        // Withdraw
+        tx = await AXSETHVault.connect(client).withdraw(AXSETHVault.balanceOf(client.address))
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // console.log(ethers.utils.formatEther(await AXSETHContract.balanceOf(client.address)))
 
-        // Transfer out fees
-        await mvfVault.connect(admin).transferOutFees()
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6)) // 204.130064
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6)) // 204.130064
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6)) // 102.065034
-        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark())) // 28759.3006489687525804
-        // console.log(ethers.utils.formatEther(await mvfVault.fees())) // 0.0
-
-        // // Test reimburse
-        // await mvfVault.connect(admin).reimburse(5, USDTAddr, ethers.utils.parseUnits("1000", 6))
-        // await mvfVault.connect(admin).reimburse(5, USDCAddr, ethers.utils.parseUnits("1000", 6))
-        // await mvfVault.connect(admin).reimburse(5, DAIAddr, ethers.utils.parseUnits("1000", 18))
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(mvfVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(mvfVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(mvfVault.address), 18))
-
-        // // Test emergency withdraw
-        // await mvfVault.connect(admin).emergencyWithdraw()
-        // await mvfVault.connect(admin).reinvest()
-        // console.log(ethers.utils.formatEther(await mvfStrategy.watermark())) // 38234.1494749687525804
-
-        // // Withdraw
-        const portionShare = (await mvfVault.balanceOf(client.address)).div("3")
-        await mvfVault.connect(client).withdraw(portionShare, USDTAddr)
-        // await mvfVault.connect(client).withdraw(portionShare, USDCAddr)
-        // await mvfVault.connect(client).withdraw(portionShare, DAIAddr)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10010.287234
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 
-
-        await mvfVault.connect(client2).withdraw(mvfVault.balanceOf(client2.address), USDTAddr)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10017.97404
-        
-        await mvfVault.connect(client3).withdraw(mvfVault.balanceOf(client3.address), USDCAddr)
-        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9984.832298
+        tx = await AXSETHVault.connect(client2).withdraw(AXSETHVault.balanceOf(client2.address))
+        // console.log(ethers.utils.formatEther(await AXSETHContract.balanceOf(client2.address)))
     })
 })

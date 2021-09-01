@@ -20,75 +20,7 @@ interface IRouter {
         uint deadline
     ) external returns (uint[] memory amounts);
 
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB);
-
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
-}
-
-interface IPair is IERC20Upgradeable {
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
-}
-
-interface IUniV3Router {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint deadline;
-        uint amountIn;
-        uint amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
-    function exactInputSingle(
-        ExactInputSingleParams calldata params
-    ) external returns (uint amountOut);
-
-    struct IncreaseLiquidityParams {
-        uint tokenId;
-        uint amount0Desired;
-        uint amount1Desired;
-        uint amount0Min;
-        uint amount1Min;
-        uint deadline;
-    }
-    function increaseLiquidity(
-       IncreaseLiquidityParams calldata params
-    ) external returns (uint128 liquidity, uint amount0, uint amount1);
-
-    struct DecreaseLiquidityParams {
-        uint tokenId;
-        uint128 liquidity;
-        uint amount0Min;
-        uint amount1Min;
-        uint deadline;
-    }
-    function decreaseLiquidity(
-        DecreaseLiquidityParams calldata params
-    ) external returns (uint amount0, uint amount1);
-
-    function positions(
-        uint tokenId
-    ) external view returns (uint96, address, address, address, uint24, int24, int24, uint128, uint, uint, uint128, uint128);
 }
 
 interface IChainlink {
@@ -110,7 +42,6 @@ interface IStrategy {
 contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using SafeERC20Upgradeable for IPair;
 
     IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
     IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -147,17 +78,18 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
-    
+
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
         _;
     }
 
     function initialize(
-        address _strategy,
+        string calldata name, string calldata ticker,
         address _treasuryWallet, address _communityWallet, address _admin, address _strategist,
-        address _biconomy
+        address _biconomy, address _strategy
     ) external initializer {
+        __ERC20_init(name, ticker);
         __Ownable_init();
 
         strategy = IStrategy(_strategy);
