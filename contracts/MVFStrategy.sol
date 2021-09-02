@@ -227,25 +227,18 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
             uint WETHAmt500 = WETHAmt * 500 / 10000;
 
             // AXS-ETH (10%-10%)
-            // investAXSETH(WETHAmt1000);
-
+            investAXSETH(WETHAmt1000);
             // SLP-ETH (7.5%-7.5%)
-            // investSLPETH(WETHAmt750);
-
+            investSLPETH(WETHAmt750);
             // ILV-ETH (10%-10%)
-            // investILVETH(WETHAmt1000);
-            investILVETH(WETHAmt * 1500 / 10000);
-
+            investILVETH(WETHAmt1000);
             // GHST-ETH (5%-5%)
             // investGHSTETH(WETHAmt500);
-
             // REVV-ETH (5%-5%)
-            // investREVVETH(WETHAmt500);
-            investREVVETH(WETHAmt * 1500 / 10000);
-
+            investREVVETH(WETHAmt500);
             // MVI (25%)
             // investMVI(WETHAmt * 2500 / 10000);
-            investMVI(WETHAmt * 4000 / 10000);
+            investMVI(WETHAmt * 3500 / 10000);
         } else {
             uint furthest;
             uint farmIndex;
@@ -353,8 +346,8 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     function withdraw(uint amount) external onlyVault returns (uint WETHAmt){
         uint sharePerc = amount * 1e18 / getAllPoolInUSD(false);
         uint WETHAmtBefore = WETH.balanceOf(address(this));
-        // withdrawAXSETH(sharePerc);
-        // withdrawSLPETH(sharePerc);
+        withdrawAXSETH(sharePerc);
+        withdrawSLPETH(sharePerc);
         withdrawILVETH(sharePerc);
         // withdrawGHSTETH(sharePerc);
         withdrawREVVETH(sharePerc);
@@ -452,8 +445,8 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
 
     function emergencyWithdraw() external onlyVault {
         // 1e18 == 100% of share
-        // withdrawAXSETH(1e18);
-        // withdrawSLPETH(1e18);
+        withdrawAXSETH(1e18);
+        withdrawSLPETH(1e18);
         withdrawILVETH(1e18);
         // withdrawGHSTETH(1e18);
         withdrawREVVETH(1e18);
@@ -505,13 +498,11 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     }
 
     function getAXSETHPool() private view returns (uint) {
-        // return AXSETHVault.getAllPoolInETH();
-        return 0;
+        return AXSETHVault.getAllPoolInETH();
     }
 
     function getSLPETHPool() private view returns (uint) {
-        // return SLPETHVault.getAllPoolInETH();
-        return 0;
+        return SLPETHVault.getAllPoolInETH();
     }
 
     function getILVETHPool(bool includeVestedILV) private view returns (uint) {
