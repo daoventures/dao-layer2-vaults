@@ -99,7 +99,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract MVFStrategy is Initializable, OwnableUpgradeable {
+contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeERC20Upgradeable for IPair;
 
@@ -117,7 +117,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable constant GHSTETH = IERC20Upgradeable(0xFbA31F01058DB09573a383F26a088f23774d4E5d);
     IPair constant REVVETH = IPair(0x724d5c9c618A2152e99a45649a3B8cf198321f46);
 
-    IRouter constant uniV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    IRouter constant uniV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // Uniswap v2
     IUniV3Router constant uniV3Router = IUniV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushi
 
@@ -183,24 +183,24 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         GHSTETHTokenId = _GHSTETHTokenId;
         profitFeePerc = 2000;
 
-        WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WETH.safeApprove(address(uniV2Router), type(uint).max);
-        WETH.safeApprove(address(uniV3Router), type(uint).max);
+        // WETH.safeApprove(address(sushiRouter), type(uint).max);
+        // WETH.safeApprove(address(uniV2Router), type(uint).max);
+        // WETH.safeApprove(address(uniV3Router), type(uint).max);
 
-        AXS.safeApprove(address(sushiRouter), type(uint).max);
-        SLP.safeApprove(address(sushiRouter), type(uint).max);
-        ILV.safeApprove(address(sushiRouter), type(uint).max);
-        GHST.safeApprove(address(uniV3Router), type(uint).max);
-        REVV.safeApprove(address(uniV2Router), type(uint).max);
-        MVI.safeApprove(address(uniV2Router), type(uint).max);
+        // AXS.safeApprove(address(sushiRouter), type(uint).max);
+        // SLP.safeApprove(address(sushiRouter), type(uint).max);
+        // ILV.safeApprove(address(sushiRouter), type(uint).max);
+        // GHST.safeApprove(address(uniV3Router), type(uint).max);
+        // REVV.safeApprove(address(uniV2Router), type(uint).max);
+        // MVI.safeApprove(address(uniV2Router), type(uint).max);
 
-        AXSETH.safeApprove(address(sushiRouter), type(uint).max);
-        AXSETH.safeApprove(address(AXSETHVault), type(uint).max);
-        SLPETH.safeApprove(address(sushiRouter), type(uint).max);
-        SLPETH.safeApprove(address(SLPETHVault), type(uint).max);
-        ILVETH.safeApprove(address(sushiRouter), type(uint).max);
-        ILVETH.safeApprove(address(ILVETHVault), type(uint).max);
-        REVVETH.safeApprove(address(uniV2Router), type(uint).max);
+        // AXSETH.safeApprove(address(sushiRouter), type(uint).max);
+        // AXSETH.safeApprove(address(AXSETHVault), type(uint).max);
+        // SLPETH.safeApprove(address(sushiRouter), type(uint).max);
+        // SLPETH.safeApprove(address(SLPETHVault), type(uint).max);
+        // ILVETH.safeApprove(address(sushiRouter), type(uint).max);
+        // ILVETH.safeApprove(address(ILVETHVault), type(uint).max);
+        // REVVETH.safeApprove(address(uniV2Router), type(uint).max);
     }
 
     function invest(uint WETHAmt) external onlyVault {

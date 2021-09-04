@@ -39,14 +39,14 @@ interface IStrategy {
     function getAllPool(bool includeVestedILV) external view returns (uint);
 }
 
-contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x07de306FF27a2B630B1141956844eB1552B956B5);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xb7a4F3E9097C08dA09517b5aB877F7a917224ede);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
     IStrategy public strategy;
@@ -110,11 +110,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
         // percKeepInVault = [0, 0, 0];
 
-        USDT.safeApprove(address(sushiRouter), type(uint).max);
-        USDC.safeApprove(address(sushiRouter), type(uint).max);
-        DAI.safeApprove(address(sushiRouter), type(uint).max);
-        WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WETH.safeApprove(address(strategy), type(uint).max);
+        // USDT.safeApprove(address(sushiRouter), type(uint).max);
+        // USDC.safeApprove(address(sushiRouter), type(uint).max);
+        // DAI.safeApprove(address(sushiRouter), type(uint).max);
+        // WETH.safeApprove(address(sushiRouter), type(uint).max);
+        // WETH.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
