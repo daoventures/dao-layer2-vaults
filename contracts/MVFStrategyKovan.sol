@@ -518,8 +518,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     }
 
     function getGHSTETHPool() private view returns (uint) {
-        // return GHSTETHVault.getAllPoolInETH();
-        return 0;
+        return GHSTETHVault.getAllPoolInETH();
     }
 
     function getREVVETHPool() private view returns (uint) {

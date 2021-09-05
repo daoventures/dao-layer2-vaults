@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../libs/BaseRelayRecipient.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -104,11 +103,9 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeeTier2 = [50000*1e18+1, 100000*1e18];
         customNetworkFeeTier = 1000000*1e18;
         networkFeePerc = [100, 75, 50];
-        // networkFeePerc = [0, 75, 50];
         customNetworkFeePerc = 25;
 
         percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
-        // percKeepInVault = [0, 0, 0];
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
@@ -205,30 +202,17 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function distributeLPToken() private {
         uint pool;
-        // console.log(pool);
         if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
-        // console.log(totalSupply());
-        // console.log(pool); // 188516.316118224988282092
-        // console.log(getAllPoolInUSD(true)); // 198416.316118224988282092
-        // console.log(totalDepositAmt);
         address[] memory _addresses = addresses;
-        // console.log(_addresses.length);
-        // console.log("---");
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
-            // console.log(depositAcc);
             uint _depositAmt = depositAmt[depositAcc];
-            // console.log(_depositAmt);
             uint _totalSupply = totalSupply();
-            // console.log(_totalSupply);
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
-            // console.log(share);
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
-            // console.log(pool);
             depositAmt[depositAcc] = 0;
         }
-        // console.log("---");
         delete addresses;
         totalDepositAmt = 0;
     }

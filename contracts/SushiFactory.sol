@@ -36,5 +36,4 @@ contract SushiFactory is Ownable {
     function getVaultLength() external view returns (uint) {
         return vaults.length;
     }
-
 }

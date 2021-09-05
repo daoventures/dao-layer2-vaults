@@ -8,8 +8,6 @@ module.exports = {
         hardhat: {
             forking: {
                 url: process.env.ALCHEMY_URL_MAINNET,
-                // blockNumber: 13050000,
-                // blockNumber: 13050297,
                 blockNumber: 13147000,
 
                 // url: process.env.ALCHEMY_URL_KOVAN,
@@ -30,9 +28,6 @@ module.exports = {
     },
     solidity: {
         compilers: [
-            {
-                version: "0.7.6"
-            },
             {
                 version: "0.8.7",
                 settings: {
