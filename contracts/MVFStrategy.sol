@@ -88,7 +88,6 @@ interface IUniV3Router {
 
 interface IDaoL1Vault is IERC20Upgradeable {
     function deposit(uint amount) external;
-    function deposit(uint amount0, uint amount1) external;
     function withdraw(uint share) external returns (uint);
     function getAllPoolInUSD() external view returns (uint);
     function getAllPoolInETH() external view returns (uint);
@@ -541,7 +540,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]; 
     }
 
-    function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
+    function getAllPoolInUSD(bool includeVestedILV) public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
         return getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
     }
