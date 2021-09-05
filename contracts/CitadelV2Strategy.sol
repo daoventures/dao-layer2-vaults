@@ -377,7 +377,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         return pools[0] + pools[1] + pools[2] + pools[3];
     }
 
-    function getAllPoolInUSD() private view returns (uint) {
+    function getAllPoolInUSD() public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
         return getAllPool() * ETHPriceInUSD / 1e8;
     }
