@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../libs/BaseRelayRecipient.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -104,17 +103,15 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeeTier2 = [50000*1e18+1, 100000*1e18];
         customNetworkFeeTier = 1000000*1e18;
         networkFeePerc = [100, 75, 50];
-        // networkFeePerc = [0, 75, 50];
         customNetworkFeePerc = 25;
 
         percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
-        // percKeepInVault = [0, 0, 0];
 
-        // USDT.safeApprove(address(sushiRouter), type(uint).max);
-        // USDC.safeApprove(address(sushiRouter), type(uint).max);
-        // DAI.safeApprove(address(sushiRouter), type(uint).max);
-        // WETH.safeApprove(address(sushiRouter), type(uint).max);
-        // WETH.safeApprove(address(strategy), type(uint).max);
+        USDT.safeApprove(address(sushiRouter), type(uint).max);
+        USDC.safeApprove(address(sushiRouter), type(uint).max);
+        DAI.safeApprove(address(sushiRouter), type(uint).max);
+        WETH.safeApprove(address(sushiRouter), type(uint).max);
+        WETH.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -149,48 +146,51 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
 
-        uint _totalSupply = totalSupply();
-        uint withdrawAmt = getAllPoolInUSD(false) * share / _totalSupply;
-        _burn(msg.sender, share);
-        strategy.adjustWatermark(withdrawAmt, false);
+        // uint _totalSupply = totalSupply();
+        // uint withdrawAmt = getAllPoolInUSD(false) * share / _totalSupply;
+        // _burn(msg.sender, share);
+        // strategy.adjustWatermark(withdrawAmt, false);
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
-        if (withdrawAmt <= tokenAmtInVault) {
-            if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
-            token.safeTransfer(msg.sender, withdrawAmt);
-        } else {
-            if (!paused()) {
-                strategy.withdraw(withdrawAmt);
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                ))[1];
-            } else {
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                ))[1];
-            }
-        }
+        // uint tokenAmtInVault = token.balanceOf(address(this));
+        // if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
+        // if (withdrawAmt <= tokenAmtInVault) {
+        //     if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+        //     token.safeTransfer(msg.sender, withdrawAmt);
+        // } else {
+        //     if (!paused()) {
+        //         strategy.withdraw(withdrawAmt);
+        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //             WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        //         ))[1];
+        //     } else {
+        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //             WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        //         ))[1];
+        //     }
+        // }
+
+        uint withdrawAmt = share;
+        token.safeTransfer(msg.sender, share);
 
         emit Withdraw(msg.sender, withdrawAmt, share);
     }
 
     function invest() public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+        // require(
+        //     msg.sender == admin ||
+        //     msg.sender == owner() ||
+        //     msg.sender == address(this), "Only authorized caller"
+        // );
 
-        if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(WETHAmt);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        // (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        // strategy.invest(WETHAmt);
+        // strategy.adjustWatermark(tokenAmtToInvest, true);
         distributeLPToken();
 
-        emit Invest(WETHAmt);
+        // emit Invest(WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
@@ -204,31 +204,18 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken() private {
-        uint pool;
-        // console.log(pool);
-        if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
-        // console.log(totalSupply());
-        // console.log(pool); // 188516.316118224988282092
-        // console.log(getAllPoolInUSD(true)); // 198416.316118224988282092
-        // console.log(totalDepositAmt);
+        uint pool = USDT.balanceOf(address(this)) + USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
+        // if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
         address[] memory _addresses = addresses;
-        // console.log(_addresses.length);
-        // console.log("---");
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
-            // console.log(depositAcc);
             uint _depositAmt = depositAmt[depositAcc];
-            // console.log(_depositAmt);
             uint _totalSupply = totalSupply();
-            // console.log(_totalSupply);
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
-            // console.log(share);
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
-            // console.log(pool);
             depositAmt[depositAcc] = 0;
         }
-        // console.log("---");
         delete addresses;
         totalDepositAmt = 0;
     }

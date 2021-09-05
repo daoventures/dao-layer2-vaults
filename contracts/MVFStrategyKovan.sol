@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -89,10 +88,18 @@ interface IUniV3Router {
 
 interface IDaoL1Vault is IERC20Upgradeable {
     function deposit(uint amount) external;
+    function deposit(uint amount0, uint amount1) external;
     function withdraw(uint share) external returns (uint);
     function getAllPoolInUSD() external view returns (uint);
     function getAllPoolInETH() external view returns (uint);
     function getAllPoolInETHExcludeVestedILV() external view returns (uint);
+}
+
+interface IDaoL1VaultUniV3 is IERC20Upgradeable {
+    function deposit(uint amount0, uint amount1) external;
+    function withdraw(uint share) external returns (uint, uint);
+    function getAllPoolInUSD() external view returns (uint);
+    function getAllPoolInETH() external view returns (uint);
 }
 
 interface IChainlink {
@@ -103,7 +110,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeERC20Upgradeable for IPair;
 
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
     IERC20Upgradeable constant AXS = IERC20Upgradeable(0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b);
     IERC20Upgradeable constant SLP = IERC20Upgradeable(0xCC8Fa225D80b9c7D42F96e9570156c65D6cAAa25);
     IERC20Upgradeable constant ILV = IERC20Upgradeable(0x767FE9EDC9E0dF98E07454847909b5E959D7ca0E);
@@ -117,14 +124,14 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     IERC20Upgradeable constant GHSTETH = IERC20Upgradeable(0xFbA31F01058DB09573a383F26a088f23774d4E5d);
     IPair constant REVVETH = IPair(0x724d5c9c618A2152e99a45649a3B8cf198321f46);
 
-    IRouter constant uniV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // Uniswap v2
+    IRouter constant uniV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     IUniV3Router constant uniV3Router = IUniV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushi
 
     IDaoL1Vault public AXSETHVault;
     IDaoL1Vault public SLPETHVault;
     IDaoL1Vault public ILVETHVault;
-    IDaoL1Vault public GHSTETHVault;
+    IDaoL1VaultUniV3 public GHSTETHVault;
 
     uint constant AXSETHTargetPerc = 2000;
     uint constant SLPETHTargetPerc = 1500;
@@ -132,8 +139,6 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     uint constant GHSTETHTargetPerc = 1000;
     uint constant REVVETHTargetPerc = 1000;
     uint constant MVITargetPerc = 2500;
-
-    uint public GHSTETHTokenId;
 
     address public vault;
     uint public watermark; // In USD (18 decimals)
@@ -156,7 +161,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     event WithdrawAXSETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawSLPETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawILVETH(uint lpTokenAmt, uint WETHAmt);
-    event WithdrawGHSTETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawGHSTETH(uint GHSTAmt, uint WETHAmt);
     event WithdrawREVVETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawMVI(uint lpTokenAmt, uint WETHAmt);
     event CollectProfitAndUpdateWatermark(uint currentWatermark, uint lastWatermark, uint fee);
@@ -170,22 +175,20 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     }
 
     function initialize(
-        address _AXSETHVault, address _SLPETHVault, address _ILVETHVault, address _GHSTETHVault,
-        uint _GHSTETHTokenId
+        address _AXSETHVault, address _SLPETHVault, address _ILVETHVault, address _GHSTETHVault
     ) external initializer {
         __Ownable_init();
 
         AXSETHVault = IDaoL1Vault(_AXSETHVault);
         SLPETHVault = IDaoL1Vault(_SLPETHVault);
         ILVETHVault = IDaoL1Vault(_ILVETHVault);
-        GHSTETHVault = IDaoL1Vault(_GHSTETHVault);
+        GHSTETHVault = IDaoL1VaultUniV3(_GHSTETHVault);
 
-        GHSTETHTokenId = _GHSTETHTokenId;
         profitFeePerc = 2000;
 
-        // WETH.safeApprove(address(sushiRouter), type(uint).max);
-        // WETH.safeApprove(address(uniV2Router), type(uint).max);
-        // WETH.safeApprove(address(uniV3Router), type(uint).max);
+        WETH.safeApprove(address(sushiRouter), type(uint).max);
+        WETH.safeApprove(address(uniV2Router), type(uint).max);
+        WETH.safeApprove(address(uniV3Router), type(uint).max);
 
         // AXS.safeApprove(address(sushiRouter), type(uint).max);
         // SLP.safeApprove(address(sushiRouter), type(uint).max);
@@ -200,6 +203,8 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
         // SLPETH.safeApprove(address(SLPETHVault), type(uint).max);
         // ILVETH.safeApprove(address(sushiRouter), type(uint).max);
         // ILVETH.safeApprove(address(ILVETHVault), type(uint).max);
+        // GHST.safeApprove(address(GHSTETHVault), type(uint).max);
+        // WETH.safeApprove(address(GHSTETHVault), type(uint).max);
         // REVVETH.safeApprove(address(uniV2Router), type(uint).max);
     }
 
@@ -235,12 +240,11 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
             // ILV-ETH (10%-10%)
             investILVETH(WETHAmt1000);
             // GHST-ETH (5%-5%)
-            // investGHSTETH(WETHAmt500);
+            investGHSTETH(WETHAmt500);
             // REVV-ETH (5%-5%)
             investREVVETH(WETHAmt500);
             // MVI (25%)
-            // investMVI(WETHAmt * 2500 / 10000);
-            investMVI(WETHAmt * 3500 / 10000);
+            investMVI(WETHAmt * 2500 / 10000);
         } else {
             uint furthest;
             uint farmIndex;
@@ -322,15 +326,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
 
     function investGHSTETH(uint WETHAmt) private {
         uint GHSTAmt = uniV3Swap(address(WETH), address(GHST), 10000, WETHAmt);
-        uniV3Router.increaseLiquidity(IUniV3Router.IncreaseLiquidityParams({
-            tokenId: GHSTETHTokenId,
-            amount0Desired: GHSTAmt,
-            amount1Desired: WETHAmt,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        }));
-        emit InvestGHSTETH(WETHAmt, GHSTAmt);
+        GHSTETHVault.deposit(GHSTAmt, WETHAmt);
     }
 
     function investREVVETH(uint WETHAmt) private {
@@ -351,7 +347,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
         withdrawAXSETH(sharePerc);
         withdrawSLPETH(sharePerc);
         withdrawILVETH(sharePerc);
-        // withdrawGHSTETH(sharePerc);
+        withdrawGHSTETH(sharePerc);
         withdrawREVVETH(sharePerc);
         withdrawMVI(sharePerc);
         WETHAmt = WETH.balanceOf(address(this)) - WETHAmtBefore;
@@ -381,18 +377,9 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
     }
 
     function withdrawGHSTETH(uint sharePerc) private {
-        uint _GHSTETHTokenId = GHSTETHTokenId;
-        (,,,,,,,uint128 GHSTETHTotalAmt,,,,) = uniV3Router.positions(_GHSTETHTokenId);
-        uint128 GHSTETHAmt = GHSTETHTotalAmt * uint128(sharePerc) / 1e18;
-        (uint GHSTAmt, uint WETHAmt) = uniV3Router.decreaseLiquidity(IUniV3Router.DecreaseLiquidityParams({
-            tokenId: _GHSTETHTokenId,
-            liquidity: GHSTETHAmt,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        }));
-        uint _WETHAmt = uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt);
-        emit WithdrawGHSTETH(GHSTETHAmt, WETHAmt + _WETHAmt);
+        (uint GHSTAmt, uint WETHAmt) = GHSTETHVault.withdraw(GHSTETHVault.balanceOf(address(this)) * sharePerc / 1e18);
+        uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt);
+        emit WithdrawGHSTETH(GHSTAmt, WETHAmt);
     }
 
     function withdrawREVVETH(uint sharePerc) private {
@@ -450,7 +437,7 @@ contract MVFStrategyKovan is Initializable, OwnableUpgradeable {
         withdrawAXSETH(1e18);
         withdrawSLPETH(1e18);
         withdrawILVETH(1e18);
-        // withdrawGHSTETH(1e18);
+        withdrawGHSTETH(1e18);
         withdrawREVVETH(1e18);
         withdrawMVI(1e18);
         uint WETHAmt = WETH.balanceOf(address(this));

@@ -1,4 +1,4 @@
-const { ethers, artifacts, network } = require("hardhat")
+const { ethers, artifacts, network, upgrades } = require("hardhat")
 const IERC20_ABI = require("../abis/IERC20_ABI.json")
 
 const USDTAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
@@ -62,9 +62,12 @@ describe("Metaverse-Farmer", () => {
         const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
         
         // Deploy ILV-ETH
-        const ILVETHVaultFac = await ethers.getContractFactory("ILVETHVault", deployer)
-        const ILVETHVault = await ILVETHVaultFac.deploy()
-        await ILVETHVault.initialize("DAO L1 Sushi ILV-ETH", "daoSushiILV", treasury.address, community.address, strategist.address, admin.address)
+        const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVault", deployer)
+        const ILVETHVault = await upgrades.deployProxy(ILVETHVaultFactory, [
+            "DAO L1 Sushi ILV-ETH", "daoSushiILV",
+            treasury.address, community.address, strategist.address, admin.address
+        ])
+        await ILVETHVault.deployed()
         await ILVETHVault.transferOwnership(multisig.address)
 
         // Deploy Uniswap V3

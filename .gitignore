@@ -4,3 +4,5 @@ node_modules
 #Hardhat files
 cache
 artifacts
+.openzeppelin/kovan.json
+.openzeppelin/unknown-31337.json
