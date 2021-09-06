@@ -3,8 +3,8 @@ const { ethers } = require("hardhat")
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const UniV3Vault = await ethers.getContractFactory("UniswapV3", deployer)
-    const UniV3Vault = await ethers.getContractFactory("UniswapV3Kovan", deployer)
+    const UniV3Vault = await ethers.getContractFactory("UniswapV3", deployer)
+    // const UniV3Vault = await ethers.getContractFactory("UniswapV3Kovan", deployer)
     const uniV3Vault = await UniV3Vault.deploy()
 
     const UniV3Factory = await ethers.getContractFactory("UniV3Factory", deployer)

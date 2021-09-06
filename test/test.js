@@ -396,7 +396,7 @@ describe("Metaverse-Farmer", () => {
     //     tx = await SLPETHVault.connect(admin).invest()
     //     // receipt = await tx.wait()
     //     // console.log(receipt.gasUsed.toString())
-    //     // console.log(ethers.utils.formatEther(await SLPETHVault.getAllPoolInUSD())) // TODO: not correct
+    //     // console.log(ethers.utils.formatEther(await SLPETHVault.getAllPoolInUSD()))
 
     //     // Yield
     //     // console.log(ethers.utils.formatEther(await SLPETHVault.getPricePerFullShare(false)))

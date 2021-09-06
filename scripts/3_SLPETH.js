@@ -6,8 +6,8 @@ const sushiFactoryAddr = "0xA9A09D4F4382c147E314381918F2da703ea1a911"
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
-    const sushiVaultArtifact = await artifacts.readArtifact("SushiKovan")
+    const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
+    // const sushiVaultArtifact = await artifacts.readArtifact("SushiKovan")
     const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
     const dataSLPETH = sushiVaultInterface.encodeFunctionData(
         "initialize",

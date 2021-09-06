@@ -4,8 +4,8 @@ const { mainnet } = require("../addresses")
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVault", deployer)
-    const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVaultKovan", deployer)
+    const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVault", deployer)
+    // const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVaultKovan", deployer)
         const ILVETHVault = await upgrades.deployProxy(ILVETHVaultFactory, [
             "DAO L1 Sushi ILV-ETH", "daoSushiILV",
             mainnet.treasury, mainnet.community, mainnet.strategist, mainnet.admin

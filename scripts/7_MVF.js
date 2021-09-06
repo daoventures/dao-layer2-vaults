@@ -9,14 +9,14 @@ const GHSTETHVaultAddr = "0x8C2bf8B337A7dc91660DD7783f9A4EFCEcC7bf65" // Uniswap
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const MVFStrategy = await ethers.getContractFactory("MVFStrategy", deployer)
-    const MVFStrategy = await ethers.getContractFactory("MVFStrategyKovan", deployer)
+    const MVFStrategy = await ethers.getContractFactory("MVFStrategy", deployer)
+    // const MVFStrategy = await ethers.getContractFactory("MVFStrategyKovan", deployer)
     const mvfStrategy = await upgrades.deployProxy(MVFStrategy, [
         AXSETHVaultAddr, SLPETHVaultAddr, ILVETHVaultAddr, GHSTETHVaultAddr
     ])
 
-    // const MVFVault = await ethers.getContractFactory("MVFVault", deployer)
-    const MVFVault = await ethers.getContractFactory("MVFVaultKovan", deployer)
+    const MVFVault = await ethers.getContractFactory("MVFVault", deployer)
+    // const MVFVault = await ethers.getContractFactory("MVFVaultKovan", deployer)
     const mvfVault = await upgrades.deployProxy(MVFVault, [
         "DAO L2 Metaverse-Farmer", "daoMVF",
         mainnet.treasury, mainnet.community, mainnet.strategist, mainnet.admin,

@@ -86,7 +86,7 @@ contract Sushi is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradeable, O
     event Invest(uint amtInvested);
     event Yield(uint amount);
     event EmergencyWithdraw(uint amtTokenWithdrawed);
-    event SetWhitelistAddress(address indexed _address, bool indexed status);
+    event SetWhitelistAddress(address indexed address, bool status);
     event SetFee(uint _yieldFeePerc, uint _depositFeePerc);
     event SetTreasuryWallet(address indexed treasuryWallet);
     event SetCommunityWallet(address indexed communityWallet);
@@ -222,9 +222,9 @@ contract Sushi is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradeable, O
         invest();
     }
 
-    function setWhitelistAddress(address _addr, bool _status) external onlyOwnerOrAdmin {
-        isWhitelisted[_addr] = _status;
-        emit SetWhitelistAddress(_addr, _status);
+    function setWhitelistAddress(address addr, bool status) external onlyOwnerOrAdmin {
+        isWhitelisted[addr] = _status;
+        emit SetWhitelistAddress(addr, status);
     }
 
     function setFee(uint _yieldFeePerc, uint _depositFeePerc) external onlyOwner {

@@ -3,8 +3,8 @@ const { ethers } = require("hardhat")
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const SushiVault = await ethers.getContractFactory("Sushi", deployer)
-    const SushiVault = await ethers.getContractFactory("SushiKovan", deployer)
+    const SushiVault = await ethers.getContractFactory("Sushi", deployer)
+    // const SushiVault = await ethers.getContractFactory("SushiKovan", deployer)
     const sushiVault = await SushiVault.deploy()
 
     const SushiFactory = await ethers.getContractFactory("SushiFactory", deployer)

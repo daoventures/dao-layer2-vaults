@@ -7,8 +7,8 @@ const GHSTETHPoolAddr = "0xFbA31F01058DB09573a383F26a088f23774d4E5d"
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    // const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3")
-    const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3Kovan")
+    const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3")
+    // const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3Kovan")
     const uniV3VaultInterface = new ethers.utils.Interface(uniV3VaultArtifact.abi)
     const dataGHSTETH = uniV3VaultInterface.encodeFunctionData(
         "initialize",
