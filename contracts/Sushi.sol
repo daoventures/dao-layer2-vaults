@@ -81,18 +81,18 @@ contract Sushi is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradeable, O
     mapping(address => bool) public isWhitelisted;
     mapping(address => uint) private depositedBlock;
 
-    event Deposit(address indexed caller, uint amtDeposited, uint sharesMinted);
-    event Withdraw(address indexed caller, uint amtWithdrawed, uint sharesBurned);
+    event Deposit(address caller, uint amtDeposited, uint sharesMinted);
+    event Withdraw(address caller, uint amtWithdrawed, uint sharesBurned);
     event Invest(uint amtInvested);
     event Yield(uint amount);
     event EmergencyWithdraw(uint amtTokenWithdrawed);
-    event SetWhitelistAddress(address indexed address, bool status);
+    event SetWhitelistAddress(address account, bool status);
     event SetFee(uint _yieldFeePerc, uint _depositFeePerc);
-    event SetTreasuryWallet(address indexed treasuryWallet);
-    event SetCommunityWallet(address indexed communityWallet);
-    event SetAdminWallet(address indexed admin);
-    event SetStrategistWallet(address indexed strategistWallet);
-    event SetAdmin(address indexed admin);
+    event SetTreasuryWallet(address treasuryWallet);
+    event SetCommunityWallet(address communityWallet);
+    event SetAdminWallet(address admin);
+    event SetStrategistWallet(address strategistWallet);
+    event SetAdmin(address admin);
 
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -223,7 +223,7 @@ contract Sushi is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradeable, O
     }
 
     function setWhitelistAddress(address addr, bool status) external onlyOwnerOrAdmin {
-        isWhitelisted[addr] = _status;
+        isWhitelisted[addr] = status;
         emit SetWhitelistAddress(addr, status);
     }
 

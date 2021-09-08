@@ -87,7 +87,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function initialize(
         string calldata name, string calldata ticker,
-        address _treasuryWallet, address _communityWallet, address _admin, address _strategist,
+        address _treasuryWallet, address _communityWallet, address _strategist, address _admin,
         address _biconomy, address _strategy
     ) external initializer {
         __ERC20_init(name, ticker);

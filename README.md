@@ -50,7 +50,7 @@ Sushi ILV-ETH vault (implementation) contract address: 0x01ECC048066e1972041bf7E
 
 Sushi ILV-ETH vault (proxy) contract address: 0x4Ba84ba0e07a30Bdde5E73aB8f94959b7ce1f7EF
 
-Metaverse-Farmer vault (implementation) contract address: 0x9C2607eCe56391b8d36455E88610Ec5BC36C0e8B
+Metaverse-Farmer vault (implementation) contract address: 0x4EB305ee77a35BDe1952F0Cae5D6D53FFA89E290
 
 Metaverse-Farmer vault (proxy) contract address: 0xc11156425Cf89fec05f04F6c748D39BCBf56aFA5
 
