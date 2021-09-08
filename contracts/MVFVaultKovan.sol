@@ -67,11 +67,12 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     address public strategist;
     address public admin;
 
-    event Deposit(address indexed caller, uint depositAmt);
-    event Withdraw(address indexed caller, uint withdrawAmt, uint sharesBurn);
+    event Deposit(address caller, uint depositAmt);
+    event Withdraw(address caller, uint withdrawAmt, address tokenWithdraw, uint sharesBurn);
     event Invest(uint amount);
+    event DistributeLPToken(address receiver, uint shareMint);
     event TransferredOutFees(uint fees);
-    event Reimburse(uint farmIndex, address indexed token, uint amount);
+    event Reimburse(uint farmIndex, address token, uint amount);
     event Reinvest(uint amount);
     event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
     event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
@@ -172,7 +173,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint withdrawAmt = share;
         token.safeTransfer(msg.sender, share);
 
-        emit Withdraw(msg.sender, withdrawAmt, share);
+        emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
     function invest() public whenNotPaused {
@@ -215,6 +216,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
             depositAmt[depositAcc] = 0;
+            emit DistributeLPToken(depositAcc, share);
         }
         delete addresses;
         totalDepositAmt = 0;
