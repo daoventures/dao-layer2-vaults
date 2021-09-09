@@ -50,6 +50,7 @@ interface IDaoL1Vault is IERC20Upgradeable {
     function withdraw(uint share) external returns (uint);
     function getAllPoolInUSD() external view returns (uint);
     function getAllPoolInETH() external view returns (uint);
+    function getAllPoolInNative() external view returns (uint);
 }
 
 interface IChainlink {
@@ -348,7 +349,9 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     }
 
     function getHBTCWBTCPool() private view returns (uint) {
-        return HBTCWBTCVault.getAllPoolInETH();
+        uint HBTCWBTCVaultPoolInBTC = HBTCWBTCVault.getAllPoolInNative();
+        uint BTCPriceInETH = uint(IChainlink(0xdeb288F737066589598e9214E782fa5A8eD689e8).latestAnswer());
+        return HBTCWBTCVaultPoolInBTC * BTCPriceInETH / 1e18;
     }
 
     function getWBTCETHPool() private view returns (uint) {

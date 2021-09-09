@@ -86,11 +86,11 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function initialize(
-        address _strategy,
-        address _treasuryWallet, address _communityWallet, address _admin, address _strategist,
-        address _biconomy
+        string calldata name, string calldata ticker,
+        address _treasuryWallet, address _communityWallet, address _strategist, address _admin,
+        address _biconomy, address _strategy
     ) external initializer {
-        __ERC20_init("DAO Citadel V2", "daoDCV2");
+        __ERC20_init(name, ticker);
         __Ownable_init();
 
         strategy = IStrategy(_strategy);
@@ -103,12 +103,12 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         networkFeeTier2 = [50000*1e18+1, 100000*1e18];
         customNetworkFeeTier = 1000000*1e18;
-        networkFeePerc = [100, 75, 50];
-        // networkFeePerc = [0, 75, 50];
+        // networkFeePerc = [100, 75, 50];
+        networkFeePerc = [0, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
-        // percKeepInVault = [0, 0, 0];
+        // percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        percKeepInVault = [0, 0, 0];
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "hardhat/console.sol";
 
 interface ICvStake {
     function balanceOf(address account) external view returns (uint);
@@ -24,7 +25,7 @@ interface ICvVault {
 
 interface ICurveZap {
     function getVirtualPrice() external view returns (uint);
-    function compound(uint amount) external returns (uint, uint);
+    function compound(uint CRVAmt, uint CVXAmt, uint yieldFeePerc) external returns (uint, uint);
 }
 
 interface ICvRewards {
@@ -36,7 +37,7 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
 
     IERC20Upgradeable public lpToken;
     ICvStake public cvStake;
-    
+
     ICvVault constant cvVault = ICvVault(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20Upgradeable constant CVX = IERC20Upgradeable(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
@@ -62,6 +63,7 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
     event Yield(uint lpTokenBal);
     event EmergencyWithdraw(uint lptokenAmount);
     event SetCurveZap(address indexed curveZap);
+    event SetWhitelistAddress(address indexed account, bool status);
     event SetFee(uint yieldFeePerc, uint depositFeePerc);
     event SetTreasuryWallet(address indexed treasuryWallet);
     event SetCommunityWallet(address indexed communityWallet);
@@ -74,13 +76,12 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
     }
 
     function initialize(
-        string calldata name, string calldata symbol, address _curveZap, uint _pid,
+        string calldata name, string calldata symbol, uint _pid,
         address _treasuryWallet, address _communityWallet, address _strategist, address _admin
     ) external initializer {
         __ERC20_init(name, symbol);
         __Ownable_init();
 
-        curveZap = ICurveZap(_curveZap);
         treasuryWallet = _treasuryWallet;
         communityWallet = _communityWallet;
         strategist = _strategist;
@@ -146,24 +147,24 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
         emit Invest(lpTokenAmt);
     }
 
-    function investZap(uint amount) external whenNotPaused {
+    function investZap(uint amount) external {
         require(msg.sender == address(curveZap), "Only zap");
 
         lpToken.safeTransferFrom(address(curveZap), address(this), amount);
         cvVault.deposit(pid, amount, true);
     }
 
-    function yield() public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+    function yield() external onlyOwnerOrAdmin whenNotPaused {
+        _yield();
+    }
 
+    function _yield() private {
         cvStake.getReward();
 
-        CVX.safeTransfer(address(curveZap), CVX.balanceOf(address(this)));
-        CRV.safeTransfer(address(curveZap), CRV.balanceOf(address(this)));
+        uint CRVAmt = CRV.balanceOf(address(this));
+        uint CVXAmt = CVX.balanceOf(address(this));
+        CRV.safeTransfer(address(curveZap), CRVAmt);
+        CVX.safeTransfer(address(curveZap), CVXAmt);
         if (cvStake.extraRewardsLength() > 0) {
             for (uint i = 0; i < cvStake.extraRewardsLength(); i++) {
                 IERC20Upgradeable extraRewardToken = IERC20Upgradeable(ICvRewards(cvStake.extraRewards(i)).rewardToken());
@@ -172,7 +173,7 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
             }
         }
 
-        (uint lpTokenBal, uint yieldFee) = curveZap.compound(yieldFeePerc);
+        (uint lpTokenBal, uint yieldFee) = curveZap.compound(CRVAmt, CVXAmt, yieldFeePerc);
         uint portionETH = yieldFee * 2 / 5; // 40%
         (bool _a,) = admin.call{value: portionETH}(""); // 40%
         require(_a, "Fee transfer failed");
@@ -191,7 +192,7 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
         _pause();
         uint lpTokenAmtInFarm = cvStake.balanceOf(address(this));
         if (lpTokenAmtInFarm > 0) {
-            yield();
+            _yield();
             cvStake.withdrawAndUnwrap(lpTokenAmtInFarm, false);
         }
         emit EmergencyWithdraw(lpTokenAmtInFarm);
@@ -205,6 +206,11 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
     function setCurveZap(address _curveZap) external onlyOwnerOrAdmin {
         curveZap = ICurveZap(_curveZap);
         emit SetCurveZap(_curveZap);
+    }
+
+    function setWhitelistAddress(address addr, bool status) external onlyOwnerOrAdmin {
+        isWhitelisted[addr] = status;
+        emit SetWhitelistAddress(addr, status);
     }
 
     function setFee(uint _yieldFeePerc, uint _depositFeePerc) external onlyOwner {
@@ -234,7 +240,7 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
         emit SetAdminWallet(_admin);
     }
 
-    function getAllPool() private view returns (uint) {
+    function getAllPool() public view returns (uint) {
         uint lpTokenAmtInFarm = cvStake.balanceOf(address(this));
         return lpToken.balanceOf(address(this)) + lpTokenAmtInFarm;
     }
