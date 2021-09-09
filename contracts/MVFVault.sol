@@ -81,7 +81,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetProfitFeePerc(uint profitFeePerc);
 
     modifier onlyOwnerOrAdmin {
-        require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
+        require(msg.sender == owner() || msg.sender == admin, "Only owner or admin");
         _;
     }
 

@@ -54,7 +54,7 @@ Metaverse-Farmer vault (implementation) contract address: 0x4EB305ee77a35BDe1952
 
 Metaverse-Farmer vault (proxy) contract address: 0xc11156425Cf89fec05f04F6c748D39BCBf56aFA5
 
-Metaverse-Farmer strategy (implementation) contract address: 0x172560Aa15A23dB2C9825859E19281c3075EB335
+Metaverse-Farmer strategy (implementation) contract address: 0x3cE5C90d18A5D050ed9060E6239545a1bB0c192b
 
 Metaverse-Farmer strategy (proxy) contract address: 0x84F8D0Aab5fC412B920c222068415043d7508a78
 

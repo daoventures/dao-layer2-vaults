@@ -6,7 +6,7 @@ const mvfVaultProxy = "0xc11156425Cf89fec05f04F6c748D39BCBf56aFA5"
 async function main() {
     const [deployer] = await ethers.getSigners()
 
-    const MVFVault = await ethers.getContractFactory("MVFVault")
+    // const MVFVault = await ethers.getContractFactory("MVFVault")
     const MVFVault = await ethers.getContractFactory("MVFVaultKovan")
     const mvfVault = await MVFVault.deploy()
     await mvfVault.deployTransaction.wait()
@@ -19,7 +19,7 @@ async function main() {
     const proxyAdmin = new ethers.Contract(proxyAdminAddr, [
         "function upgrade(address, address) external"
     ], deployer)
-    await proxyAdmin.upgradeTo(mvfVaultProxy, mvfVault.address)
+    await proxyAdmin.upgrade(mvfVaultProxy, mvfVault.address)
     console.log("MVFVault upgraded successfully")
 }
 

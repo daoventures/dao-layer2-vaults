@@ -412,16 +412,17 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
-        // ETHPriceInUSD amount in 8 decimals
+        // uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        // // ETHPriceInUSD amount in 8 decimals
 
-        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
-        uint strategyPoolInUSD = strategy.getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
+        // if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
+        // uint strategyPoolInUSD = strategy.getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
         
-        return strategyPoolInUSD + tokenKeepInVault - fees;
+        // return strategyPoolInUSD + tokenKeepInVault - fees;
+        return tokenKeepInVault - fees;
     }
 
     function getAllPoolInUSD() external view returns (uint) {
