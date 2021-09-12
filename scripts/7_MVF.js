@@ -25,7 +25,7 @@ async function main() {
     await mvfStrategy.setVault(mvfVault.address)
 
     console.log('Metaverse-Farmer vault (proxy) contract address:', mvfVault.address)
-    console.log('Metaverse-Farmer contract (proxy) address:', mvfStrategy.address)
+    console.log('Metaverse-Farmer strategy (proxy) contract address:', mvfStrategy.address)
 }
 
 main()

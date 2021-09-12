@@ -30,6 +30,8 @@ Metaverse-Farmer strategy (implementation) contract address:
 
 Metaverse-Farmer strategy (proxy) contract address: 
 
+proxy admin address for all contract above: 
+
 ### Kovan
 
 Sushi vault (implementation) contract address: 0x8d5d8E4eF9dCd26CA236Bf684c111921FDC6Ddeb
@@ -57,6 +59,8 @@ Metaverse-Farmer vault (proxy) contract address: 0xc11156425Cf89fec05f04F6c748D3
 Metaverse-Farmer strategy (implementation) contract address: 0x3cE5C90d18A5D050ed9060E6239545a1bB0c192b
 
 Metaverse-Farmer strategy (proxy) contract address: 0x84F8D0Aab5fC412B920c222068415043d7508a78
+
+proxy admin address for all contract above: 0x0A25131608AbAeCA03AE160efAAFb008dd34a4ab
 
 ## Deployment
 
