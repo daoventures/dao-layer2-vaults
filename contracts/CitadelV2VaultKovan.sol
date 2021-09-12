@@ -38,14 +38,14 @@ interface IStrategy {
     function getAllPool() external view returns (uint);
 }
 
-contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x07de306FF27a2B630B1141956844eB1552B956B5);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xb7a4F3E9097C08dA09517b5aB877F7a917224ede);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
     IStrategy public strategy;
@@ -147,48 +147,51 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
 
-        uint _totalSupply = totalSupply();
-        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
-        _burn(msg.sender, share);
-        strategy.adjustWatermark(withdrawAmt, false);
+        // uint _totalSupply = totalSupply();
+        // uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
+        // _burn(msg.sender, share);
+        // strategy.adjustWatermark(withdrawAmt, false);
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
-        if (withdrawAmt <= tokenAmtInVault) {
-            if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
-            token.safeTransfer(msg.sender, withdrawAmt);
-        } else {
-            if (!paused()) {
-                strategy.withdraw(withdrawAmt);
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                ))[1];
-            } else {
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                ))[1];
-            }
-        }
+        // uint tokenAmtInVault = token.balanceOf(address(this));
+        // if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
+        // if (withdrawAmt <= tokenAmtInVault) {
+        //     if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+        //     token.safeTransfer(msg.sender, withdrawAmt);
+        // } else {
+        //     if (!paused()) {
+        //         strategy.withdraw(withdrawAmt);
+        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //             WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        //         ))[1];
+        //     } else {
+        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //             WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        //         ))[1];
+        //     }
+        // }
+
+        uint withdrawAmt = share;
+        token.safeTransfer(msg.sender, share);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
     function invest() public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+        // require(
+        //     msg.sender == admin ||
+        //     msg.sender == owner() ||
+        //     msg.sender == address(this), "Only authorized caller"
+        // );
 
-        if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(WETHAmt);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        // (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        // strategy.invest(WETHAmt);
+        // strategy.adjustWatermark(tokenAmtToInvest, true);
         distributeLPToken();
 
-        emit Invest(WETHAmt);
+        // emit Invest(WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
@@ -202,8 +205,8 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken() private {
-        uint pool;
-        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
+        uint pool = USDT.balanceOf(address(this)) + USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
+        // if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -411,16 +414,17 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function getAllPoolInUSD() public view returns (uint) {
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
-        // ETHPriceInUSD amount in 8 decimals
+        // uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        // // ETHPriceInUSD amount in 8 decimals
 
-        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
-        uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
+        // if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
+        // uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
         
-        return strategyPoolInUSD + tokenKeepInVault - fees;
+        // return strategyPoolInUSD + tokenKeepInVault - fees;
+        return tokenKeepInVault - fees;
     }
 
     /// @notice Can be use for calculate both user shares & APR    

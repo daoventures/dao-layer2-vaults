@@ -56,7 +56,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
+contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -124,20 +124,20 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
         profitFeePerc = 2000;
 
-        WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WBTC.safeApprove(address(curvePool), type(uint).max);
-        WBTC.safeApprove(address(sushiRouter), type(uint).max);
-        DPI.safeApprove(address(sushiRouter), type(uint).max);
-        DAI.safeApprove(address(sushiRouter), type(uint).max);
+        // WETH.safeApprove(address(sushiRouter), type(uint).max);
+        // WBTC.safeApprove(address(curvePool), type(uint).max);
+        // WBTC.safeApprove(address(sushiRouter), type(uint).max);
+        // DPI.safeApprove(address(sushiRouter), type(uint).max);
+        // DAI.safeApprove(address(sushiRouter), type(uint).max);
 
-        HBTCWBTC.safeApprove(address(HBTCWBTCVault), type(uint).max);
-        HBTCWBTC.safeApprove(address(sushiRouter), type(uint).max);
-        WBTCETH.safeApprove(address(WBTCETHVault), type(uint).max);
-        WBTCETH.safeApprove(address(sushiRouter), type(uint).max);
-        DPIETH.safeApprove(address(DPIETHVault), type(uint).max);
-        DPIETH.safeApprove(address(sushiRouter), type(uint).max);
-        DAIETH.safeApprove(address(DAIETHVault), type(uint).max);
-        DAIETH.safeApprove(address(sushiRouter), type(uint).max);
+        // HBTCWBTC.safeApprove(address(HBTCWBTCVault), type(uint).max);
+        // HBTCWBTC.safeApprove(address(sushiRouter), type(uint).max);
+        // WBTCETH.safeApprove(address(WBTCETHVault), type(uint).max);
+        // WBTCETH.safeApprove(address(sushiRouter), type(uint).max);
+        // DPIETH.safeApprove(address(DPIETHVault), type(uint).max);
+        // DPIETH.safeApprove(address(sushiRouter), type(uint).max);
+        // DAIETH.safeApprove(address(DAIETHVault), type(uint).max);
+        // DAIETH.safeApprove(address(sushiRouter), type(uint).max);
     }
 
     function invest(uint WETHAmt) external onlyVault {

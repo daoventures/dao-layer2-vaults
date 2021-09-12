@@ -30,14 +30,14 @@ interface IWETH is IERC20 {
     function withdraw(uint amount) external;
 }
 
-contract CurveHBTCZap is Ownable {
+contract CurveHBTCZapKovan is Ownable {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
 
     IRouter constant router = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
     ICurvePool constant curvePool = ICurvePool(0x4CA9b3063Ec5866A4B82E437059D2C43d1be596F);
-    address public immutable vault;
-    IERC20 public immutable lpToken;
+    address public vault;
+    IERC20 public lpToken;
 
     IWETH constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
@@ -49,14 +49,14 @@ contract CurveHBTCZap is Ownable {
 
     constructor(address _vault) {
         vault = _vault;
-        address _lpToken = ICurveVault(_vault).lpToken();
-        lpToken = IERC20(_lpToken);
-        IERC20(_lpToken).safeApprove(address(_vault), type(uint).max);
+        // address _lpToken = ICurveVault(_vault).lpToken();
+        // lpToken = IERC20(_lpToken);
+        // IERC20(_lpToken).safeApprove(address(_vault), type(uint).max);
 
-        WETH.safeApprove(address(router), type(uint).max);
-        CRV.safeApprove(address(router), type(uint).max);
-        CVX.safeApprove(address(router), type(uint).max);
-        WBTC.safeApprove(address(curvePool), type(uint).max);
+        // WETH.safeApprove(address(router), type(uint).max);
+        // CRV.safeApprove(address(router), type(uint).max);
+        // CVX.safeApprove(address(router), type(uint).max);
+        // WBTC.safeApprove(address(curvePool), type(uint).max);
     }
 
     function compound(uint CRVAmt, uint CVXAmt, uint yieldFeePerc) external returns (uint lpTokenBal, uint fee) {
