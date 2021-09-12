@@ -290,11 +290,14 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @param amount Amount to reimburse (decimal follow token)
     function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
-        strategy.adjustWatermark(amount, false);
         uint WETHAmt;
         WETHAmt = (sushiRouter.getAmountsOut(amount, getPath(token, address(WETH))))[1];
         WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
         sushiSwap(address(WETH), token, WETHAmt);
+        
+        if (token == address(USDT) || token == address(USDC)) strategy.adjustWatermark(amount * 1e12, false);
+        else strategy.adjustWatermark(amount, false);
+        
         emit Reimburse(farmIndex, token, amount);
     }
 
@@ -381,8 +384,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         path[1] = tokenB;
     }
 
-    /// @return TVL in ETH
-    function getAllPool(bool includeVestedILV) external view returns (uint) {
+    function getAllPoolInETH(bool includeVestedILV) external view returns (uint) {
         uint WETHAmt; // Stablecoins amount keep in vault convert to WETH
 
         uint USDTAmt = USDT.balanceOf(address(this));
