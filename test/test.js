@@ -100,7 +100,7 @@ describe("Metaverse-Farmer", () => {
         const mvfVault = await MVFVaultFactory.deploy()
         await mvfVault.initialize(
             "DAO L2 Metaverse-Farmer", "daoMVF",
-            treasury.address, community.address, admin.address, strategist.address,
+            treasury.address, community.address, strategist.address, admin.address,
             biconomy.address, mvfStrategy.address
         )
         await mvfStrategy.setVault(mvfVault.address)
@@ -162,6 +162,7 @@ describe("Metaverse-Farmer", () => {
         await USDCContract.connect(client3).approve(mvfVault.address, ethers.constants.MaxUint256)
         await mvfVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
         await mvfVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        // console.log((await mvfVault.getTotalPendingDeposits()).toString())
         tx = await mvfVault.connect(admin).invest()
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString())

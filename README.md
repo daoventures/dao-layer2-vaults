@@ -66,6 +66,22 @@ proxy admin address for all contract above: 0x0A25131608AbAeCA03AE160efAAFb008dd
 
 ### Deploy
 
+#### Update
+
+Test deployment on localhost
+
+```
+npx hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/<key>
+```
+
+When do deployment, run command:
+
+```
+npx hardhat run --network localhost scripts/<script name>
+```
+
+#### Original contents
+
 Deploy everything in scripts folder follow the number sequence.
 
 ```

@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat")
 const { mainnet } = require("../addresses")
 
-const sushiFactoryAddr = "0xA9A09D4F4382c147E314381918F2da703ea1a911"
+const sushiFactoryAddr = ""
 
 async function main() {
     const [deployer] = await ethers.getSigners()

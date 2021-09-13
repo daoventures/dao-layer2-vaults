@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat")
 const { mainnet } = require("../addresses")
 
-const uniV3FactoryAddr = "0xbd27EE9153998fa77BdeBf422c5B65d421A9d8ce"
+const uniV3FactoryAddr = ""
 const GHSTETHPoolAddr = "0xFbA31F01058DB09573a383F26a088f23774d4E5d"
 
 async function main() {
