@@ -205,7 +205,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken() private {
-        uint pool = USDT.balanceOf(address(this)) + USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
+        uint pool = getAllPoolInUSD(true);
         // if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
