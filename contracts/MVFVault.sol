@@ -384,6 +384,10 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         path[1] = tokenB;
     }
 
+    function getTotalPendingDeposits() external view returns (uint) {
+        return addresses.length;
+    }
+
     function getAllPoolInETH(bool includeVestedILV) external view returns (uint) {
         uint WETHAmt; // Stablecoins amount keep in vault convert to WETH
 
