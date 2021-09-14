@@ -149,7 +149,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         // uint _totalSupply = totalSupply();
         // uint withdrawAmt = getAllPoolInUSD(false) * share / _totalSupply;
-        // _burn(msg.sender, share);
+        _burn(msg.sender, share);
         // strategy.adjustWatermark(withdrawAmt, false);
 
         // uint tokenAmtInVault = token.balanceOf(address(this));
@@ -170,6 +170,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         //     }
         // }
 
+        if (token != DAI) share = share / 1e12;
         uint withdrawAmt = share;
         token.safeTransfer(msg.sender, share);
 
