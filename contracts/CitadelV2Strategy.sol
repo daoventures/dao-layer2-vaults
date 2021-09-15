@@ -86,11 +86,6 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;
 
-    address public treasuryWallet;
-    address public communityWallet;
-    address public strategist;
-    address public admin;
-
     event TargetComposition (uint HBTCWBTCTargetPool, uint WBTCETHTargetPool, uint DPIETHTargetPool, uint DAIETHTargetPool);
     event CurrentComposition (uint HBTCWBTCCurrentPool, uint WBTCETHCurrentPool, uint DPIETHCurrentPool, uint DAIETHCurrentPool);
     event InvestHBTCWBTC(uint WETHAmt, uint HBTCWBTCAmt);
