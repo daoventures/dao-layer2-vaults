@@ -1,7 +1,7 @@
 const { ethers, upgrades } = require("hardhat")
 
-const proxyAdminAddr = "0x0A25131608AbAeCA03AE160efAAFb008dd34a4ab"
-const mvfVaultProxy = "0xc11156425Cf89fec05f04F6c748D39BCBf56aFA5"
+const proxyAdminAddr = "0x974dBC1348c5697e893FFd932681Cb48b5789fA8"
+const mvfVaultProxyAddr = "0xcBb69E3621ce4EB0d99B60f0E0430dCD5f52fC95"
 
 async function main() {
     const [deployer] = await ethers.getSigners()
@@ -12,14 +12,10 @@ async function main() {
     await mvfVault.deployTransaction.wait()
     console.log("New implementation contract for MVFVault:", mvfVault.address)
 
-    // const MVFVault = await ethers.getContractFactory("MVFVaultKovan", deployer);
-    // await upgrades.upgradeProxy(mvfVaultProxy, MVFVault);
-    // console.log("MVFVault upgraded");
-
     const proxyAdmin = new ethers.Contract(proxyAdminAddr, [
         "function upgrade(address, address) external"
     ], deployer)
-    await proxyAdmin.upgrade(mvfVaultProxy, mvfVault.address)
+    await proxyAdmin.upgrade(mvfVaultProxyAddr, mvfVault.address)
     console.log("MVFVault upgraded successfully")
 }
 

@@ -1,11 +1,14 @@
 const { ethers } = require("hardhat")
 const { mainnet } = require("../addresses")
 
-const uniV3FactoryAddr = ""
+const uniV3FactoryAddr = "0x10F69c2e8e15229492A987aDe4fB203D05845eAb"
 const GHSTETHPoolAddr = "0xFbA31F01058DB09573a383F26a088f23774d4E5d"
 
 async function main() {
     const [deployer] = await ethers.getSigners()
+
+    // await network.provider.request({method: "hardhat_impersonateAccount", params: ["0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"]})
+    // const deployer = await ethers.getSigner("0x3f68A3c1023d736D8Be867CA49Cb18c543373B99")
 
     const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3")
     // const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3Kovan")

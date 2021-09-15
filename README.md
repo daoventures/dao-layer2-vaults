@@ -4,23 +4,23 @@
 
 ### Mainnet
 
-Sushi vault (implementation) contract address: 
+Sushi vault (implementation) contract address: 0xa4DCbe792f51E13Fc0E6961BBEc436a881e73194
 
-Sushi factory contract address: 
+Sushi factory contract address: 0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3
 
-Sushi AXS-ETH vault (proxy) contract address: 
+Sushi AXS-ETH vault (proxy) contract address: 0xcE097910Fc2DB329683353dcebF881A48cbA181e
 
-Sushi SLP-ETH vault (proxy) contract address: 
+Sushi SLP-ETH vault (proxy) contract address: 0x4aE61842Eb4E4634F533cb35B697a01319C457e2
 
-Uniswap V3 vault (implementation) contract address: 
+Uniswap V3 vault (implementation) contract address: 0x33755362194248a5870CE1cf90B26bD21a3bA06d
 
-Uniswap V3 factory contract address: 
+Uniswap V3 factory contract address: 0x10F69c2e8e15229492A987aDe4fB203D05845eAb
 
-Uniswap V3 GHST-ETH vault (proxy) contract address: 
+Uniswap V3 GHST-ETH vault (proxy) contract address: 0xF9b0707dEE34d36088A093d85b300A3B910E00fC
 
-Sushi ILV-ETH vault (implementation) contract address: 
+Sushi ILV-ETH vault (implementation) contract address: 0x7422e91c420910B086126000b950DA11bfeda266
 
-Sushi ILV-ETH vault (proxy) contract address: 
+Sushi ILV-ETH vault (proxy) contract address: 0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e
 
 Metaverse-Farmer vault (implementation) contract address: 
 
@@ -30,7 +30,9 @@ Metaverse-Farmer strategy (implementation) contract address:
 
 Metaverse-Farmer strategy (proxy) contract address: 
 
-proxy admin address for all contract above: 
+proxy admin contract address: 0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44
+
+proxy admin2 contract address: 0x3137a4358A0AffeA4F8133B98cE89E8ba6bC9e19
 
 ### Kovan
 

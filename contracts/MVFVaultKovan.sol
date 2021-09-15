@@ -79,6 +79,11 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
+    event SetTreasuryWallet(address indexed treasuryWallet);
+    event SetCommunityWallet(address indexed communityWallet);
+    event SetStrategistWallet(address indexed strategistWallet);
+    event SetAdminWallet(address indexed admin);
+    event SetBiconomy(address indexed biconomy);
 
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -93,7 +98,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         __ERC20_init(name, ticker);
         __Ownable_init();
 
-        strategy = IStrategy(_strategy);
+        // strategy = IStrategy(_strategy);
 
         treasuryWallet = _treasuryWallet;
         communityWallet = _communityWallet;
@@ -112,7 +117,7 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         USDC.safeApprove(address(sushiRouter), type(uint).max);
         DAI.safeApprove(address(sushiRouter), type(uint).max);
         WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WETH.safeApprove(address(strategy), type(uint).max);
+        // WETH.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -206,8 +211,8 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken() private {
-        uint pool = getAllPoolInUSD(true);
-        // if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
+        uint pool;
+        if (totalSupply() != 0) pool = getAllPoolInUSD(true) - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -369,6 +374,32 @@ contract MVFVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
         strategy.setProfitFeePerc(profitFeePerc);
         emit SetProfitFeePerc(profitFeePerc);
+    }
+
+    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        treasuryWallet = _treasuryWallet;
+        emit SetTreasuryWallet(_treasuryWallet);
+    }
+
+    function setCommunityWallet(address _communityWallet) external onlyOwner {
+        communityWallet = _communityWallet;
+        emit SetCommunityWallet(_communityWallet);
+    }
+
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        strategist = _strategist;
+        emit SetStrategistWallet(_strategist);
+    }
+
+    function setAdmin(address _admin) external onlyOwner {
+        admin = _admin;
+        emit SetAdminWallet(_admin);
+    }
+
+    function setBiconomy(address _biconomy) external onlyOwner {
+        trustedForwarder = _biconomy;
+        emit SetBiconomy(_biconomy);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {

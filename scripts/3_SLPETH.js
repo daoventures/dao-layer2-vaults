@@ -1,10 +1,13 @@
 const { ethers } = require("hardhat")
 const { mainnet } = require("../addresses")
 
-const sushiFactoryAddr = ""
+const sushiFactoryAddr = "0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3"
 
 async function main() {
     const [deployer] = await ethers.getSigners()
+
+    // await network.provider.request({method: "hardhat_impersonateAccount", params: ["0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"]})
+    // const deployer = await ethers.getSigner("0x3f68A3c1023d736D8Be867CA49Cb18c543373B99")
 
     const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
     // const sushiVaultArtifact = await artifacts.readArtifact("SushiKovan")

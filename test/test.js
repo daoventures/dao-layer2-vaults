@@ -25,77 +25,89 @@ const SLPETHHolderAddr = "0x68e845717eA2ae0Ca63E7B2c9f6052FE7397e96E"
 describe("Metaverse-Farmer", () => {
     it("should work", async () => {
         let tx, receipt
-        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, multisig] = await ethers.getSigners()
+        // const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, multisig] = await ethers.getSigners()
 
-        // Deploy Sushi
-        const SushiVault = await ethers.getContractFactory("Sushi", deployer)
-        const sushiVault = await SushiVault.deploy()
-        const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
-        const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
+        // // Deploy Sushi
+        // const SushiVault = await ethers.getContractFactory("Sushi", deployer)
+        // const sushiVault = await SushiVault.deploy()
+        // const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
+        // const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
 
-        const SushiFactory = await ethers.getContractFactory("SushiFactory", deployer)
-        const sushiFactory = await SushiFactory.deploy(sushiVault.address)
-        await sushiFactory.transferOwnership(multisig.address)
+        // const SushiFactory = await ethers.getContractFactory("SushiFactory", deployer)
+        // const sushiFactory = await SushiFactory.deploy(sushiVault.address)
+        // await sushiFactory.transferOwnership(multisig.address)
         
-        // Deploy AXS-ETH
-        const dataAXSETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi AXS-ETH", "daoSushiAXS", 231,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await sushiFactory.connect(multisig).createVault(dataAXSETH)
-        const AXSETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
-        const AXSETHVault = await ethers.getContractAt("Sushi", AXSETHVaultAddr, deployer)
+        // // Deploy AXS-ETH
+        // const dataAXSETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi AXS-ETH", "daoSushiAXS", 231,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await sushiFactory.connect(multisig).createVault(dataAXSETH)
+        // const AXSETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // const AXSETHVault = await ethers.getContractAt("Sushi", AXSETHVaultAddr, deployer)
 
-        // Deploy SLP-ETH
-        const dataSLPETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi SLP-ETH", "daoSushiSLP", 290,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await sushiFactory.connect(multisig).createVault(dataSLPETH)
-        const SLPETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
-        const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
+        // // Deploy SLP-ETH
+        // const dataSLPETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi SLP-ETH", "daoSushiSLP", 290,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await sushiFactory.connect(multisig).createVault(dataSLPETH)
+        // const SLPETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
         
-        // Deploy ILV-ETH
-        const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVault", deployer)
-        const ILVETHVault = await upgrades.deployProxy(ILVETHVaultFactory, [
-            "DAO L1 Sushi ILV-ETH", "daoSushiILV",
-            treasury.address, community.address, strategist.address, admin.address
-        ])
-        await ILVETHVault.deployed()
-        await ILVETHVault.transferOwnership(multisig.address)
+        // // Deploy ILV-ETH
+        // const ILVETHVaultFactory = await ethers.getContractFactory("ILVETHVault", deployer)
+        // const ILVETHVault = await upgrades.deployProxy(ILVETHVaultFactory, [
+        //     "DAO L1 Sushi ILV-ETH", "daoSushiILV",
+        //     treasury.address, community.address, strategist.address, admin.address
+        // ])
+        // await ILVETHVault.deployed()
+        // await ILVETHVault.transferOwnership(multisig.address)
 
-        // Deploy Uniswap V3
-        const UniV3Vault = await ethers.getContractFactory("UniswapV3", deployer)
-        const uniV3Vault = await UniV3Vault.deploy()
-        const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3")
-        const uniV3VaultInterface = new ethers.utils.Interface(uniV3VaultArtifact.abi)
+        // // Deploy Uniswap V3
+        // const UniV3Vault = await ethers.getContractFactory("UniswapV3", deployer)
+        // const uniV3Vault = await UniV3Vault.deploy()
+        // const uniV3VaultArtifact = await artifacts.readArtifact("UniswapV3")
+        // const uniV3VaultInterface = new ethers.utils.Interface(uniV3VaultArtifact.abi)
 
-        const UniV3Factory = await ethers.getContractFactory("UniV3Factory", deployer)
-        const uniV3Factory = await UniV3Factory.deploy(uniV3Vault.address)
-        await uniV3Factory.transferOwnership(multisig.address)
+        // const UniV3Factory = await ethers.getContractFactory("UniV3Factory", deployer)
+        // const uniV3Factory = await UniV3Factory.deploy(uniV3Vault.address)
+        // await uniV3Factory.transferOwnership(multisig.address)
 
-        // Deploy GHST-ETH
-        const dataGHSTETH = uniV3VaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 UniV3 GHST-ETH", "daoUniV3GHST", GHSTETHAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await uniV3Factory.connect(multisig).createVault(dataGHSTETH)
-        const GHSTETHVaultAddr = await uniV3Factory.getVault((await uniV3Factory.getVaultLength()).sub(1))
-        const GHSTETHVault = await ethers.getContractAt("UniswapV3", GHSTETHVaultAddr, deployer)
+        // // Deploy GHST-ETH
+        // const dataGHSTETH = uniV3VaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 UniV3 GHST-ETH", "daoUniV3GHST", GHSTETHAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await uniV3Factory.connect(multisig).createVault(dataGHSTETH)
+        // const GHSTETHVaultAddr = await uniV3Factory.getVault((await uniV3Factory.getVaultLength()).sub(1))
+        // const GHSTETHVault = await ethers.getContractAt("UniswapV3", GHSTETHVaultAddr, deployer)
+
+        const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+        network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+        const admin = await ethers.getSigner(adminAddr)
+        await deployer.sendTransaction({to: admin.address, value: ethers.utils.parseEther("10")})
+
+        const AXSETHVault = await ethers.getContractAt("Sushi", "0xcE097910Fc2DB329683353dcebF881A48cbA181e", deployer)
+        const SLPETHVault = await ethers.getContractAt("Sushi", "0x4aE61842Eb4E4634F533cb35B697a01319C457e2", deployer)
+        const ILVETHVault = await ethers.getContractAt("ILVETHVault", "0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e", deployer)
+        const GHSTETHVault = await ethers.getContractAt("UniswapV3", "0xF9b0707dEE34d36088A093d85b300A3B910E00fC", deployer)
         
         // Main contract
         const MVFStrategyFactory = await ethers.getContractFactory("MVFStrategy")
         const mvfStrategy = await MVFStrategyFactory.deploy()
-        await mvfStrategy.initialize(AXSETHVaultAddr, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
+        // await mvfStrategy.initialize(AXSETHVaultAddr, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
+        await mvfStrategy.initialize(AXSETHVault.address, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
         const MVFVaultFactory = await ethers.getContractFactory("MVFVault")
         const mvfVault = await MVFVaultFactory.deploy()
         await mvfVault.initialize(
@@ -168,6 +180,19 @@ describe("Metaverse-Farmer", () => {
         // console.log(receipt.gasUsed.toString())
         // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client2.address)))
         // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client3.address)))
+
+        await AXSETHVault.connect(admin).invest()
+        await SLPETHVault.connect(admin).invest()
+        await ILVETHVault.connect(admin).invest()
+
+        for (let i=0; i<10000; i++) {
+            await network.provider.send("evm_mine")
+        }
+
+        await AXSETHVault.connect(admin).yield()
+        await SLPETHVault.connect(admin).yield()
+        await ILVETHVault.connect(admin).harvest()
+        // await GHSTETHVault.connect(admin).yield()
 
         // Check farm vault pool
         // console.log(ethers.utils.formatEther(await AXSETHVault.getAllPoolInUSD())) // 10000

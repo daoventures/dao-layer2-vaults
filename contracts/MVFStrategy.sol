@@ -143,11 +143,6 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;
 
-    address public treasuryWallet;
-    address public communityWallet;
-    address public strategist;
-    address public admin;
-
     event TargetComposition (uint AXSETHTargetPool, uint SLPETHTargetPool, uint ILVETHTargetPool, uint GHSTETHTargetPool, uint REVVETHTargetPool, uint MVITargetPool);
     event CurrentComposition (uint AXSETHCurrentPool, uint SLPETHCurrentPool, uint ILVETHCurrentPool, uint GHSTETHCurrentPool, uint REVVETHCurrentPool, uint MVICurrentPool);
     event InvestAXSETH(uint WETHAmt, uint AXSETHAmt);

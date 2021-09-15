@@ -79,6 +79,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
+    event SetTreasuryWallet(address indexed treasuryWallet);
+    event SetCommunityWallet(address indexed communityWallet);
+    event SetStrategistWallet(address indexed strategistWallet);
+    event SetAdminWallet(address indexed admin);
+    event SetBiconomy(address indexed biconomy);
 
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == admin, "Only owner or admin");
@@ -368,6 +373,32 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
         strategy.setProfitFeePerc(profitFeePerc);
         emit SetProfitFeePerc(profitFeePerc);
+    }
+
+    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        treasuryWallet = _treasuryWallet;
+        emit SetTreasuryWallet(_treasuryWallet);
+    }
+
+    function setCommunityWallet(address _communityWallet) external onlyOwner {
+        communityWallet = _communityWallet;
+        emit SetCommunityWallet(_communityWallet);
+    }
+
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        strategist = _strategist;
+        emit SetStrategistWallet(_strategist);
+    }
+
+    function setAdmin(address _admin) external onlyOwner {
+        admin = _admin;
+        emit SetAdminWallet(_admin);
+    }
+
+    function setBiconomy(address _biconomy) external onlyOwner {
+        trustedForwarder = _biconomy;
+        emit SetBiconomy(_biconomy);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {
