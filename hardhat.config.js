@@ -18,19 +18,14 @@ module.exports = {
         },
         mainnet: {
             url: process.env.ALCHEMY_URL_MAINNET,
-            gasPrice: 31000000000,
+            gasPrice: 41000000000,
+            gasMultiplier: 1.2,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
         },
         kovan: {
             url: process.env.ALCHEMY_URL_KOVAN,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
         },
-        eden: {
-            url: "https://api.edennetwork.io/v1/rpc",
-            chainId: 1,
-            gasPrice: 31000000000,
-            accounts: [`0x${process.env.PRIVATE_KEY}`]
-        }
     },
     etherscan: {
         apiKey: process.env.ETHERSCAN_API_KEY,

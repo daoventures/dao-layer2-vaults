@@ -90,7 +90,6 @@ contract Sushi is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradeable, O
     event SetFee(uint _yieldFeePerc, uint _depositFeePerc);
     event SetTreasuryWallet(address treasuryWallet);
     event SetCommunityWallet(address communityWallet);
-    event SetAdminWallet(address admin);
     event SetStrategistWallet(address strategistWallet);
     event SetAdmin(address admin);
 

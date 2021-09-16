@@ -67,23 +67,25 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     address public strategist;
     address public admin;
 
-    event Deposit(address caller, uint depositAmt);
-    event Withdraw(address caller, uint withdrawAmt, address tokenWithdraw, uint sharesBurn);
-    event Invest(uint amount);
-    event DistributeLPToken(address receiver, uint shareMint);
-    event TransferredOutFees(uint fees);
+
+
+    event Deposit(address indexed caller, uint amtDeposit, address tokenDeposit);
+    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint sharesBurned);
+    event Invest(uint amtInWETH);
+    event DistributeLPToken(address receiver, uint shareMinted);
+    event TransferredOutFees(uint fees, address token);
     event Reimburse(uint farmIndex, address token, uint amount);
-    event Reinvest(uint amount);
+    event Reinvest(uint amtInWETH);
     event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
+    event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
-    event SetTreasuryWallet(address indexed treasuryWallet);
-    event SetCommunityWallet(address indexed communityWallet);
-    event SetStrategistWallet(address indexed strategistWallet);
-    event SetAdminWallet(address indexed admin);
-    event SetBiconomy(address indexed biconomy);
+    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
+    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
+    event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
+    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetBiconomy(address oldBiconomy, address newBiconomy);
 
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == admin, "Only owner or admin");
@@ -144,7 +146,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
         totalDepositAmt = totalDepositAmt + amount;
 
-        emit Deposit(msgSender, amtDeposit);
+        emit Deposit(msgSender, amtDeposit, address(token));
     }
 
     function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
@@ -257,7 +259,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             token.safeTransfer(strategist, _fees - _fee - _fee); // 20%
 
             fees = 0;
-            emit TransferredOutFees(_fees); // Decimal follow _token
+            emit TransferredOutFees(_fees, address(token)); // Decimal follow _token
         }
     }
 
@@ -376,29 +378,34 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        address oldTreasuryWallet = treasuryWallet;
         treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(_treasuryWallet);
+        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
     }
 
     function setCommunityWallet(address _communityWallet) external onlyOwner {
+        address oldCommunityWallet = communityWallet;
         communityWallet = _communityWallet;
-        emit SetCommunityWallet(_communityWallet);
+        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
     }
 
     function setStrategist(address _strategist) external {
         require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        address oldStrategist = strategist;
         strategist = _strategist;
-        emit SetStrategistWallet(_strategist);
+        emit SetStrategistWallet(oldStrategist, _strategist);
     }
 
     function setAdmin(address _admin) external onlyOwner {
+        address oldAdmin = admin;
         admin = _admin;
-        emit SetAdminWallet(_admin);
+        emit SetAdminWallet(oldAdmin, _admin);
     }
 
     function setBiconomy(address _biconomy) external onlyOwner {
+        address oldBiconomy = trustedForwarder;
         trustedForwarder = _biconomy;
-        emit SetBiconomy(_biconomy);
+        emit SetBiconomy(oldBiconomy, _biconomy);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {
