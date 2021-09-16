@@ -5,20 +5,20 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-interface ILpPool {
-    function balanceOf(address _account) external view returns (uint);
-    function earned(address _account) external view returns (uint);
-    function lpt() external view returns (address);
-    function getReward() external;
-    function stake(uint _amount) external;
-    function withdraw(uint _amount) external;
-}
-
-interface IUniRouter {
+interface IRouter {
     function swapExactTokensForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+
+    function swapExactTokensForETH(
         uint amountIn,
         uint amountOutMin,
         address[] calldata path,
@@ -40,53 +40,61 @@ interface IUniRouter {
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
 }
 
-interface IUniPair is IERC20Upgradeable {
+interface IPair is IERC20Upgradeable {
     function getReserves() external view returns (uint, uint);
-    function totalSupply() external view returns (uint);
     function token0() external view returns (address);
     function token1() external view returns (address);
+}
+
+interface ILpPool {
+    function balanceOf(address _account) external view returns (uint);
+    function earned(address _account) external view returns (uint);
+    function lpt() external view returns (address);
+    function getReward() external;
+    function stake(uint _amount) external;
+    function withdraw(uint _amount) external;
 }
 
 interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable{
+contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using SafeERC20Upgradeable for IUniPair;
+    using SafeERC20Upgradeable for IPair;
 
-    IERC20Upgradeable constant MIR  = IERC20Upgradeable(0x09a3EcAFa817268f77BE1283176B946C4ff2E608);
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IERC20Upgradeable constant UST = IERC20Upgradeable(0xa47c8bf37f92aBed4A126BDA807A7b7498661acD);
-    IERC20Upgradeable public lpToken;
+    IRouter constant uniRouter = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     ILpPool public lpPool;
 
-    IUniRouter constant router = IUniRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    IPair public lpToken;
+    address public mAsset;
+    address public token1;
+    address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    IERC20Upgradeable constant MIR  = IERC20Upgradeable(0x09a3EcAFa817268f77BE1283176B946C4ff2E608);
+    IERC20Upgradeable constant UST = IERC20Upgradeable(0xa47c8bf37f92aBed4A126BDA807A7b7498661acD);
+
+    address public admin;
+    address public treasuryWallet;
+    address public communityWallet;
+    address public strategist;
 
     uint public yieldFee;
     uint public depositFee;
 
-    address public treasuryWallet;
-    address public communityWallet;
-    address public strategist;
-    address public admin;
-    address public mAsset;
-
     mapping(address => bool) public isWhitelisted;
     mapping(address => uint) depositedBlock;
 
-    event Deposit(address _user, uint _amount, uint _shares);
-    event EmergencyWithdraw(uint _amount);
-    event Invest(uint _amount);
-    event SetAdmin(address _oldAdmin, address _newAdmin);
-    event SetDepositFeePerc(uint _fee);
-    event SetYieldFeePerc(uint _fee);
-    event SetCommunityWallet(address _wallet);
-    event SetStrategistWallet(address _wallet);
-    event SetTreasuryWallet(address _wallet);
-    event SetWhitelist(address, bool);
-    event Withdraw(address _user, uint _amount, uint _shares);
-    event Yield(uint _rewardMIR);
+    event Deposit(address caller, uint amtDeposited, uint sharesMinted);
+    event Withdraw(address caller, uint amtWithdrawed, uint sharesBurned);
+    event Invest(uint amount);
+    event Yield(uint amount);
+    event EmergencyWithdraw(uint amount);
+    event SetWhitelistAddress(address account, bool status);
+    event SetFeePerc(uint _yieldFeePerc, uint _depositFeePerc);
+    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
+    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
+    event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
+    event SetAdminWallet(address oldAdmin, address newAdmin);
 
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == admin, "Only owner or admin");
@@ -94,43 +102,43 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
     }
 
     function initialize(
-        string memory _name, string memory _symbol,
-        ILpPool _lpPool, address _mAsset,
+        string calldata _name, string calldata _symbol, ILpPool _lpPool,
         address _treasuryWallet, address _communityWallet, address _strategist, address _admin
     ) external initializer {
         __ERC20_init(_name, _symbol);
         __Ownable_init();
-
-        yieldFee = 2000;
-        depositFee = 1000;
-
-        mAsset = _mAsset;
-        lpPool = _lpPool;
-        lpToken = IUniPair(lpPool.lpt());
 
         treasuryWallet = _treasuryWallet;
         communityWallet = _communityWallet;
         strategist = _strategist;
         admin = _admin;
 
+        lpPool = _lpPool;
+        lpToken = IPair(lpPool.lpt());
+        token1 = lpToken.token1();
+        mAsset = token1 == address(UST) ? lpToken.token0() : token1;
+
+        yieldFee = 2000;
+        depositFee = 1000;
+
+        IERC20Upgradeable(mAsset).approve(address(uniRouter), type(uint).max);
+        UST.safeApprove(address(uniRouter), type(uint).max);
+        lpToken.safeApprove(address(uniRouter), type(uint).max);
         lpToken.safeApprove(address(_lpPool), type(uint).max);
-        MIR.safeApprove(address(router), type(uint).max);
-        UST.safeApprove(address(router), type(uint).max);
-        IERC20Upgradeable(mAsset).approve(address(router), type(uint).max);
+        MIR.safeApprove(address(uniRouter), type(uint).max);
     }
-    /**
-     *@param _amount amount of lptokens to deposit
-    */
-    function deposit(uint _amount) external nonReentrant whenNotPaused {
-        require(_amount > 0, "Invalid amount");
+
+    function deposit(uint amount) external nonReentrant whenNotPaused {
+        require(amount > 0, "Amount must > 0");
+        uint amtDeposit = amount;
 
         uint _pool = getAllPool();
-        lpToken.safeTransferFrom(msg.sender, address(this), _amount);
+        lpToken.safeTransferFrom(msg.sender, address(this), amount);
         depositedBlock[msg.sender] = block.number;
 
         if(!isWhitelisted[msg.sender]) {
-            uint fees = _amount * depositFee / 10000;
-            _amount = _amount - fees;
+            uint fees = amount * depositFee / 10000;
+            amount = amount - fees;
 
             uint fee = fees * 2 / 5;
             lpToken.safeTransfer(treasuryWallet, fee);
@@ -139,44 +147,38 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         }
 
         uint _totalSupply = totalSupply();
-        uint _shares = _totalSupply == 0 ? _amount : _amount * _totalSupply / _pool;
+        uint share = _totalSupply == 0 ? amount : amount * _totalSupply / _pool;
 
-        _mint(msg.sender, _shares);
-        emit Deposit(msg.sender, _amount, _shares);
+        _mint(msg.sender, share);
+        emit Deposit(msg.sender, amtDeposit, share);
     }
 
-    /**
-     *@param _shares amount of shares to burn
-    */
-    function withdraw(uint _shares) external nonReentrant returns (uint withdrawAmt) {
-        require(_shares > 0, "Invalid Amount");
-        require(balanceOf(msg.sender) >= _shares, "Not enough balance");
+    function withdraw(uint share) external nonReentrant returns (uint withdrawAmt) {
+        require(share > 0, "Share must > 0");
+        require(share <= balanceOf(msg.sender), "Not enough shares to withdraw");
         require(depositedBlock[msg.sender] != block.number, "Withdraw within same block");
 
-        uint _amountToWithdraw = getAllPool() * _shares / totalSupply(); 
-        _burn(msg.sender, _shares);
+        uint lpTokenBalInVault = lpToken.balanceOf(address(this));
+        uint lpTokenBalInFarm = lpPool.balanceOf(address(this));
+        withdrawAmt = (lpTokenBalInVault + lpTokenBalInFarm) * share / totalSupply();
+        _burn(msg.sender, share);
 
-        uint _lpTokenAmt = lpToken.balanceOf(address(this));
-        if(_lpTokenAmt < _amountToWithdraw) {
-            lpPool.withdraw(_amountToWithdraw - _lpTokenAmt);
+        if(withdrawAmt > lpTokenBalInVault) {
+            lpPool.withdraw(withdrawAmt - lpTokenBalInVault);
         }
 
-        lpToken.safeTransfer(msg.sender, _amountToWithdraw);
-        emit Withdraw(msg.sender, _amountToWithdraw, _shares);
+        lpToken.safeTransfer(msg.sender, withdrawAmt);
+        emit Withdraw(msg.sender, withdrawAmt, share);
     }
 
     function invest() external onlyOwnerOrAdmin whenNotPaused {
-        uint _amount = _invest();
-        emit Invest(_amount);
-    }
+        uint lpTokenAmt = lpToken.balanceOf(address(this));
+        _invest(lpTokenAmt);
+    }   
 
-    function _invest() private returns (uint){
-        uint _lpTokenBalance = lpToken.balanceOf(address(this));
-        if(_lpTokenBalance > _fees) {
-            lpPool.stake(_lpTokenBalance);
-            return lpTokenBalance;
-        }
-        return 0;
+    function _invest(uint lpTokenAmt) private {
+        lpPool.stake(lpTokenAmt);
+        emit Invest(lpTokenAmt);
     }
 
     function yield() external onlyOwnerOrAdmin whenNotPaused { 
@@ -185,147 +187,137 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
 
     function _yield() private {
         uint rewardMIR = lpPool.earned(address(this));
-        uint _rewardMIR = rewardMIR; // For event
-
         if(rewardMIR > 0) {
+            uint _rewardMIR = rewardMIR; // For event
 
             lpPool.getReward();
             uint fee = rewardMIR * yieldFee / 10000;
             rewardMIR -= fee;
 
-            uint outAmount = mAsset != address(Mir) ? _swap(address(Mir), mAsset, rewardMir /2) : rewardMir /2;
-            uint outAmount1 = _swap(address(Mir), address(UST), rewardMir /2);
+            uniRouter.swapExactTokensForETH(fee, 0, getPath(address(MIR), address(WETH)), address(this), block.timestamp);
+            uint portionETH = address(this).balance * 2 / 5; // 40%
+            (bool _a,) = admin.call{value: portionETH}(""); // 40%
+            require(_a, "Fee transfer failed");
+            (bool _t,) = communityWallet.call{value: portionETH}(""); // 40%
+            require(_t, "Fee transfer failed");
+            (bool _s,) = strategist.call{value: (address(this).balance)}(""); // 20%
+            require(_s, "Fee transfer failed");
 
-            (,,uint lpTokenAmount) = router.addLiquidity(address(mAsset), address(UST), outAmount, outAmount1, 0, 0, address(this), block.timestamp);
+            uint outAmount0 = mAsset != address(MIR) ? swap(address(MIR), mAsset, rewardMIR /2) : rewardMIR /2;
+            uint outAmount1 = swap(address(MIR), address(UST), rewardMIR /2);
+            (,,uint lpTokenAmt) = uniRouter.addLiquidity(mAsset, address(UST), outAmount0, outAmount1, 0, 0, address(this), block.timestamp);
 
-            _invest();
+            _invest(lpTokenAmt);
 
             emit Yield(_rewardMIR);
         }
     }
 
-    ///@notice Withdraws funds staked in mirror to this vault and pauses deposit, yield, invest functions
+    receive() external payable {}
+
     function emergencyWithdraw() external onlyOwnerOrAdmin whenNotPaused { 
         _pause();
-
         _yield();
-
         uint stakedTokens = lpPool.balanceOf(address(this));
-
         if(stakedTokens > 0 ) {
             lpPool.withdraw(stakedTokens);
         }
-
         emit EmergencyWithdraw(stakedTokens);
     }
 
-    function setWhitelist(address _addr, bool _value) external onlyOwnerOrAdmin {
-        isWhitelisted[_addr] = _value;
-        emit SetWhitelist(_addr, _value);
-    }
-
-    ///@notice Unpauses deposit, yield, invest functions, and invests funds.
-    function reInvest() external onlyOwnerOrAdmin whenPaused {
-        _invest();
+    function reinvest() external onlyOwnerOrAdmin whenPaused {
         _unpause();
+        uint lpTokenAmt = lpToken.balanceOf(address(this));
+        _invest(lpTokenAmt);
     }
 
-    function setAdmin(address _newAdmin) external onlyOwner {
-        address oldAdmin = admin;
-        admin = _newAdmin;
-
-        emit SetAdmin(oldAdmin, _newAdmin);
+    function swap(address tokenIn, address tokenOut, uint amount) private returns (uint) {
+        return uniRouter.swapExactTokensForTokens(amount, 0, getPath(tokenIn, tokenOut), address(this), block.timestamp)[1];
     }
 
-    ///@notice Function to set deposit and yield fee
-    ///@param _depositFeePerc deposit fee percentage. 1000 for 10%
-    ///@param _yieldFeePerc deposit fee percentage. 2000 for 20%
-    function setFee(uint _depositFeePerc, uint _yieldFeePerc) external onlyOwner {
-        depositFee = _depositFeePerc;
+    function setWhitelistAddress(address addr, bool status) external onlyOwnerOrAdmin {
+        isWhitelisted[addr] = status;
+        emit SetWhitelistAddress(addr, status);
+    }
+
+    function setFeePerc(uint _yieldFeePerc, uint _depositFeePerc) external onlyOwner {
         yieldFee = _yieldFeePerc;
-
-        emit SetDepositFeePerc(_depositFeePerc);
-        emit SetYieldFeePerc(_yieldFeePerc);
+        depositFee = _depositFeePerc;
+        emit SetFeePerc(_yieldFeePerc, _depositFeePerc);
     }
 
-    function setTreasuryWallet(address _wallet) external onlyOwner {
-        treasuryWallet = _wallet;
-        emit SetTreasuryWallet(_wallet);
+    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        address oldTreasuryWallet = treasuryWallet;
+        treasuryWallet = _treasuryWallet;
+        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
     }
 
-    function setCommunityWallet(address _wallet) external onlyOwner {
-        communityWallet = _wallet;
-        emit SetCommunityWallet(_wallet);
+    function setCommunityWallet(address _communityWallet) external onlyOwner {
+        address oldCommunityWallet = communityWallet;
+        communityWallet = _communityWallet;
+        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
     }
 
-    function setStrategistWallet(address _wallet) external {
-        require(msg.sender == strategist || msg.sender == owner(), "Not authorized");
-        strategist = _wallet;
-        emit SetStrategistWallet(_wallet);
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        address oldStrategist = strategist;
+        strategist = _strategist;
+        emit SetStrategistWallet(oldStrategist, _strategist);
     }
 
-    function _swap(address _token0, address _token1, uint _amount) private returns (uint _outAmount) {
-
-            address[] memory path = new address[](2);
-            path[0] = _token0;
-            path[1] = _token1;
-
-
-            _outAmount = router.swapExactTokensForTokens(_amount, 0, path, address(this), block.timestamp)[1];
-        }
-
+    function setAdmin(address _admin) external onlyOwner {
+        address oldAdmin = admin;
+        admin = _admin;
+        emit SetAdminWallet(oldAdmin, _admin);
     }
 
-    ///@return _pool Returns the total lp tokens in vault and staked in mirror
-    function getAllPool() public view returns (uint _pool) {
-        _pool = lpToken.balanceOf(address(this)) + 
-            lpPool.balanceOf(address(this));
+    function getPath(address tokenA, address tokenB) private pure returns (address[] memory path) {
+        path = new address[](2);
+        path[0] = tokenA;
+        path[1] = tokenB;
+    }
+
+    /// @return Pending rewards in MIR token
+    function getPendingRewards() external view returns (uint) {
+        return lpPool.earned(address(this));
+    }
+
+    function getAllPool() public view returns (uint) {
+        return lpToken.balanceOf(address(this)) + lpPool.balanceOf(address(this));
     }
 
     function _getReserves() private view returns (uint _mAssetReserve, uint _ustReserve) {
-        (_mAssetReserve, _ustReserve) = pair.getReserves();
-         
-        if(pair.token0() != mAsset) {
-            (_mAssetReserve, _ustReserve) = (_ustReserve, _mAssetReserve);
-        }
+        (_mAssetReserve, _ustReserve) = lpToken.getReserves();
+        if(token1 == mAsset) (_mAssetReserve, _ustReserve) = (_ustReserve, _mAssetReserve);
     }
 
-    ///@return Returns the value of lpToken in ETH (18 decimals)
+    /// @return Returns the value of lpToken in ETH (18 decimals)
     function getAllPoolInETH() public view returns (uint) {
-
-        uint _pool = getAllPool();
-        address[] memory path = new address[](2);
-        path[0] = address(mAsset);
-        path[1] = address(UST);
-
-        uint mAssetPriceInUST = router.getAmountsOut(1e18, path)[1];
-
-        (uint reservemAsset, uint reserveUST) = _getReserves();
-
+        uint pool = getAllPool();
+        (uint reserveMAsset, uint reserveUST) = _getReserves();
         uint _totalSupply = lpToken.totalSupply();
-        uint totalmAsset = _pool * reservemAsset / _totalSupply;
-        uint totalUST = _pool * reserveUST / _totalSupply;
+        uint totalmAsset = pool * reserveMAsset / _totalSupply;
+        uint totalUST = pool * reserveUST / _totalSupply;
 
-        uint valueInUST = (totalmAsset * mAssetPriceInUST / 1e18) + totalUST;
+        uint mAssetPriceInUST = uniRouter.getAmountsOut(1e18, getPath(address(mAsset), address(UST)))[1];
+        uint allPoolInUST = (totalmAsset * mAssetPriceInUST / 1e18) + totalUST;
 
-        path[0] = address(UST);
-        path[1] = address(WETH);
-
-        return router.getAmountsOut(valueInUST, path)[1];
+        uint USTPriceInETH = uniRouter.getAmountsOut(1e18, getPath(address(UST), address(WETH)))[1];
+        return allPoolInUST * USTPriceInETH / 1e18;
     }
     
-    ///@return Returns the value of lpToken in USD (8 decimals)
+    /// @return Returns the value of lpToken in USD (8 decimals)
     function getAllPoolInUSD() public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
         return getAllPoolInETH() * ETHPriceInUSD / 1e8;
     }
 
-    function getPricePerFullShare(bool inUSD) public view returns (uint) {
+    /// @param inUSD true for calculate user share in USD, false for calculate APR
+    function getPricePerFullShare(bool inUSD) external view returns (uint) {
         uint _totalSupply = totalSupply();
         if (_totalSupply == 0) return 0;
         return inUSD == true ?
             getAllPoolInUSD() * 1e18 / _totalSupply :
             getAllPool() * 1e18 / _totalSupply;
     }
-
 }
