@@ -90,7 +90,7 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
     event Yield(uint amount);
     event EmergencyWithdraw(uint amount);
     event SetWhitelistAddress(address account, bool status);
-    event SetFeePerc(uint _yieldFeePerc, uint _depositFeePerc);
+    event SetFeePerc(uint oldYieldFee, uint newYieldFee, uint oldDepositFee, uint newDepositFee);
     event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
     event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
     event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
@@ -102,10 +102,10 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
     }
 
     function initialize(
-        string calldata _name, string calldata _symbol, ILpPool _lpPool,
+        string calldata name, string calldata symbol, ILpPool _lpPool,
         address _treasuryWallet, address _communityWallet, address _strategist, address _admin
     ) external initializer {
-        __ERC20_init(_name, _symbol);
+        __ERC20_init(name, symbol);
         __Ownable_init();
 
         treasuryWallet = _treasuryWallet;
@@ -203,8 +203,16 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
             (bool _s,) = strategist.call{value: (address(this).balance)}(""); // 20%
             require(_s, "Fee transfer failed");
 
-            uint outAmount0 = mAsset != address(MIR) ? swap(address(MIR), mAsset, rewardMIR /2) : rewardMIR /2;
-            uint outAmount1 = swap(address(MIR), address(UST), rewardMIR /2);
+            uint outAmount0;
+            uint outAmount1;
+            if(mAsset == address(MIR)) {
+                outAmount0 = rewardMIR / 2;
+                outAmount1 = swap(address(MIR), address(UST), outAmount0); // rewardMIR / 2
+            } else {
+                uint USTAmt = swap(address(MIR), address(UST), rewardMIR);
+                outAmount1 = USTAmt / 2;
+                outAmount0 = swap(address(UST), address(mAsset), outAmount1); // USTAmt / 2
+            }
             (,,uint lpTokenAmt) = uniRouter.addLiquidity(mAsset, address(UST), outAmount0, outAmount1, 0, 0, address(this), block.timestamp);
 
             _invest(lpTokenAmt);
@@ -240,10 +248,14 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         emit SetWhitelistAddress(addr, status);
     }
 
-    function setFeePerc(uint _yieldFeePerc, uint _depositFeePerc) external onlyOwner {
-        yieldFee = _yieldFeePerc;
-        depositFee = _depositFeePerc;
-        emit SetFeePerc(_yieldFeePerc, _depositFeePerc);
+    function setFeePerc(uint _yieldFee, uint _depositFee) external onlyOwner {
+        uint oldYieldFee = yieldFee;
+        yieldFee = _yieldFee;
+
+        uint oldDepositFee = depositFee;
+        depositFee = _depositFee;
+
+        emit SetFeePerc(oldYieldFee, _yieldFee, oldDepositFee, _depositFee);
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
@@ -293,6 +305,12 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
 
     /// @return Returns the value of lpToken in ETH (18 decimals)
     function getAllPoolInETH() public view returns (uint) {
+        uint USTPriceInETH = uniRouter.getAmountsOut(1e18, getPath(address(UST), address(WETH)))[1];
+        return getAllPoolInUSD() * USTPriceInETH / 1e18;
+    }
+    
+    /// @return Returns the value of lpToken in USD (18 decimals)
+    function getAllPoolInUSD() public view returns (uint) {
         uint pool = getAllPool();
         (uint reserveMAsset, uint reserveUST) = _getReserves();
         uint _totalSupply = lpToken.totalSupply();
@@ -300,16 +318,7 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         uint totalUST = pool * reserveUST / _totalSupply;
 
         uint mAssetPriceInUST = uniRouter.getAmountsOut(1e18, getPath(address(mAsset), address(UST)))[1];
-        uint allPoolInUST = (totalmAsset * mAssetPriceInUST / 1e18) + totalUST;
-
-        uint USTPriceInETH = uniRouter.getAmountsOut(1e18, getPath(address(UST), address(WETH)))[1];
-        return allPoolInUST * USTPriceInETH / 1e18;
-    }
-    
-    /// @return Returns the value of lpToken in USD (8 decimals)
-    function getAllPoolInUSD() public view returns (uint) {
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
-        return getAllPoolInETH() * ETHPriceInUSD / 1e8;
+        return (totalmAsset * mAssetPriceInUST / 1e18) + totalUST;
     }
 
     /// @param inUSD true for calculate user share in USD, false for calculate APR
