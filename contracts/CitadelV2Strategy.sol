@@ -153,16 +153,10 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
             DPIETHTargetPool > pools[2] &&
             DAIETHTargetPool > pools[3]
         ) {
-            uint WETHAmt1500 = WETHAmt * 1500 / 10000;
-
-            // HBTC-WBTC (0%-30%)
-            investHBTCWBTC(WETHAmt * 3000 / 10000);
-            // WBTC-ETH (15%-15%)
-            investWBTCETH(WETHAmt1500);
-            // DPI-ETH (15%-15%)
-            investDPIETH(WETHAmt1500);
-            // DAI-ETH (5%-5%)
-            investDAIETH(WETHAmt * 500 / 10000);
+            investHBTCWBTC(HBTCWBTCTargetPool - pools[0]);
+            investWBTCETH((WBTCETHTargetPool - pools[1]));
+            investDPIETH((DPIETHTargetPool - pools[2]));
+            investDAIETH((DAIETHTargetPool - pools[3]));
         } else {
             uint furthest;
             uint farmIndex;
@@ -196,9 +190,9 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
             }
 
             if (farmIndex == 0) investHBTCWBTC(WETHAmt);
-            else if (farmIndex == 1) investWBTCETH(WETHAmt / 2);
-            else if (farmIndex == 2) investDPIETH(WETHAmt / 2);
-            else investDAIETH(WETHAmt / 2);
+            else if (farmIndex == 1) investWBTCETH(WETHAmt);
+            else if (farmIndex == 2) investDPIETH(WETHAmt);
+            else investDAIETH(WETHAmt);
         }
 
         emit TargetComposition(HBTCWBTCTargetPool, WBTCETHTargetPool, DPIETHTargetPool, DAIETHTargetPool);
@@ -215,22 +209,25 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     }
 
     function investWBTCETH(uint WETHAmt) private {
-        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), WETHAmt);
-        (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(address(WBTC), address(WETH), WBTCAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), halfWETH);
+        (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(address(WBTC), address(WETH), WBTCAmt, halfWETH, 0, 0, address(this), block.timestamp);
         WBTCETHVault.deposit(WBTCETHAmt);
         emit InvestWBTCETH(WETHAmt, WBTCETHAmt);
     }
 
     function investDPIETH(uint WETHAmt) private {
-        uint DPIAmt = sushiSwap(address(WETH), address(DPI), WETHAmt);
-        (,,uint DPIETHAmt) = sushiRouter.addLiquidity(address(DPI), address(WETH), DPIAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint DPIAmt = sushiSwap(address(WETH), address(DPI), halfWETH);
+        (,,uint DPIETHAmt) = sushiRouter.addLiquidity(address(DPI), address(WETH), DPIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DPIETHVault.deposit(DPIETHAmt);
         emit InvestDPIETH(WETHAmt, DPIETHAmt);
     }
 
     function investDAIETH(uint WETHAmt) private {
-        uint DAIAmt = sushiSwap(address(WETH), address(DAI), WETHAmt);
-        (,,uint DAIETHAmt) = sushiRouter.addLiquidity(address(DAI), address(WETH), DAIAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint DAIAmt = sushiSwap(address(WETH), address(DAI), halfWETH);
+        (,,uint DAIETHAmt) = sushiRouter.addLiquidity(address(DAI), address(WETH), DAIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DAIETHVault.deposit(DAIETHAmt);
         emit InvestDAIETH(WETHAmt, DAIETHAmt);
     }
@@ -279,14 +276,10 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD();
         uint lastWatermark = watermark;
-        if (lastWatermark == 0) { // First invest or after emergency withdrawal
-            watermark = currentWatermark;
-        } else {
-            if (currentWatermark > lastWatermark) {
-                uint profit = currentWatermark - lastWatermark;
-                fee = profit * profitFeePerc / 10000;
-                watermark = currentWatermark - fee;
-            }
+        if (currentWatermark > lastWatermark) {
+            uint profit = currentWatermark - lastWatermark;
+            fee = profit * profitFeePerc / 10000;
+            watermark = currentWatermark - fee;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
