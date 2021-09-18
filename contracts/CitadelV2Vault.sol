@@ -442,6 +442,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             feesInETH = (sushiRouter.getAmountsOut(fees, getPath(address(USDT), address(WETH))))[1];
         }
 
+        if (paused()) return WETH.balanceOf(address(this)) + WETHAmt - feesInETH;
         return strategy.getAllPool() + WETHAmt - feesInETH;
     }
 
@@ -449,7 +450,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
         // ETHPriceInUSD amount in 8 decimals
 
-        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
+        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 - fees;
         uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
