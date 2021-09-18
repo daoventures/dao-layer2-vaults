@@ -317,6 +317,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint WETHAmt = WETH.balanceOf(address(this));
         strategy.invest(WETHAmt);
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        require(ETHPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WETHAmt * ETHPriceInUSD / 1e8, true);
 
         emit Reinvest(WETHAmt);
@@ -447,8 +448,9 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function getAllPoolInUSD() public view returns (uint) {
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
         // ETHPriceInUSD amount in 8 decimals
+        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        require(ETHPriceInUSD > 0, "ChainLink error");
 
         if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 - fees;
         uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;

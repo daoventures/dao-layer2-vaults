@@ -339,6 +339,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     function getHBTCWBTCPool() private view returns (uint) {
         uint HBTCWBTCVaultPoolInBTC = HBTCWBTCVault.getAllPoolInNative();
         uint BTCPriceInETH = uint(IChainlink(0xdeb288F737066589598e9214E782fa5A8eD689e8).latestAnswer());
+        require(BTCPriceInETH > 0, "ChainLink error");
         return HBTCWBTCVaultPoolInBTC * BTCPriceInETH / 1e18;
     }
 
@@ -370,6 +371,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
     function getAllPoolInUSD() public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
+        require(ETHPriceInUSD > 0, "ChainLink error");
         return getAllPool() * ETHPriceInUSD / 1e8;
     }
 
