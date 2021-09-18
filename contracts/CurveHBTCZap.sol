@@ -44,7 +44,7 @@ contract CurveHBTCZap is Ownable {
     IERC20 constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     IERC20 constant WBTC = IERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
 
-    event Compound(uint WETHAmt, uint lpTokenBal);
+    event Compound(uint CRVAmt, uint CVXAmt, uint WETHAmt, uint lpTokenBal);
     event AddLiquidity(uint WBTCAmt, uint lpTokenBal);
 
     constructor(address _vault) {
@@ -74,7 +74,7 @@ contract CurveHBTCZap is Ownable {
         
         lpTokenBal = addLiquidity(totalWETH);
         ICurveVault(msg.sender).investZap(lpTokenBal);
-        emit Compound(totalWETH, lpTokenBal);
+        emit Compound(CRVAmt, CVXAmt, totalWETH, lpTokenBal);
     }
 
     receive() external payable {}

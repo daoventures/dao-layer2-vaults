@@ -163,8 +163,8 @@ contract Curve is Initializable, ERC20Upgradeable, OwnableUpgradeable, Reentranc
 
         uint CRVAmt = CRV.balanceOf(address(this));
         uint CVXAmt = CVX.balanceOf(address(this));
-        CRV.safeTransfer(address(curveZap), CRVAmt);
-        CVX.safeTransfer(address(curveZap), CVXAmt);
+        if (CRVAmt > 0) CRV.safeTransfer(address(curveZap), CRVAmt);
+        if (CVXAmt > 0) CVX.safeTransfer(address(curveZap), CVXAmt);
         if (cvStake.extraRewardsLength() > 0) {
             for (uint i = 0; i < cvStake.extraRewardsLength(); i++) {
                 IERC20Upgradeable extraRewardToken = IERC20Upgradeable(ICvRewards(cvStake.extraRewards(i)).rewardToken());
