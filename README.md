@@ -44,7 +44,7 @@ Sushi DPI-ETH vault (proxy) contract address: 0x83aCB6478E7716CA365e5BEa21Fe05A9
 
 Sushi DAI-ETH vault (proxy) contract address: 0x244517fE869B3054B83b6F005A895957d6feEAe6
 
-Citadel V2 vault (implementation) contract address: 0xfa37Ba20cf39D82f0c3a7d3cB44E595fD6805882
+Citadel V2 vault (implementation) contract address: 0xD81Cd018ab66483EdaeD2552B1F3b27B6866Af99
 
 Citadel V2 vault (proxy) contract address: 0x6435B8fc860381A7088ccD745FC73F5c844e8Bad
 

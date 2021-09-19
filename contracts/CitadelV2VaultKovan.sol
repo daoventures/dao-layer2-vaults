@@ -147,9 +147,9 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
 
-        // uint _totalSupply = totalSupply();
-        // uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
-        // _burn(msg.sender, share);
+        uint _totalSupply = totalSupply();
+        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
+        _burn(msg.sender, share);
         // strategy.adjustWatermark(withdrawAmt, false);
 
         // uint tokenAmtInVault = token.balanceOf(address(this));
@@ -170,8 +170,8 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         //     }
         // }
 
-        uint withdrawAmt = share;
-        token.safeTransfer(msg.sender, share);
+        if (token != DAI) withdrawAmt = withdrawAmt / 1e12;
+        token.safeTransfer(msg.sender, withdrawAmt);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
@@ -205,8 +205,8 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
     }
 
     function distributeLPToken() private {
-        uint pool = USDT.balanceOf(address(this)) + USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
-        // if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
+        uint pool;
+        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
