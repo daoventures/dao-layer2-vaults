@@ -103,27 +103,30 @@ describe("Metaverse-Farmer", () => {
         const ILVETHVault = await ethers.getContractAt("ILVETHVault", "0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e", deployer)
         const GHSTETHVault = await ethers.getContractAt("UniswapV3", "0xF9b0707dEE34d36088A093d85b300A3B910E00fC", deployer)
         
-        // Main contract
-        const MVFStrategyFactory = await ethers.getContractFactory("MVFStrategy")
-        const mvfStrategy = await MVFStrategyFactory.deploy()
-        // await mvfStrategy.initialize(AXSETHVaultAddr, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
-        await mvfStrategy.initialize(AXSETHVault.address, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
-        const MVFVaultFactory = await ethers.getContractFactory("MVFVault")
-        const mvfVault = await MVFVaultFactory.deploy()
-        await mvfVault.initialize(
-            "DAO L2 Metaverse-Farmer", "daoMVF",
-            treasury.address, community.address, strategist.address, admin.address,
-            biconomy.address, mvfStrategy.address
-        )
-        await mvfStrategy.setVault(mvfVault.address)
-        await mvfVault.transferOwnership(multisig.address)
-        await mvfStrategy.transferOwnership(multisig.address)
+        // // Main contract
+        // const MVFStrategyFactory = await ethers.getContractFactory("MVFStrategy")
+        // const mvfStrategy = await MVFStrategyFactory.deploy()
+        // // await mvfStrategy.initialize(AXSETHVaultAddr, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
+        // await mvfStrategy.initialize(AXSETHVault.address, SLPETHVault.address, ILVETHVault.address, GHSTETHVault.address)
+        // const MVFVaultFactory = await ethers.getContractFactory("MVFVault")
+        // const mvfVault = await MVFVaultFactory.deploy()
+        // await mvfVault.initialize(
+        //     "DAO L2 Metaverse-Farmer", "daoMVF",
+        //     treasury.address, community.address, strategist.address, admin.address,
+        //     biconomy.address, mvfStrategy.address
+        // )
+        // await mvfStrategy.setVault(mvfVault.address)
+        // await mvfVault.transferOwnership(multisig.address)
+        // await mvfStrategy.transferOwnership(multisig.address)
         
-        // Set whitelist
-        await AXSETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
-        await SLPETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
-        await ILVETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
-        await GHSTETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
+        // // Set whitelist
+        // await AXSETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
+        // await SLPETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
+        // await ILVETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
+        // await GHSTETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
+
+        const mvfVault = await ethers.getContractAt("MVFVault", "0x5b3ae8b672a753906b1592d44741f71fbd05ba8c", deployer)
+        const mvfStrategy = await ethers.getContractAt("MVFStrategy", "0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2", deployer)
 
         // Unlock & transfer Stablecoins to client
         network.provider.request({method: "hardhat_impersonateAccount", params: [binanceAddr]})
@@ -142,9 +145,9 @@ describe("Metaverse-Farmer", () => {
         await USDCContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
         await DAIContract.connect(client).approve(mvfVault.address, ethers.constants.MaxUint256)
         tx = await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        tx = await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString())
-        await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         await mvfVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
         // console.log(ethers.utils.formatEther(await mvfVault.balanceOf(client.address)))
 
