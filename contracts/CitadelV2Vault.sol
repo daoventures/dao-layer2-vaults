@@ -79,11 +79,11 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
-    event SetTreasuryWallet(address indexed treasuryWallet);
-    event SetCommunityWallet(address indexed communityWallet);
-    event SetStrategistWallet(address indexed strategistWallet);
-    event SetAdminWallet(address indexed admin);
-    event SetBiconomy(address indexed biconomy);
+    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
+    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
+    event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
+    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetBiconomy(address oldBiconomy, address newBiconomy);
     
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -377,29 +377,34 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        address oldTreasuryWallet = treasuryWallet;
         treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(_treasuryWallet);
+        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
     }
 
     function setCommunityWallet(address _communityWallet) external onlyOwner {
+        address oldCommunityWallet = communityWallet;
         communityWallet = _communityWallet;
-        emit SetCommunityWallet(_communityWallet);
+        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
     }
 
     function setStrategist(address _strategist) external {
         require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        address oldStrategist = strategist;
         strategist = _strategist;
-        emit SetStrategistWallet(_strategist);
+        emit SetStrategistWallet(oldStrategist, _strategist);
     }
 
     function setAdmin(address _admin) external onlyOwner {
+        address oldAdmin = admin;
         admin = _admin;
-        emit SetAdminWallet(_admin);
+        emit SetAdminWallet(oldAdmin, _admin);
     }
 
     function setBiconomy(address _biconomy) external onlyOwner {
+        address oldBiconomy = trustedForwarder;
         trustedForwarder = _biconomy;
-        emit SetBiconomy(_biconomy);
+        emit SetBiconomy(oldBiconomy, _biconomy);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {
@@ -418,6 +423,23 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getTotalPendingDeposits() external view returns (uint) {
         return addresses.length;
+    }
+
+    function getAvailableInvest() external view returns (uint availableInvest) {
+        uint[] memory _percKeepInVault = percKeepInVault;
+        uint pool = getAllPoolInUSD();
+
+        uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
+        uint USDTAmt = USDT.balanceOf(address(this)) * 1e12;
+        if (USDTAmt > USDTAmtKeepInVault) availableInvest = USDTAmt - USDTAmtKeepInVault;
+
+        uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
+        uint USDCAmt = USDC.balanceOf(address(this)) * 1e12;
+        if (USDCAmt > USDCAmtKeepInVault) availableInvest += USDCAmt - USDCAmtKeepInVault;
+
+        uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
+        uint DAIAmt = DAI.balanceOf(address(this));
+        if (DAIAmt > DAIAmtKeepInVault) availableInvest += DAIAmt - DAIAmtKeepInVault;
     }
 
     function getAllPoolInETH() external view returns (uint) {

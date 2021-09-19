@@ -10,7 +10,7 @@ const HBTCWBTCHolderAddr = "0x7a7A599D2384ed203cFEA49721628aA851E0DA16"
 const binanceAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
 const CRVAddr = "0xD533a949740bb3306d119CC777fa900bA034cd52"
 
-describe("Citadel V2", function () {
+describe("DAO Citadel V2", function () {
     it("Should work on Curve L1 HBTCWBTC vault", async function () {
         let tx, receipt
         const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, multisig] = await ethers.getSigners()
@@ -167,6 +167,7 @@ describe("Citadel V2", function () {
         await USDCContract.connect(client3).approve(citadelV2Vault.address, ethers.constants.MaxUint256)
         await citadelV2Vault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
         await citadelV2Vault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        // console.log(ethers.utils.formatEther(await citadelV2Vault.getAvailableInvest()))
         tx = await citadelV2Vault.connect(admin).invest()
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString())
@@ -177,6 +178,7 @@ describe("Citadel V2", function () {
         // console.log(ethers.utils.formatEther(await citadelV2Vault.getPricePerFullShare())) // 0.979578909556444592
         // console.log((await citadelV2Strategy.getCurrentCompositionPerc()).toString()); // 2976,3008,3011,1002
         // console.log(ethers.utils.formatEther(await citadelV2Strategy.watermark())) // 46940.584632
+        // console.log(ethers.utils.formatEther(await citadelV2Vault.getAvailableInvest()))
 
         // Check farm vault pool
         // const chainLinkBTCETH = new ethers.Contract("0xdeb288F737066589598e9214E782fa5A8eD689e8", ["function latestAnswer() external view returns (int256)"], deployer)
@@ -219,17 +221,17 @@ describe("Citadel V2", function () {
         // console.log((await citadelV2Strategy.getCurrentCompositionPerc()).toString());
 
         // Check farm vault pool
-        const chainLinkBTCETH = new ethers.Contract("0xdeb288F737066589598e9214E782fa5A8eD689e8", ["function latestAnswer() external view returns (int256)"], deployer)
-        const BTCPriceInETH = await chainLinkBTCETH.latestAnswer()
-        const chainLinkETHUSD = new ethers.Contract("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", ["function latestAnswer() external view returns (int256)"], deployer)
-        const ETHPriceInUSD = await chainLinkETHUSD.latestAnswer()
-        const HBTCWBTCPoolInBTC = await HBTCWBTCVault.getAllPoolInNative()
-        const HBTCWBTCPoolInETH = HBTCWBTCPoolInBTC.mul(BTCPriceInETH).div(ethers.utils.parseEther("1"))
-        const HBTCWBTCPoolInUSD = HBTCWBTCPoolInETH.mul(ETHPriceInUSD).div(ethers.utils.parseUnits("1", 8))
-        console.log(ethers.utils.formatEther(HBTCWBTCPoolInUSD)) // 13801.118356383326276081
-        console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 13948.629696953851633376
-        console.log(ethers.utils.formatEther(await DPIETHVault.getAllPoolInUSD())) // 16679.831746268282439603
-        console.log(ethers.utils.formatEther(await DAIETHVault.getAllPoolInUSD())) // 4649.817522473743664569
+        // const chainLinkBTCETH = new ethers.Contract("0xdeb288F737066589598e9214E782fa5A8eD689e8", ["function latestAnswer() external view returns (int256)"], deployer)
+        // const BTCPriceInETH = await chainLinkBTCETH.latestAnswer()
+        // const chainLinkETHUSD = new ethers.Contract("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", ["function latestAnswer() external view returns (int256)"], deployer)
+        // const ETHPriceInUSD = await chainLinkETHUSD.latestAnswer()
+        // const HBTCWBTCPoolInBTC = await HBTCWBTCVault.getAllPoolInNative()
+        // const HBTCWBTCPoolInETH = HBTCWBTCPoolInBTC.mul(BTCPriceInETH).div(ethers.utils.parseEther("1"))
+        // const HBTCWBTCPoolInUSD = HBTCWBTCPoolInETH.mul(ETHPriceInUSD).div(ethers.utils.parseUnits("1", 8))
+        // console.log(ethers.utils.formatEther(HBTCWBTCPoolInUSD)) // 13801.118356383326276081
+        // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 13948.629696953851633376
+        // console.log(ethers.utils.formatEther(await DPIETHVault.getAllPoolInUSD())) // 16679.831746268282439603
+        // console.log(ethers.utils.formatEther(await DAIETHVault.getAllPoolInUSD())) // 4649.817522473743664569
 
         // Test emergency withdraw
         // await citadelV2Vault.connect(admin).emergencyWithdraw()
@@ -256,9 +258,9 @@ describe("Citadel V2", function () {
         await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr)
         await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr)
         await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr)
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10180.132606
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10380.202855
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10377.367946
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10180.132606
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10380.202855
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10377.367946
 
         // await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDCAddr)
         // await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDCAddr)

@@ -1,7 +1,7 @@
 const { run } = require('hardhat')
 
-const contractAddr = "0xc4998e3F7CD16c4c12978D4BD3f90808b1d0AC1F"
-const contractName = "CitadelV2StrategyKovan"
+const contractAddr = "0xF4489528a40356a2f37A4a91c00F69b620894c0d"
+const contractName = "CitadelV2VaultKovan"
 
 async function main() {
     await run('verify:verify', {

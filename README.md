@@ -1,12 +1,12 @@
-# Metaverse-Farmer
+# DAO Citadel V2
 
 ## Addresses
 
 ### Mainnet
 
-Curve vault (implementation) contract address: 
+Curve vault (implementation) contract address: 0x4a73a518d13D7cf750f80f1dB14E2F9C37DD1EbB
 
-Curve factory contract address: 
+Curve factory contract address: 0x084F149E5B293eB0244fBEc1B4Ed76a56a498134
 
 Curve HBTC-WBTC vault (proxy) contract address: 
 
@@ -18,15 +18,15 @@ Sushi DPI-ETH vault (proxy) contract address:
 
 Sushi DAI-ETH vault (proxy) contract address: 
 
-Citadel V2 vault (implementation) contract address: 
+DAO Citadel V2 vault (implementation) contract address: 
 
-Citadel V2 vault (proxy) contract address: 
+DAO Citadel V2 vault (proxy) contract address: 
 
-Citadel V2 strategy (implementation) contract address: 
+DAO Citadel V2 strategy (implementation) contract address: 
 
-Citadel V2 strategy (proxy) contract address: 
+DAO Citadel V2 strategy (proxy) contract address: 
 
-proxy admin address for all contract above: 
+proxy admin contract address: 0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44
 
 ### Kovan
 
@@ -44,15 +44,15 @@ Sushi DPI-ETH vault (proxy) contract address: 0x83aCB6478E7716CA365e5BEa21Fe05A9
 
 Sushi DAI-ETH vault (proxy) contract address: 0x244517fE869B3054B83b6F005A895957d6feEAe6
 
-Citadel V2 vault (implementation) contract address: 0xD81Cd018ab66483EdaeD2552B1F3b27B6866Af99
+DAO Citadel V2 vault (implementation) contract address: 0xF4489528a40356a2f37A4a91c00F69b620894c0d
 
-Citadel V2 vault (proxy) contract address: 0x6435B8fc860381A7088ccD745FC73F5c844e8Bad
+DAO Citadel V2 vault (proxy) contract address: 0x6435B8fc860381A7088ccD745FC73F5c844e8Bad
 
-Citadel V2 strategy (implementation) contract address: 0xc4998e3F7CD16c4c12978D4BD3f90808b1d0AC1F
+DAO Citadel V2 strategy (implementation) contract address: 0xc4998e3F7CD16c4c12978D4BD3f90808b1d0AC1F
 
-Citadel V2 strategy (proxy) contract address: 0xa2B42A59eE0312A5f9D56DFaD90EE6fa4A1bE184
+DAO Citadel V2 strategy (proxy) contract address: 0xa2B42A59eE0312A5f9D56DFaD90EE6fa4A1bE184
 
-proxy admin address for all contract above: 0x852c2F84adb2BAB6e6E6C260AAa95B2753E69e5f
+proxy admin contract address: 0x852c2F84adb2BAB6e6E6C260AAa95B2753E69e5f
 
 ## Deployment
 

@@ -79,6 +79,11 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
+    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
+    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
+    event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
+    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetBiconomy(address oldBiconomy, address newBiconomy);
     
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -371,6 +376,37 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
         strategy.setProfitFeePerc(profitFeePerc);
         emit SetProfitFeePerc(profitFeePerc);
+    }
+
+    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+        address oldTreasuryWallet = treasuryWallet;
+        treasuryWallet = _treasuryWallet;
+        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
+    }
+
+    function setCommunityWallet(address _communityWallet) external onlyOwner {
+        address oldCommunityWallet = communityWallet;
+        communityWallet = _communityWallet;
+        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
+    }
+
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
+        address oldStrategist = strategist;
+        strategist = _strategist;
+        emit SetStrategistWallet(oldStrategist, _strategist);
+    }
+
+    function setAdmin(address _admin) external onlyOwner {
+        address oldAdmin = admin;
+        admin = _admin;
+        emit SetAdminWallet(oldAdmin, _admin);
+    }
+
+    function setBiconomy(address _biconomy) external onlyOwner {
+        address oldBiconomy = trustedForwarder;
+        trustedForwarder = _biconomy;
+        emit SetBiconomy(oldBiconomy, _biconomy);
     }
 
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {

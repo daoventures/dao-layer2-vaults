@@ -16,6 +16,7 @@ module.exports = {
         },
         mainnet: {
             url: process.env.ALCHEMY_URL_MAINNET,
+            gasPrice: 31000000000,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
         },
         kovan: {
