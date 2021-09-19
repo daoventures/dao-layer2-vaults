@@ -31,16 +31,16 @@ interface IStrategy {
     function getAllPoolInUSD() external view returns (uint);
 }
 
-contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract StonksVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x07de306FF27a2B630B1141956844eB1552B956B5);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xb7a4F3E9097C08dA09517b5aB877F7a917224ede);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);
     IERC20Upgradeable constant UST = IERC20Upgradeable(0xa47c8bf37f92aBed4A126BDA807A7b7498661acD);
     mapping(address => int128) curveId;
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     IRouter constant uniRouter = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // For calculate Stablecoin keep in vault in ETH only
     ICurve constant curve = ICurve(0x890f4e345B1dAED0367A877a1612f86A1f86985f); // UST pool
@@ -114,11 +114,11 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         curveId[address(DAI)] = 1;
         curveId[address(UST)] = 0;
 
-        USDT.safeApprove(address(curve), type(uint).max);
-        USDC.safeApprove(address(curve), type(uint).max);
-        DAI.safeApprove(address(curve), type(uint).max);
-        UST.safeApprove(address(curve), type(uint).max);
-        UST.safeApprove(address(strategy), type(uint).max);
+        // USDT.safeApprove(address(curve), type(uint).max);
+        // USDC.safeApprove(address(curve), type(uint).max);
+        // DAI.safeApprove(address(curve), type(uint).max);
+        // UST.safeApprove(address(curve), type(uint).max);
+        // UST.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -156,44 +156,47 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint _totalSupply = totalSupply();
         uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
         _burn(msg.sender, share);
-        strategy.adjustWatermark(withdrawAmt, false);
+        // strategy.adjustWatermark(withdrawAmt, false);
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
-        if (withdrawAmt <= tokenAmtInVault) {
-            if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
-            token.safeTransfer(msg.sender, withdrawAmt);
-        } else {
-            if (!paused()) {
-                strategy.withdraw(withdrawAmt);
-                withdrawAmt = curve.exchange_underlying(curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this)), 0);
-                token.safeTransfer(msg.sender, withdrawAmt);
-            } else {
-                withdrawAmt = curve.exchange_underlying(
-                    curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this))* share / _totalSupply, 0
-                );
-            }
-        }
+        // uint tokenAmtInVault = token.balanceOf(address(this));
+        // if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
+        // if (withdrawAmt <= tokenAmtInVault) {
+        //     if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+        //     token.safeTransfer(msg.sender, withdrawAmt);
+        // } else {
+        //     if (!paused()) {
+        //         strategy.withdraw(withdrawAmt);
+        //         withdrawAmt = curve.exchange_underlying(curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this)), 0);
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else {
+        //         withdrawAmt = curve.exchange_underlying(
+        //             curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this))* share / _totalSupply, 0
+        //         );
+        //     }
+        // }
+
+        if (token != DAI) withdrawAmt = withdrawAmt / 1e12;
+        token.safeTransfer(msg.sender, withdrawAmt);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
     function invest() public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+        // require(
+        //     msg.sender == admin ||
+        //     msg.sender == owner() ||
+        //     msg.sender == address(this), "Only authorized caller"
+        // );
 
-        if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint USTAmt, uint tokenAmtToInvest) = swapTokenToUST(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(USTAmt);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        // (uint USTAmt, uint tokenAmtToInvest) = swapTokenToUST(USDTAmt, USDCAmt, DAIAmt);
+        // strategy.invest(USTAmt);
+        // strategy.adjustWatermark(tokenAmtToInvest, true);
         distributeLPToken();
 
-        emit Invest(USTAmt);
+        // emit Invest(USTAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {

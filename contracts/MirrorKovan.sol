@@ -60,7 +60,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract MirrorKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeERC20Upgradeable for IPair;
 
@@ -115,18 +115,18 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         admin = _admin;
 
         lpPool = _lpPool;
-        lpToken = IPair(lpPool.lpt());
-        token1 = lpToken.token1();
-        mAsset = token1 == address(UST) ? lpToken.token0() : token1;
+        // lpToken = IPair(lpPool.lpt());
+        // token1 = lpToken.token1();
+        // mAsset = token1 == address(UST) ? lpToken.token0() : token1;
 
         yieldFee = 2000;
         depositFee = 1000;
 
-        IERC20Upgradeable(mAsset).approve(address(uniRouter), type(uint).max);
-        UST.safeApprove(address(uniRouter), type(uint).max);
-        lpToken.safeApprove(address(uniRouter), type(uint).max);
-        lpToken.safeApprove(address(_lpPool), type(uint).max);
-        MIR.safeApprove(address(uniRouter), type(uint).max);
+        // IERC20Upgradeable(mAsset).approve(address(uniRouter), type(uint).max);
+        // UST.safeApprove(address(uniRouter), type(uint).max);
+        // lpToken.safeApprove(address(uniRouter), type(uint).max);
+        // lpToken.safeApprove(address(_lpPool), type(uint).max);
+        // MIR.safeApprove(address(uniRouter), type(uint).max);
     }
 
     function deposit(uint amount) external nonReentrant whenNotPaused {

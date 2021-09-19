@@ -1,9 +1,9 @@
 const { ethers, artifacts, network, upgrades } = require("hardhat")
 const IERC20_ABI = require("../abis/IERC20_ABI.json")
 
-const MFSTPoolAddr = "0x27a14c03C364D3265e0788f536ad8d7afB0695F7"
-const mMFSTUSTAddr = "0xeAfAD3065de347b910bb88f09A5abE580a09D655"
-const mMFSTUSTHolderAddr = "" // Cannot test because holder not enough token
+const MSFTPoolAddr = "0x27a14c03C364D3265e0788f536ad8d7afB0695F7"
+const mMSFTUSTAddr = "0xeAfAD3065de347b910bb88f09A5abE580a09D655"
+const mMSFTUSTHolderAddr = "" // Cannot test because holder not enough token
 
 const TWTRPoolAddr = "0x99d737ab0df10cdC99c6f64D0384ACd5C03AEF7F"
 const mTWTRUSTAddr = "0x34856be886A2dBa5F7c38c4df7FD86869aB08040"
@@ -32,11 +32,15 @@ const mNFLXUSTHolderAddr = "0x7ba605bc00ea26512a639d5e0335eaeb3e81ad94"
 const binanceAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
 
 const MIRAddr = "0x09a3EcAFa817268f77BE1283176B946C4ff2E608"
+const USTAddr = "0xa47c8bf37f92abed4a126bda807a7b7498661acd"
+const USDTAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+const USDCAddr = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+const DAIAddr = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 
-describe("Metaverse-Farmer", () => {
+describe("DAO Stonks V2", () => {
     it("should work for DAO L2 Stonks contract", async () => {
         let tx, receipt
-        const [deployer, client, client2, treasury, community, strategist, admin, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, strategist, admin, biconomy, multisig] = await ethers.getSigners()
 
         // Deploy Mirror factory & implementation
         const MirrorVault = await ethers.getContractFactory("Mirror", deployer)
@@ -49,16 +53,16 @@ describe("Metaverse-Farmer", () => {
         await mirrorFactory.transferOwnership(multisig.address)
 
         // Deploy Microsoft vault
-        const datamMFSTUST = mirrorVaultInterface.encodeFunctionData(
+        const datamMSFTUST = mirrorVaultInterface.encodeFunctionData(
             "initialize",
             [
-                "DAO L1 Mirror mMFST-UST", "daoMirrorMMFST", MFSTPoolAddr,
+                "DAO L1 Mirror mMSFT-UST", "daoMirrorMMSFT", MSFTPoolAddr,
                 treasury.address, community.address, strategist.address, admin.address,
             ]
         )
-        await mirrorFactory.connect(multisig).createVault(datamMFSTUST)
-        const mMFSTUSTVaultAddr = await mirrorFactory.getVault(0)
-        const mMFSTUSTVault = await ethers.getContractAt("Mirror", mMFSTUSTVaultAddr, deployer)
+        await mirrorFactory.connect(multisig).createVault(datamMSFTUST)
+        const mMSFTUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mMSFTUSTVault = await ethers.getContractAt("Mirror", mMSFTUSTVaultAddr, deployer)
 
         // Deploy Twitter vault
         const datamTWTRUST = mirrorVaultInterface.encodeFunctionData(
@@ -69,7 +73,7 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamTWTRUST)
-        const mTWTRUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mTWTRUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mTWTRUSTVault = await ethers.getContractAt("Mirror", mTWTRUSTVaultAddr, deployer)
 
         // Deploy Tesla vault
@@ -81,7 +85,7 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamTSLAUST)
-        const mTSLAUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mTSLAUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mTSLAUSTVault = await ethers.getContractAt("Mirror", mTSLAUSTVaultAddr, deployer)
 
         // Deploy Google vault
@@ -93,7 +97,7 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamGOOGLUST)
-        const mGOOGLUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mGOOGLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mGOOGLUSTVault = await ethers.getContractAt("Mirror", mGOOGLUSTVaultAddr, deployer)
 
         // Deploy Amazon vault
@@ -105,7 +109,7 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamAMZNUST)
-        const mAMZNUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mAMZNUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mAMZNUSTVault = await ethers.getContractAt("Mirror", mAMZNUSTVaultAddr, deployer)
 
         // Deploy Apple vault
@@ -117,7 +121,7 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamAPPLUST)
-        const mAPPLUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mAPPLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mAPPLUSTVault = await ethers.getContractAt("Mirror", mAPPLUSTVaultAddr, deployer)
 
         // Deploy Netflix vault
@@ -129,8 +133,198 @@ describe("Metaverse-Farmer", () => {
             ]
         )
         await mirrorFactory.connect(multisig).createVault(datamNFLXUST)
-        const mNFLXUSTVaultAddr = await mirrorFactory.getVault(0)
+        const mNFLXUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
         const mNFLXUSTVault = await ethers.getContractAt("Mirror", mNFLXUSTVaultAddr, deployer)
+
+        // Deploy Stonks
+        const StonksStrategy = await ethers.getContractFactory("StonksStrategy", deployer)
+        const stonksStrategy = await upgrades.deployProxy(StonksStrategy, [
+            mMSFTUSTVaultAddr, mTWTRUSTVaultAddr, mTSLAUSTVaultAddr, mGOOGLUSTVaultAddr, mAMZNUSTVaultAddr, mAPPLUSTVaultAddr, mNFLXUSTVaultAddr
+        ])
+        const StonksVault = await ethers.getContractFactory("StonksVault", deployer)
+        const stonksVault = await upgrades.deployProxy(StonksVault, [
+            "DAO L2 Stonks V2", "daoSTO2",
+            treasury.address, community.address, strategist.address, admin.address,
+            biconomy.address, stonksStrategy.address
+        ])
+        await stonksStrategy.setVault(stonksVault.address)
+        
+        // Set whitelist
+        await mMSFTUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mTWTRUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mTSLAUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mGOOGLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mAMZNUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mAPPLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        await mNFLXUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+
+        // Unlock & transfer Stablecoins to client
+        network.provider.request({method: "hardhat_impersonateAccount", params: [binanceAddr]})
+        const binanceAcc = await ethers.getSigner(binanceAddr)
+        const USDTContract = new ethers.Contract(USDTAddr, IERC20_ABI, binanceAcc)
+        const USDCContract = new ethers.Contract(USDCAddr, IERC20_ABI, binanceAcc)
+        const DAIContract = new ethers.Contract(DAIAddr, IERC20_ABI, binanceAcc)
+        await USDTContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
+        await USDTContract.transfer(client2.address, ethers.utils.parseUnits("10000", 6))
+        await USDCContract.transfer(client.address, ethers.utils.parseUnits("10000", 6))
+        await USDCContract.transfer(client3.address, ethers.utils.parseUnits("10000", 6))
+        await DAIContract.transfer(client.address, ethers.utils.parseUnits("10000", 18))
+
+        // Deposit
+        await USDTContract.connect(client).approve(stonksVault.address, ethers.constants.MaxUint256)
+        await USDCContract.connect(client).approve(stonksVault.address, ethers.constants.MaxUint256)
+        await DAIContract.connect(client).approve(stonksVault.address, ethers.constants.MaxUint256)
+        tx = await stonksVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        await stonksVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        await stonksVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
+        // console.log(ethers.utils.formatEther(await stonksVault.balanceOf(client.address)))
+
+        // Invest
+        tx = await stonksVault.connect(admin).invest()
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInETH())) // 8.179868425431329996
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInUSD())) // 29777.35820600784586746
+        // console.log(ethers.utils.formatEther(
+        //     (await stonksVault.balanceOf(client.address))
+        //     .mul(await stonksVault.getPricePerFullShare())
+        //     .div(ethers.utils.parseEther("1")) // 29777.35820600784585
+        // )) // User share in USD
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 0.992578606866928195
+        // console.log((await stonksStrategy.getCurrentCompositionPerc()).toString()); // 1428,1428,1428,1428,1428,1428,1428
+        // console.log(ethers.utils.formatEther(await stonksVault.balanceOf(client.address))) // 30000.0
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 30000.0
+
+        // Check fees
+        // await stonksVault.connect(admin).transferOutFees()
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(strategist.address), 6))
+        // console.log(ethers.utils.formatEther(await stonksVault.fees()))
+
+        // Check Stablecoins keep in vault
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(stonksVault.address), 18))
+
+        // Second invest
+        await USDTContract.connect(client2).approve(stonksVault.address, ethers.constants.MaxUint256)
+        await USDCContract.connect(client3).approve(stonksVault.address, ethers.constants.MaxUint256)
+        tx = await stonksVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
+        await stonksVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        // console.log(ethers.utils.formatEther(await stonksVault.getAvailableInvest()))
+        tx = await stonksVault.connect(admin).invest()
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString()) // 2285996
+        // console.log(ethers.utils.formatEther(await stonksVault.balanceOf(client2.address))) // 10110.782672207558898048
+        // console.log(ethers.utils.formatEther(await stonksVault.balanceOf(client3.address))) // 10110.782672207558898048
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInETH())) // 13.644751236593533787
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInUSD())) // 49671.293482020702167575
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 0.989043116067356738
+        // console.log((await stonksStrategy.getCurrentCompositionPerc()).toString()); // 1428,1428,1428,1428,1428,1428,1428
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 50000.0
+        // console.log(ethers.utils.formatEther(await stonksVault.getAvailableInvest()))
+
+        // Check farm vault pool
+        // console.log(ethers.utils.formatEther(await mMSFTUSTVault.getAllPoolInUSD())) // 7095.948795472014612215
+        // console.log(ethers.utils.formatEther(await mTWTRUSTVault.getAllPoolInUSD())) // 7095.948795472014612215
+        // console.log(ethers.utils.formatEther(await mTSLAUSTVault.getAllPoolInUSD())) // 7095.964880722116693756
+        // console.log(ethers.utils.formatEther(await mGOOGLUSTVault.getAllPoolInUSD())) // 7095.724645310536278354
+        // console.log(ethers.utils.formatEther(await mAMZNUSTVault.getAllPoolInUSD())) // 7095.654618516811107034
+        // console.log(ethers.utils.formatEther(await mAPPLUSTVault.getAllPoolInUSD())) // 7096.020705852583208862
+        // console.log(ethers.utils.formatEther(await mNFLXUSTVault.getAllPoolInUSD())) // 7095.955348735692916506
+
+        // Assume profit
+        network.provider.request({method: "hardhat_impersonateAccount", params: [mAMZNUSTHolderAddr]})
+        const unlockedAcc = await ethers.getSigner(mAMZNUSTHolderAddr)
+        const mAMZNUSTContract = new ethers.Contract(mAMZNUSTAddr, IERC20_ABI, unlockedAcc)
+        await mAMZNUSTContract.transfer(mAMZNUSTVaultAddr, ethers.utils.parseEther("5"))
+
+        // Collect profit
+        // const currentWatermark = await stonksStrategy.watermark()
+        // const currentPool = await stonksVault.getAllPoolInUSD()
+        // console.log(ethers.utils.formatEther(currentPool.sub(currentWatermark))) // 268.688076396889013834
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 1.000938296758745125
+        tx = await stonksVault.connect(admin).collectProfitAndUpdateWatermark() 
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString()) // 377354
+        // console.log(ethers.utils.formatEther(await stonksVault.fees())) // 53.737615279377802766
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 50214.950461117511211068
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInUSD())) // 50214.950461117511211068
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 0.999868285999206868
+
+        // Test reimburse
+        // await stonksVault.connect(admin).reimburse(0, USDTAddr, ethers.utils.parseUnits("1000", 6))
+        // await stonksVault.connect(admin).reimburse(1, USDCAddr, ethers.utils.parseUnits("1000", 6))
+        // await stonksVault.connect(admin).reimburse(2, DAIAddr, ethers.utils.parseUnits("1000", 18))
+        // await stonksVault.connect(admin).reimburse(3, USDTAddr, ethers.utils.parseUnits("1000", 6))
+        // await stonksVault.connect(admin).reimburse(4, USDCAddr, ethers.utils.parseUnits("1000", 6))
+        // await stonksVault.connect(admin).reimburse(5, DAIAddr, ethers.utils.parseUnits("1000", 18))
+        // await stonksVault.connect(admin).reimburse(6, USDTAddr, ethers.utils.parseUnits("1000", 6))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(stonksVault.address), 18))
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 50293.071170472067808352
+        // console.log((await stonksStrategy.getCurrentCompositionPerc()).toString());
+
+        // Test emergency withdraw
+        // await stonksVault.connect(admin).emergencyWithdraw()
+        // console.log(ethers.utils.formatEther(await mMSFTUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mTWTRUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mTSLAUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mGOOGLUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mAMZNUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mAPPLUSTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await mNFLXUSTVault.getAllPoolInUSD()))
+        // const USTContract = new ethers.Contract(USTAddr, IERC20_ABI, deployer)
+        // console.log(ethers.utils.formatEther(await USTContract.balanceOf(stonksVault.address)))
+        // console.log(ethers.utils.formatEther(await USTContract.balanceOf(stonksStrategy.address)))
+
+        // await stonksVault.connect(admin).reinvest()
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 50293.071170472067808352
+        // console.log((await stonksStrategy.getCurrentCompositionPerc()).toString()); // 1428,1428,1428,1428,1428,1428,1428
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInUSD())) // 50024.641064451285003052
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 0.996078890042288741
+
+        // Withdraw
+        console.log("-----withdraw-----")
+        await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDTAddr)
+        await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDTAddr)
+        await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), USDTAddr)
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10020.343307
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10130.696151
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10130.037173
+
+        // await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDCAddr)
+        // await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDCAddr)
+        // await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), USDCAddr)
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 10019.233023
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 10129.573627
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 10128.914708
+
+        // await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), DAIAddr)
+        // await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), DAIAddr)
+        // await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), DAIAddr)
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 10016.808704262031885107
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 10127.122539132309537071
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 10126.463710071705723272
+
+        // console.log(ethers.utils.formatEther(await stonksVault.getAllPoolInUSD())) // 19994.078134800171431727
+        // console.log(ethers.utils.formatEther(await stonksVault.getPricePerFullShare())) // 0.999703906740008571
+        // console.log((await stonksStrategy.getCurrentCompositionPerc()).toString()); // 1411,1411,1411,1411,1530,1411,1411
+        // console.log(ethers.utils.formatEther(await stonksStrategy.watermark())) // 19999.020884322386855677
+
+        // console.log(ethers.utils.formatEther(await mMSFTUSTVault.getAllPoolInUSD())) // 2829.99341725763732707
+        // console.log(ethers.utils.formatEther(await mTWTRUSTVault.getAllPoolInUSD())) // 2829.993137693699720961
+        // console.log(ethers.utils.formatEther(await mTSLAUSTVault.getAllPoolInUSD())) // 2829.958715072539953781
+        // console.log(ethers.utils.formatEther(await mGOOGLUSTVault.getAllPoolInUSD())) // 2829.86330444897997172
+        // console.log(ethers.utils.formatEther(await mAMZNUSTVault.getAllPoolInUSD())) // 3068.045883581543136473
+        // console.log(ethers.utils.formatEther(await mAPPLUSTVault.getAllPoolInUSD())) // 2829.988068633484443712
+        // console.log(ethers.utils.formatEther(await mNFLXUSTVault.getAllPoolInUSD())) // 2829.973223391664680776
     })
 
 

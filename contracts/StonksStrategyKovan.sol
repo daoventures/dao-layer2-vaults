@@ -50,7 +50,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract StonksStrategy is Initializable, OwnableUpgradeable {
+contract StonksStrategyKovan is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable constant UST = IERC20Upgradeable(0xa47c8bf37f92aBed4A126BDA807A7b7498661acD);
@@ -135,29 +135,29 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
         profitFeePerc = 2000;
 
-        UST.safeApprove(address(uniRouter), type(uint).max);
-        mMSFT.safeApprove(address(uniRouter), type(uint).max);
-        mTWTR.safeApprove(address(uniRouter), type(uint).max);
-        mTSLA.safeApprove(address(uniRouter), type(uint).max);
-        mGOOGL.safeApprove(address(uniRouter), type(uint).max);
-        mAMZN.safeApprove(address(uniRouter), type(uint).max);
-        mAAPL.safeApprove(address(uniRouter), type(uint).max);
-        mNFLX.safeApprove(address(uniRouter), type(uint).max);
+        // UST.safeApprove(address(uniRouter), type(uint).max);
+        // mMSFT.safeApprove(address(uniRouter), type(uint).max);
+        // mTWTR.safeApprove(address(uniRouter), type(uint).max);
+        // mTSLA.safeApprove(address(uniRouter), type(uint).max);
+        // mGOOGL.safeApprove(address(uniRouter), type(uint).max);
+        // mAMZN.safeApprove(address(uniRouter), type(uint).max);
+        // mAAPL.safeApprove(address(uniRouter), type(uint).max);
+        // mNFLX.safeApprove(address(uniRouter), type(uint).max);
 
-        mMSFTUST.safeApprove(address(mMSFTUSTVault), type(uint).max);
-        mMSFTUST.safeApprove(address(uniRouter), type(uint).max);
-        mTWTRUST.safeApprove(address(mTWTRUSTVault), type(uint).max);
-        mTWTRUST.safeApprove(address(uniRouter), type(uint).max);
-        mTSLAUST.safeApprove(address(mTSLAUSTVault), type(uint).max);
-        mTSLAUST.safeApprove(address(uniRouter), type(uint).max);
-        mGOOGLUST.safeApprove(address(mGOOGLUSTVault), type(uint).max);
-        mGOOGLUST.safeApprove(address(uniRouter), type(uint).max);
-        mAMZNUST.safeApprove(address(mAMZNUSTVault), type(uint).max);
-        mAMZNUST.safeApprove(address(uniRouter), type(uint).max);
-        mAAPLUST.safeApprove(address(mAAPLUSTVault), type(uint).max);
-        mAAPLUST.safeApprove(address(uniRouter), type(uint).max);
-        mNFLXUST.safeApprove(address(mNFLXUSTVault), type(uint).max);
-        mNFLXUST.safeApprove(address(uniRouter), type(uint).max);
+        // mMSFTUST.safeApprove(address(mMSFTUSTVault), type(uint).max);
+        // mMSFTUST.safeApprove(address(uniRouter), type(uint).max);
+        // mTWTRUST.safeApprove(address(mTWTRUSTVault), type(uint).max);
+        // mTWTRUST.safeApprove(address(uniRouter), type(uint).max);
+        // mTSLAUST.safeApprove(address(mTSLAUSTVault), type(uint).max);
+        // mTSLAUST.safeApprove(address(uniRouter), type(uint).max);
+        // mGOOGLUST.safeApprove(address(mGOOGLUSTVault), type(uint).max);
+        // mGOOGLUST.safeApprove(address(uniRouter), type(uint).max);
+        // mAMZNUST.safeApprove(address(mAMZNUSTVault), type(uint).max);
+        // mAMZNUST.safeApprove(address(uniRouter), type(uint).max);
+        // mAAPLUST.safeApprove(address(mAAPLUSTVault), type(uint).max);
+        // mAAPLUST.safeApprove(address(uniRouter), type(uint).max);
+        // mNFLXUST.safeApprove(address(mNFLXUSTVault), type(uint).max);
+        // mNFLXUST.safeApprove(address(uniRouter), type(uint).max);
     }
 
     function invest(uint USTAmt) external onlyVault {
