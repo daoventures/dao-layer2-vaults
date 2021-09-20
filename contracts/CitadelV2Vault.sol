@@ -331,21 +331,21 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
         require(_networkFeeTier2[0] != 0, "Minimun amount cannot be 0");
-        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must greater than minimun amount");
+        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must > minimun amount");
         /**
-         * Network fees have three tier, but it is sufficient to have minimun and maximun amount of tier 2
+         * Network fee has three tier, but it is sufficient to have minimun and maximun amount of tier 2
          * Tier 1: deposit amount < minimun amount of tier 2
          * Tier 2: minimun amount of tier 2 <= deposit amount <= maximun amount of tier 2
          * Tier 3: amount > maximun amount of tier 2
          */
-        uint[] memory oldNetworkFeeTier2 = networkFeeTier2; // For event purpose
+        uint[] memory oldNetworkFeeTier2 = networkFeeTier2;
         networkFeeTier2 = _networkFeeTier2;
         emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
     }
 
     function setCustomNetworkFeeTier(uint _customNetworkFeeTier) external onlyOwner {
         require(_customNetworkFeeTier > networkFeeTier2[1], "Must > tier 2");
-        uint oldCustomNetworkFeeTier = customNetworkFeeTier; // For event purpose
+        uint oldCustomNetworkFeeTier = customNetworkFeeTier;
         customNetworkFeeTier = _customNetworkFeeTier;
         emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
     }
@@ -354,20 +354,20 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001,
             "Not allow > 30%");
         /**
-         * _networkFeePerc content a array of 3 element, representing network fee of tier 1, tier 2 and tier 3
+         * _networkFeePerc contains an array of 3 elements, representing network fee of tier 1, tier 2 and tier 3
          * For example networkFeePerc is [100, 75, 50],
-         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (_DENOMINATOR = 10000)
+         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (Denominator = 10000)
          */
-        uint[] memory oldNetworkFeePerc = networkFeePerc; // For event purpose
+        uint[] memory oldNetworkFeePerc = networkFeePerc;
         networkFeePerc = _networkFeePerc;
         emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
     }
 
-    function setCustomNetworkFeePerc(uint _percentage) public onlyOwner {
-        require(_percentage < networkFeePerc[2], "Not allow > tier 2");
-        uint oldCustomNetworkFeePerc = customNetworkFeePerc; // For event purpose
-        customNetworkFeePerc = _percentage;
-        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _percentage);
+    function setCustomNetworkFeePerc(uint _customNetworkFeePerc) external onlyOwner {
+        require(_customNetworkFeePerc < networkFeePerc[2], "Not allow > tier 2");
+        uint oldCustomNetworkFeePerc = customNetworkFeePerc;
+        customNetworkFeePerc = _customNetworkFeePerc;
+        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _customNetworkFeePerc);
     }
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
@@ -474,11 +474,11 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
         require(ETHPriceInUSD > 0, "ChainLink error");
 
-        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 - fees;
-        uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
-
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
+
+        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 + tokenKeepInVault - fees;
+        uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
         
         return strategyPoolInUSD + tokenKeepInVault - fees;
     }
