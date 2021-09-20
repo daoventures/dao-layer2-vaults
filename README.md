@@ -8,11 +8,11 @@ Curve vault (implementation) contract address: 0x4a73a518d13D7cf750f80f1dB14E2F9
 
 Curve factory contract address: 0x084F149E5B293eB0244fBEc1B4Ed76a56a498134
 
-Curve HBTC-WBTC vault (proxy) contract address: 
+Curve HBTC-WBTC vault (proxy) contract address: 0x084F149E5B293eB0244fBEc1B4Ed76a56a498134
 
-Curve HBTC-WBTC zap contract address: 
+Curve HBTC-WBTC zap contract address: 0x12922b9b65A13331554C9dDDC2D19C9ec06fA47F
 
-Sushi WBTC-ETH vault (proxy) contract address: 
+Sushi WBTC-ETH vault (proxy) contract address: 0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3
 
 Sushi DPI-ETH vault (proxy) contract address: 
 
