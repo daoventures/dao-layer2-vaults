@@ -162,7 +162,6 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function invest(uint USTAmt) external onlyVault {
         UST.safeTransferFrom(vault, address(this), USTAmt);
-        USTAmt = UST.balanceOf(address(this));
 
         uint[] memory pools = getEachPoolInUSD();
         uint pool = pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5] + pools[6] + USTAmt;

@@ -25,6 +25,7 @@ interface IStrategy {
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
     function emergencyWithdraw() external;
+    function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
     function watermark() external view returns (uint);
     function getAllPoolInETH() external view returns (uint);
@@ -74,7 +75,7 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
-    event SetProfitFeePerc(uint profitFeePerc);
+    event SetProfitFeePerc(uint oldProfitFeePerc, uint profitFeePerc);
     event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
     event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
     event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
@@ -366,8 +367,9 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+        uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
-        emit SetProfitFeePerc(profitFeePerc);
+        emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
