@@ -471,7 +471,8 @@ contract StonksVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
         
-        return strategy.getAllPoolInUSD() + tokenKeepInVault - fees;
+        // return strategy.getAllPoolInUSD() + tokenKeepInVault - fees;
+        return tokenKeepInVault - fees;
     }
 
     /// @notice Can be use for calculate both user shares & APR    
