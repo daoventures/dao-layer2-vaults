@@ -80,7 +80,7 @@ contract TAStrategy is Initializable {
     event InvestUSDCETH(uint WETHAmt, uint USDCETHAmt);
     event WithdrawWBTCETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawUSDCETH(uint lpTokenAmt, uint WETHAmt);
-    event CrossSwitch(uint lpTokenAmtFrom, uint lpTokenAmtTo, bool modeFrom, bool modeTo);
+    event SwitchMode(uint lpTokenAmtFrom, uint lpTokenAmtTo, bool modeFrom, bool modeTo);
     event CollectProfitAndUpdateWatermark(uint currentWatermark, uint lastWatermark, uint fee);
     event AdjustWatermark(uint currentWatermark, uint lastWatermark);
     event Reimburse(uint WETHAmt);
@@ -157,7 +157,7 @@ contract TAStrategy is Initializable {
         return WETHAmt;
     }
 
-    function crossSwitch() external {
+    function switchMode() external {
         if (mode) { // Attack switch to defence
             uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)));
             (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
@@ -169,7 +169,7 @@ contract TAStrategy is Initializable {
             );
             USDCETHVault.deposit(USDCETHAmt);
             mode = false;
-            emit CrossSwitch(WBTCETHAmt, USDCETHAmt, true, false);
+            emit SwitchMode(WBTCETHAmt, USDCETHAmt, true, false);
         } else { // Defence switch to attack
             uint USDCETHAmt = USDCETHVault.withdraw(USDCETHVault.balanceOf(address(this)));
             (uint USDCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
@@ -181,7 +181,7 @@ contract TAStrategy is Initializable {
             );
             WBTCETHVault.deposit(WBTCETHAmt);
             mode = true;
-            emit CrossSwitch(USDCETHAmt, WBTCETHAmt, false, true);
+            emit SwitchMode(USDCETHAmt, WBTCETHAmt, false, true);
         }
     }
 
