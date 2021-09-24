@@ -8,8 +8,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../libs/BaseRelayRecipient.sol";
-import "hardhat/console.sol";
+import "../../libs/BaseRelayRecipient.sol";
+
 interface IRouter {
     function swapExactTokensForTokens(
         uint amountIn,
@@ -36,6 +36,7 @@ interface IStrategy {
     function setProfitFeePerc(uint profitFeePerc) external;
     function watermark() external view returns (uint);
     function getAllPool() external view returns (uint);
+    function getL1FeeAverage() external view returns (uint);
 }
 
 contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
@@ -125,8 +126,7 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
         require(amount > 0, "Amount must > 0");
 
         address msgSender = _msgSender();
-        // uint _pool = getAllPoolInUSD();//TODO comment
-        // console.log("_pool", _pool);
+        uint _pool = getAllPoolInUSD();
         token.safeTransferFrom(msgSender, address(this), amount);
 
         uint amtDeposit = amount;
@@ -140,13 +140,16 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
         fees = fees + fee;
         amount = amount - fee;
 
+        uint l1Fee = amount * strategy.getL1FeeAverage() / 10000;
+        amount = amount - l1Fee;
+
         if (depositAmt[msgSender] == 0) {
             addresses.push(msgSender);
             depositAmt[msgSender] = amount;
         } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
         totalDepositAmt = totalDepositAmt + amount;
 
-        // totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//TODO comment
+        totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//TODO comment
 
         emit Deposit(msgSender, amtDeposit);
     }
@@ -157,8 +160,7 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply; //TODO check
-        // console.log("getAllPoolInUSD - vault", getAllPoolInUSD(), withdrawAmt);
+        uint withdrawAmt = (getAllPoolInUSD() /* - totalDepositAmt */) * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -191,17 +193,16 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
             msg.sender == owner() ||
             msg.sender == address(this), "Only authorized caller"
         );
-        // console.log('balance0', DAI.balanceOf(address(this)));
-        // console.log("getAllPoolInUSD - invest", getAllPoolInUSD());
+
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
-        // console.log('balance1', WBNB.balanceOf(address(this)));
+
         (uint WBNBAmt, uint tokenAmtToInvest) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt);
-        // console.log("WBNBAmt", WBNB.balanceOf(address(this)),WBNBAmt);
+
         strategy.invest(WBNBAmt);
-        // console.log("getAllPoolInUSD - Afterinvest", getAllPoolInUSD());
+
         strategy.adjustWatermark(tokenAmtToInvest, true);
-        distributeLPToken();
+        // distributeLPToken();
 
         emit Invest(WBNBAmt);
     }
@@ -218,11 +219,12 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
 
     function distributeLPToken() private {
         uint pool;
+        // uint l1Fee = strategy.getL1FeeAverage();
         if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
-            uint _depositAmt = depositAmt[depositAcc];
+            uint _depositAmt = depositAmt[depositAcc];// - (depositAmt[depositAcc] * l1Fee / 10000);
             uint _totalSupply = totalSupply();
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool; //TODO CHECK supply increase with loop, so more shares for same amount
             //TODO check - also `_depositAmt` doesn't include 10% L1 fee, so prints more shares than previous user
@@ -480,7 +482,6 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
     function getAllPoolInUSD() public view returns (uint) {
         // ETHPriceInUSD amount in 8 decimals
         uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer()); 
-        // console.log("BNBPriceInUSD", BNBPriceInUSD);
         require(BNBPriceInUSD > 0, "ChainLink error");
         
         uint tokenKeepInVault = USDT.balanceOf(address(this)) + 
@@ -488,7 +489,6 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
 
         if (paused()) return WBNB.balanceOf(address(this)) * BNBPriceInUSD / 1e8 + tokenKeepInVault - fees;
         uint strategyPoolInUSD = strategy.getAllPool() * BNBPriceInUSD / 1e8;
-        console.log("strategyPoolInUSD", strategyPoolInUSD, tokenKeepInVault, fees);
         return strategyPoolInUSD + tokenKeepInVault - fees;
     }
 

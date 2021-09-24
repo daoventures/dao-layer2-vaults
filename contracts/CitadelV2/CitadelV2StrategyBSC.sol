@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol"; 
+
 interface IRouter {
     function swapExactTokensForTokens(
         uint amountIn,
@@ -45,6 +45,8 @@ interface IDaoL1Vault is IERC20Upgradeable {
     function withdraw(uint share) external;
     function getAllPoolInUSD() external view returns (uint);
     function getAllPoolInBNB() external view returns (uint);
+    function depositFee() external view returns (uint);
+    function isWhitelisted(address) external view returns (bool);
 }
 
 interface IChainlink {
@@ -205,7 +207,7 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
 
         uint _wethAmt = WETH.balanceOf(address(this));
         uint _BTCBAmt = BTCB.balanceOf(address(this));
-        console.log("_wethAmt, _BTCBAmt", _wethAmt, _BTCBAmt);
+        
         uint lpTokens = _addLiquidity(address(WETH), address(BTCB), _wethAmt, _BTCBAmt);
 
         BTCBWETHVault.deposit(lpTokens);
@@ -255,8 +257,7 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
 
     function withdraw(uint amount) external onlyVault returns (uint WBNBAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
-        uint _allPool = getAllPoolInUSD();
-        console.log("withdraw", BTCBWETHVault.balanceOf(address(this)), sharePerc, _allPool);
+        
         uint WBNBAmtBefore = WBNB.balanceOf(address(this));
         _withdrawBTCBETH(sharePerc);
         _withdrawBTCBBNB(sharePerc);
@@ -320,7 +321,7 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
 
     function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD();
-        console.log("currentWatermark", currentWatermark);
+        
         uint lastWatermark = watermark;
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
@@ -332,23 +333,20 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
 
     /// @param signs True for positive, false for negative
     function adjustWatermark(uint amount, bool signs) external onlyVault {
-        console.log("adjustWatermark", amount, watermark);
+        
         uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
-    function _swap(address _tokenA, address _tokenB, uint _amt) private returns (uint _out) {
+    function _swap(address _tokenA, address _tokenB, uint _amt) private returns (uint) {
         address[] memory path = new address[](2);
 
         path[0] = _tokenA;
         path[1] = _tokenB;
 
 
-        _out =  (PnckRouter.swapExactTokensForTokens(_amt , 0, path, address(this), block.timestamp))[1];
-        path[0] = _tokenB;
-        path[1] = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
-        console.log(_tokenB, _amt, _out, PnckRouter.getAmountsOut(_out, path)[1]);
+        return (PnckRouter.swapExactTokensForTokens(_amt , 0, path, address(this), block.timestamp))[1];
     }
 
     function _addLiquidity(address _tokenA, address _tokenB, uint _amtA, uint _amtB) private returns (uint liquidity) {
@@ -417,8 +415,6 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
 
     function getAllPool() public view returns (uint) {
         uint[] memory pools = getEachPool();
-        console.log("pools");
-        console.log(pools[0], pools[1], pools[2], pools[3]);
         return pools[0] + pools[1] + pools[2] + pools[3];
     }
 
@@ -436,6 +432,15 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
         percentages[1] = pools[1] * 10000 / allPool;
         percentages[2] = pools[2] * 10000 / allPool;
         percentages[3] = pools[3] * 10000 / allPool;
+    }
+
+    function getL1FeeAverage() external view returns (uint l1Fee) {
+        l1Fee = BTCBWETHVault.isWhitelisted(address(this)) ? 0 : BTCBWETHVault.depositFee() +
+            (BTCBBNBVault.isWhitelisted(address(this)) ? 0 : BTCBBNBVault.depositFee())  +
+            (CAKEBNBVault.isWhitelisted(address(this)) ? 0 : CAKEBNBVault.depositFee()) +
+            (BTCBBUSDVault.isWhitelisted(address(this)) ? 0 : BTCBBUSDVault.depositFee()) ;
+
+        l1Fee = l1Fee / 4; //average
     }
 
 }
