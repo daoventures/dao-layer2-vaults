@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "hardhat/console.sol";
+
 interface IUniRouter {
     function swapExactTokensForTokens(
         uint amountIn,
@@ -171,15 +171,10 @@ contract BscVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausab
 
         uint lpTokenAvailable = lpToken.balanceOf(address(this)) - _fees;
         if(lpTokenAvailable < _amountToWithdraw) {
-            console.log("before withdraw");
             MasterChef.withdraw(pid, _amountToWithdraw - lpTokenAvailable );
-            console.log("after withdraw");
         }
-        console.log("before burn");
         _burn(msg.sender, _shares);
-        console.log("before safeTransfer");
         lpToken.safeTransfer(msg.sender, _amountToWithdraw);
-        console.log("before event");
         emit Withdraw(msg.sender, _amountToWithdraw, _shares);
         
     }
