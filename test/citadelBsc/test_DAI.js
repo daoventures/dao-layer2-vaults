@@ -170,12 +170,12 @@ describe("Citadel - DAI", async () => {
         let user1Balance = await DAI.balanceOf(user1.address)
         let user2Balance = await DAI.balanceOf(user2.address)
         let user3Balance = await DAI.balanceOf(user3.address)
-        // console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
+        console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
         console.log("User2 Deposited: ", ethers.utils.formatEther(user2Balance))
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
-        // await vault.connect(user1).deposit(user1Balance, DAI.address)
-        // await vault.connect(adminSigner).invest()
+        await vault.connect(user1).deposit(user1Balance, DAI.address)
+        await vault.connect(adminSigner).invest()
         await vault.connect(user2).deposit(user2Balance, DAI.address)
         await vault.connect(adminSigner).invest()
         await vault.connect(user3).deposit(user3Balance, DAI.address)
@@ -185,13 +185,12 @@ describe("Citadel - DAI", async () => {
         console.log("USER 2 LP Tokens", (await vault.balanceOf(user2.address)).toString())
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
 
-        // await vault.connect(adminSigner).yield()
 
-        // await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address)
+        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address)
         await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), DAI.address)
         await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address)
 
-        // console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
+        console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
         console.log("User2 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user2.address)))
         console.log("User3 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user3.address)))
 
