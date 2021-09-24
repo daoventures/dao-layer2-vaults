@@ -60,11 +60,11 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable public constant WBNB = IERC20Upgradeable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     IERC20Upgradeable public constant BUSD = IERC20Upgradeable(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
 
-    IERC20Upgradeable public constant ALPACA = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
-    IERC20Upgradeable public constant XVS = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
-    IERC20Upgradeable public constant BELT = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
-    IERC20Upgradeable public constant USDC = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
-    IERC20Upgradeable public constant CHESS = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
+    IERC20Upgradeable public constant ALPACA = IERC20Upgradeable(0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F);
+    IERC20Upgradeable public constant XVS = IERC20Upgradeable(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
+    IERC20Upgradeable public constant BELT = IERC20Upgradeable(0xE0e514c71282b6f4e823703a39374Cf58dc3eA4f);
+    IERC20Upgradeable public constant USDC = IERC20Upgradeable(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
+    IERC20Upgradeable public constant CHESS = IERC20Upgradeable(0x20de22029ab63cf9A7Cf5fEB2b737Ca1eE4c82A6);
 
     IERC20Upgradeable public constant BUSDALPACA = IERC20Upgradeable(0x7752e1FA9F3a2e860856458517008558DEb989e3);
     IERC20Upgradeable public constant BNBXVS = IERC20Upgradeable(0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2);
@@ -127,6 +127,7 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         CHESS.safeApprove(address(PnckRouter), type(uint).max);
         USDC.safeApprove(address(PnckRouter), type(uint).max);
         XVS.safeApprove(address(PnckRouter), type(uint).max);
+        BELT.safeApprove(address(PnckRouter), type(uint).max);
 
         BUSDALPACA.safeApprove(address(BUSDALPACAVault), type(uint).max);
         BNBXVS.safeApprove(address(BNBXVSVault), type(uint).max);
@@ -252,8 +253,8 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         _swap(address(WBNB), address(USDC), _amt);
 
         uint _CHESSAmt = CHESS.balanceOf(address(this));
-        uint _USDCAmt = BUSD.balanceOf(address(this));
-
+        uint _USDCAmt = USDC.balanceOf(address(this));
+        
         uint lpTokens = _addLiquidity(address(CHESS), address(USDC), _CHESSAmt, _USDCAmt);
 
         CHESSUSDCVault.deposit(lpTokens);
