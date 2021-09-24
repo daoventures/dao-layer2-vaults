@@ -39,7 +39,7 @@ interface IStrategy {
     function getL1FeeAverage() external view returns (uint);
 }
 
-contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -140,16 +140,16 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
         fees = fees + fee;
         amount = amount - fee;
 
-        uint l1Fee = amount * strategy.getL1FeeAverage() / 10000;
+        uint l1Fee = amount * strategy.getL1FeeAverage() / 10000;//review
         amount = amount - l1Fee;
 
-        if (depositAmt[msgSender] == 0) {
+/*         if (depositAmt[msgSender] == 0) {
             addresses.push(msgSender);
             depositAmt[msgSender] = amount;
         } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
-        totalDepositAmt = totalDepositAmt + amount;
+        totalDepositAmt = totalDepositAmt + amount; */
 
-        totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//TODO comment
+        totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//review
 
         emit Deposit(msgSender, amtDeposit);
     }
@@ -166,11 +166,11 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
         uint tokenAmtInVault = token.balanceOf(address(this));
         
         if (withdrawAmt <= tokenAmtInVault) {
-            strategy.adjustWatermark(withdrawAmt, false);
+            strategy.adjustWatermark(withdrawAmt, false);//review
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
             if (!paused()) {
-                strategy.adjustWatermark(withdrawAmt, false);
+                strategy.adjustWatermark(withdrawAmt, false); //review
                 strategy.withdraw(withdrawAmt - tokenAmtInVault);
                 withdrawAmt = (router.swapExactTokensForTokens(
                     WBNB.balanceOf(address(this)), 0, getPath(address(WBNB), address(token)), address(this), block.timestamp
@@ -227,7 +227,7 @@ contract CitadelV2VaultBSC is Initializable, ERC20Upgradeable, OwnableUpgradeabl
             uint _depositAmt = depositAmt[depositAcc];// - (depositAmt[depositAcc] * l1Fee / 10000);
             uint _totalSupply = totalSupply();
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool; //TODO CHECK supply increase with loop, so more shares for same amount
-            //TODO check - also `_depositAmt` doesn't include 10% L1 fee, so prints more shares than previous user
+            //TODO check - also `_depositAmt` doesn't include 10% L1 fee, so prints more shares than previous user //review
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
             depositAmt[depositAcc] = 0;

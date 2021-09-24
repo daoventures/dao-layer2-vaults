@@ -73,13 +73,13 @@ const deployDeps = async () => {
 const deploy = async (btcbbnb, btcbbusd, btcbeth, cakebnb) => {
     const [deployer] = await ethers.getSigners();
 
-    let Strategy = await ethers.getContractFactory("CitadelV2StrategyBSC", deployer)
+    let Strategy = await ethers.getContractFactory("DaoSafuStrategy", deployer)
     let strategy = await upgrades.deployProxy(Strategy, [btcbeth, btcbbnb,
         cakebnb, btcbbusd])
 
     console.log("Strategy Proxy: ", strategy.address)
 
-    let Vault = await ethers.getContractFactory("CitadelV2VaultBSC", deployer)
+    let Vault = await ethers.getContractFactory("DaoSafuVault", deployer)
     let vault = await upgrades.deployProxy(Vault, [
         "DAO L2 Citadel V2", "daoCDV2",
         addresses.treasury, addresses.communityWallet, addresses.strategist, addresses.admin,
@@ -119,8 +119,8 @@ const setup = async () => {
         params: [addresses.admin]
     })
 
-    // const vault = await ethers.getContract("CitadelV2VaultBSC", deployer)
-    // const strategy = await ethers.getContract("CitadelV2StrategyBSC", deployer)
+    // const vault = await ethers.getContract("DaoSafuVault", deployer)
+    // const strategy = await ethers.getContract("DaoSafuStrategy", deployer)
 
     let { btcbbnb, btcbbusd, btcbeth, cakebnb } = await deployDeps()
 
@@ -165,6 +165,7 @@ describe("Citadel - DAI", async () => {
         expect(await vault.strategist()).to.be.equal(addresses.strategist)
         expect(await vault.admin()).to.be.equal(addresses.admin)
 
+        console.log("L1FEE", (await strategy.getL1FeeAverage()).toString())
 
         //check normal flow
         let user1Balance = await DAI.balanceOf(user1.address)

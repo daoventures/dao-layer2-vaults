@@ -53,7 +53,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
+contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable public constant CAKE  = IERC20Upgradeable(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
@@ -435,12 +435,29 @@ contract CitadelV2StrategyBSC is Initializable, OwnableUpgradeable {
     }
 
     function getL1FeeAverage() external view returns (uint l1Fee) {
-        l1Fee = BTCBWETHVault.isWhitelisted(address(this)) ? 0 : BTCBWETHVault.depositFee() +
-            (BTCBBNBVault.isWhitelisted(address(this)) ? 0 : BTCBBNBVault.depositFee())  +
-            (CAKEBNBVault.isWhitelisted(address(this)) ? 0 : CAKEBNBVault.depositFee()) +
-            (BTCBBUSDVault.isWhitelisted(address(this)) ? 0 : BTCBBUSDVault.depositFee()) ;
+        uint denominator;
+        if(BTCBWETHVault.isWhitelisted(address(this)) == false) {
+            l1Fee += BTCBWETHVault.depositFee();
 
-        l1Fee = l1Fee / 4; //average
+            denominator++;
+        }
+
+        if(BTCBBNBVault.isWhitelisted(address(this)) == false) {
+            l1Fee += BTCBBNBVault.depositFee();
+            denominator++;
+        }
+
+        if(CAKEBNBVault.isWhitelisted(address(this)) == false) {
+            l1Fee += CAKEBNBVault.depositFee();
+            denominator++;
+        }
+
+        if(BTCBBUSDVault.isWhitelisted(address(this)) == false) {
+            l1Fee += BTCBBUSDVault.depositFee();
+            denominator++;
+        }
+
+        l1Fee = l1Fee / denominator; //average
     }
 
 }
