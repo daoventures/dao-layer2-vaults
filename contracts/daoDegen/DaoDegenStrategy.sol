@@ -66,10 +66,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable public constant USDC = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
     IERC20Upgradeable public constant CHESS = IERC20Upgradeable(0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c);
 
-    IERC20Upgradeable public constant BUSDALPACA = IERC20Upgradeable(0xD171B26E4484402de70e3Ea256bE5A2630d7e88D);
-    IERC20Upgradeable public constant BNBXVS = IERC20Upgradeable(0x61EB789d75A95CAa3fF50ed7E47b96c132fEc082);
-    IERC20Upgradeable public constant BNBBELT = IERC20Upgradeable(0x0eD7e52944161450477ee417DE9Cd3a859b14fD0);
-    IERC20Upgradeable public constant CHESSUSDC = IERC20Upgradeable(0xF45cd219aEF8618A92BAa7aD848364a158a24F33);
+    IERC20Upgradeable public constant BUSDALPACA = IERC20Upgradeable(0x7752e1FA9F3a2e860856458517008558DEb989e3);
+    IERC20Upgradeable public constant BNBXVS = IERC20Upgradeable(0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2);
+    IERC20Upgradeable public constant BNBBELT = IERC20Upgradeable(0xF3Bc6FC080ffCC30d93dF48BFA2aA14b869554bb);
+    IERC20Upgradeable public constant CHESSUSDC = IERC20Upgradeable(0x1472976E0B97F5B2fC93f1FFF14e2b5C4447b64F);
 
     IRouter public constant PnckRouter = IRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
 
@@ -79,10 +79,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     IDaoL1Vault public CHESSUSDCVault;
     
 
-    uint constant BUSDALPACATargetPerc = 5000;
-    uint constant BNBXVSTargetPerc = 2000;
-    uint constant BNBBELTTargetPerc = 2000;
-    uint constant CHESSUSDCTargetPerc = 1000;
+    uint constant BUSDALPACATargetPerc = 2500;
+    uint constant BNBXVSTargetPerc = 2500;
+    uint constant BNBBELTTargetPerc = 2500;
+    uint constant CHESSUSDCTargetPerc = 2500;
 
     address public vault;
     uint public watermark; // In USD (18 decimals)
