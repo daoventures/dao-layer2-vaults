@@ -8,15 +8,15 @@ Curve vault (implementation) contract address: 0x4a73a518d13D7cf750f80f1dB14E2F9
 
 Curve factory contract address: 0x084F149E5B293eB0244fBEc1B4Ed76a56a498134
 
-Curve HBTC-WBTC vault (proxy) contract address: 0x084F149E5B293eB0244fBEc1B4Ed76a56a498134
+Curve HBTC-WBTC vault (proxy) contract address: 0xB2010f55C684A9F1701178920f5269a1180504E1
 
-Curve HBTC-WBTC zap contract address: 0x12922b9b65A13331554C9dDDC2D19C9ec06fA47F
+Curve HBTC-WBTC zap contract address: 0xBE47025F8761fFAbd0bf732a3D76cFDBE4a46d84
 
-Sushi WBTC-ETH vault (proxy) contract address: 0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3
+Sushi WBTC-ETH vault (proxy) contract address: 0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F
 
-Sushi DPI-ETH vault (proxy) contract address: 
+Sushi DPI-ETH vault (proxy) contract address: 0x397E18750351a707A010A5eB188a7A6AbFda4Fcd
 
-Sushi DAI-ETH vault (proxy) contract address: 
+Sushi DAI-ETH vault (proxy) contract address: 0x37e19484982425b77624FF95612D6aFE8f3159F4
 
 DAO Citadel V2 vault (implementation) contract address: 
 

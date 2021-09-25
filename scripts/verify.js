@@ -1,11 +1,16 @@
 const { run } = require('hardhat')
 
-const contractAddr = "0xF4489528a40356a2f37A4a91c00F69b620894c0d"
-const contractName = "CitadelV2VaultKovan"
+const contractAddr = "0xBE47025F8761fFAbd0bf732a3D76cFDBE4a46d84"
+const contractName = "CurveHBTCZap"
 
 async function main() {
     await run('verify:verify', {
         address: contractAddr,
+        constructorArguments: [
+            "0xB2010f55C684A9F1701178920f5269a1180504E1",
+            // daoProxyAdminAddr,
+            // dataMVFStrategy
+          ],
         contract: `contracts/${contractName}.sol:${contractName}`
     })
 }

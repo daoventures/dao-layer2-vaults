@@ -11,86 +11,96 @@ const binanceAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
 const CRVAddr = "0xD533a949740bb3306d119CC777fa900bA034cd52"
 
 describe("DAO Citadel V2", function () {
-    it("Should work on Curve L1 HBTCWBTC vault", async function () {
+    it("Should work", async function () {
         let tx, receipt
-        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, multisig] = await ethers.getSigners()
+        // const [deployer, client, client2, client3, treasury, community, strategist, biconomy, admin, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, multisig] = await ethers.getSigners()
 
-        // Deploy Sushi
-        const SushiVault = await ethers.getContractFactory("Sushi", deployer)
-        const sushiVault = await SushiVault.deploy()
-        const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
-        const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
+        const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+        await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+        const admin = await ethers.getSigner(adminAddr)
+        await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
 
-        const SushiFactory = await ethers.getContractFactory("SushiFactory", deployer)
-        const sushiFactory = await SushiFactory.deploy(sushiVault.address)
-        await sushiFactory.transferOwnership(multisig.address)
+        // // Deploy Sushi
+        // const SushiVault = await ethers.getContractFactory("Sushi", deployer)
+        // const sushiVault = await SushiVault.deploy()
+        // const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
+        // const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
+
+        // const SushiFactory = await ethers.getContractFactory("SushiFactory", deployer)
+        // const sushiFactory = await SushiFactory.deploy(sushiVault.address)
+        // await sushiFactory.transferOwnership(multisig.address)
         
-        // Deploy WBTC-ETH
-        const dataWBTCETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi WBTC-ETH", "daoSushiWBTC", 21,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        tx = await sushiFactory.connect(multisig).createVault(dataWBTCETH)
-        await tx.wait()
-        const WBTCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy WBTC-ETH
+        // const dataWBTCETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi WBTC-ETH", "daoSushiWBTC", 21,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // tx = await sushiFactory.connect(multisig).createVault(dataWBTCETH)
+        // await tx.wait()
+        // const WBTCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const WBTCETHVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
         const WBTCETHVault = await ethers.getContractAt("Sushi", WBTCETHVaultAddr, deployer)
 
-        // Deploy DPI-ETH
-        const dataDPIETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi DPI-ETH", "daoSushiDPI", 42,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        tx = await sushiFactory.connect(multisig).createVault(dataDPIETH)
-        await tx.wait()
-        const DPIETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy DPI-ETH
+        // const dataDPIETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi DPI-ETH", "daoSushiDPI", 42,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // tx = await sushiFactory.connect(multisig).createVault(dataDPIETH)
+        // await tx.wait()
+        // const DPIETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const DPIETHVaultAddr = "0x397E18750351a707A010A5eB188a7A6AbFda4Fcd"
         const DPIETHVault = await ethers.getContractAt("Sushi", DPIETHVaultAddr, deployer)
 
-        // Deploy DAI-ETH
-        const dataDAIETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi DAI-ETH", "daoSushiDAI", 2,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        tx = await sushiFactory.connect(multisig).createVault(dataDAIETH)
-        await tx.wait()
-        const DAIETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy DAI-ETH
+        // const dataDAIETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi DAI-ETH", "daoSushiDAI", 2,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // tx = await sushiFactory.connect(multisig).createVault(dataDAIETH)
+        // await tx.wait()
+        // const DAIETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const DAIETHVaultAddr = "0x37e19484982425b77624FF95612D6aFE8f3159F4"
         const DAIETHVault = await ethers.getContractAt("Sushi", DAIETHVaultAddr, deployer)
 
-        // Deploy Curve
-        const CurveVault = await ethers.getContractFactory("Curve", deployer)
-        const curveVault = await CurveVault.deploy()
-        const curveVaultArtifact = await artifacts.readArtifact("Curve")
-        const curveVaultInterface = new ethers.utils.Interface(curveVaultArtifact.abi)
+        // // Deploy Curve
+        // const CurveVault = await ethers.getContractFactory("Curve", deployer)
+        // const curveVault = await CurveVault.deploy()
+        // const curveVaultArtifact = await artifacts.readArtifact("Curve")
+        // const curveVaultInterface = new ethers.utils.Interface(curveVaultArtifact.abi)
 
-        const CurveFactory = await ethers.getContractFactory("CurveFactory", deployer)
-        const curveFactory = await CurveFactory.deploy(curveVault.address)
-        await curveFactory.transferOwnership(multisig.address)
+        // const CurveFactory = await ethers.getContractFactory("CurveFactory", deployer)
+        // const curveFactory = await CurveFactory.deploy(curveVault.address)
+        // await curveFactory.transferOwnership(multisig.address)
 
-        // Deploy HBTC-WBTC
-        const dataHBTCWBTC = curveVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Curve HBTC-WBTC", "daoCurveHBTC", 8,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        tx = await curveFactory.connect(multisig).createVault(dataHBTCWBTC)
-        await tx.wait()
-        const HBTCWBTCVaultAddr = await curveFactory.getVault((await curveFactory.getVaultLength()).sub(1))
+        // // Deploy HBTC-WBTC
+        // const dataHBTCWBTC = curveVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Curve HBTC-WBTC", "daoCurveHBTC", 8,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // tx = await curveFactory.connect(multisig).createVault(dataHBTCWBTC)
+        // await tx.wait()
+        // const HBTCWBTCVaultAddr = await curveFactory.getVault((await curveFactory.getVaultLength()).sub(1))
+        const HBTCWBTCVaultAddr = "0xB2010f55C684A9F1701178920f5269a1180504E1"
         const HBTCWBTCVault = await ethers.getContractAt("Curve", HBTCWBTCVaultAddr, deployer)
 
-        // Deploy Curve zap
-        const CurveZap = await ethers.getContractFactory("CurveHBTCZap", deployer)
-        const curveZap = await CurveZap.deploy(HBTCWBTCVaultAddr)
-        await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
+        // // Deploy Curve zap
+        // const CurveZap = await ethers.getContractFactory("CurveHBTCZap", deployer)
+        // const curveZap = await CurveZap.deploy(HBTCWBTCVaultAddr)
+        // await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
 
         // Deploy Citadel V2
         const CitadelV2Strategy = await ethers.getContractFactory("CitadelV2Strategy", deployer)
@@ -169,8 +179,8 @@ describe("DAO Citadel V2", function () {
         await citadelV2Vault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         // console.log(ethers.utils.formatEther(await citadelV2Vault.getAvailableInvest()))
         tx = await citadelV2Vault.connect(admin).invest()
-        // receipt = await tx.wait()
-        // console.log(receipt.gasUsed.toString())
+        receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
         // console.log(ethers.utils.formatEther(await citadelV2Vault.balanceOf(client2.address)))
         // console.log(ethers.utils.formatEther(await citadelV2Vault.balanceOf(client3.address)))
         // console.log(ethers.utils.formatEther(await citadelV2Vault.getAllPool())) // 12.518539076011072593
@@ -258,9 +268,9 @@ describe("DAO Citadel V2", function () {
         await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr)
         await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr)
         await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10180.132606
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10380.202855
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10377.367946
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10080.837679
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10189.082714
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10185.653889
 
         // await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDCAddr)
         // await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDCAddr)
@@ -297,34 +307,42 @@ describe("DAO Citadel V2", function () {
 
     // it("Should work on Curve L1 HBTCWBTC vault", async function () {
     //     let tx, receipt
-    //     const [deployer, client, client2, treasury, community, strategist, admin, multisig] = await ethers.getSigners()
+    //     // const [deployer, client, client2, treasury, community, strategist, admin, multisig] = await ethers.getSigners()
+    //     const [deployer, client, client2, treasury, community, strategist, multisig] = await ethers.getSigners()
+
+    //     const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+    //     await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+    //     await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
+    //     const admin = await ethers.getSigner(adminAddr)
 
     //     // Deploy
-    //     const CurveVault = await ethers.getContractFactory("Curve", deployer)
-    //     const curveVault = await CurveVault.deploy()
-    //     const curveVaultArtifact = await artifacts.readArtifact("Curve")
-    //     const curveVaultInterface = new ethers.utils.Interface(curveVaultArtifact.abi)
+    //     // const CurveVault = await ethers.getContractFactory("Curve", deployer)
+    //     // const curveVault = await CurveVault.deploy()
+    //     // const curveVaultArtifact = await artifacts.readArtifact("Curve")
+    //     // const curveVaultInterface = new ethers.utils.Interface(curveVaultArtifact.abi)
 
-    //     const CurveFactory = await ethers.getContractFactory("CurveFactory", deployer)
-    //     const curveFactory = await CurveFactory.deploy(curveVault.address)
+    //     // const CurveFactory = await ethers.getContractFactory("CurveFactory", deployer)
+    //     // const curveFactory = await CurveFactory.deploy(curveVault.address)
         
-    //     const dataHBTCWBTC = curveVaultInterface.encodeFunctionData(
-    //         "initialize",
-    //         [
-    //             "DAO L1 Curve HBTC-WBTC", "daoCurveHBTC", 8,
-    //             treasury.address, community.address, strategist.address, admin.address,
-    //         ]
-    //     )
-    //     tx = await curveFactory.createVault(dataHBTCWBTC)
-    //     await tx.wait()
-    //     const HBTCWBTCVaultAddr = await curveFactory.getVault((await curveFactory.getVaultLength()).sub(1))
-    //     const HBTCWBTCVault = await ethers.getContractAt("Curve", HBTCWBTCVaultAddr, deployer)
-    //     await HBTCWBTCVault.transferOwnership(multisig.address)
+    //     // const dataHBTCWBTC = curveVaultInterface.encodeFunctionData(
+    //     //     "initialize",
+    //     //     [
+    //     //         "DAO L1 Curve HBTC-WBTC", "daoCurveHBTC", 8,
+    //     //         treasury.address, community.address, strategist.address, admin.address,
+    //     //     ]
+    //     // )
+    //     // tx = await curveFactory.createVault(dataHBTCWBTC)
+    //     // await tx.wait()
+    //     // const HBTCWBTCVaultAddr = await curveFactory.getVault((await curveFactory.getVaultLength()).sub(1))
+    //     // const HBTCWBTCVault = await ethers.getContractAt("Curve", HBTCWBTCVaultAddr, deployer)
+    //     // await HBTCWBTCVault.transferOwnership(multisig.address)
+    //     const HBTCWBTCVault = await ethers.getContractAt("Curve", "0xB2010f55C684A9F1701178920f5269a1180504E1", deployer)
 
     //     // Deploy CurveZap
-    //     const CurveZap = await ethers.getContractFactory("CurveHBTCZap", deployer)
-    //     const curveZap = await CurveZap.deploy(HBTCWBTCVaultAddr)
-    //     await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
+    //     // const CurveZap = await ethers.getContractFactory("CurveHBTCZap", deployer)
+    //     // const curveZap = await CurveZap.deploy(HBTCWBTCVaultAddr)
+    //     // await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
+    //     await HBTCWBTCVault.connect(admin).setCurveZap("0x12922b9b65A13331554C9dDDC2D19C9ec06fA47F")
 
     //     // Unlock & transfer
     //     network.provider.request({method: "hardhat_impersonateAccount", params: [HBTCWBTCHolderAddr]})
