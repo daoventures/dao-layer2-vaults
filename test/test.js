@@ -40,100 +40,113 @@ const DAIAddr = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 describe("DAO Stonks V2", () => {
     it("should work for DAO L2 Stonks contract", async () => {
         let tx, receipt
-        const [deployer, client, client2, client3, treasury, community, strategist, admin, biconomy, multisig] = await ethers.getSigners()
+        // const [deployer, client, client2, client3, treasury, community, strategist, admin, biconomy, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, multisig] = await ethers.getSigners()
 
-        // Deploy Mirror factory & implementation
-        const MirrorVault = await ethers.getContractFactory("Mirror", deployer)
-        const mirrorVault = await MirrorVault.deploy()
-        const mirrorVaultArtifact = await artifacts.readArtifact("Mirror")
-        const mirrorVaultInterface = new ethers.utils.Interface(mirrorVaultArtifact.abi)
+        const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+        await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+        const admin = await ethers.getSigner(adminAddr)
+        await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
 
-        const MirrorFactory = await ethers.getContractFactory("MirrorFactory", deployer)
-        const mirrorFactory = await MirrorFactory.deploy(mirrorVault.address)
-        await mirrorFactory.transferOwnership(multisig.address)
+        // // Deploy Mirror factory & implementation
+        // const MirrorVault = await ethers.getContractFactory("Mirror", deployer)
+        // const mirrorVault = await MirrorVault.deploy()
+        // const mirrorVaultArtifact = await artifacts.readArtifact("Mirror")
+        // const mirrorVaultInterface = new ethers.utils.Interface(mirrorVaultArtifact.abi)
 
-        // Deploy Microsoft vault
-        const datamMSFTUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mMSFT-UST", "daoMirrorMMSFT", MSFTPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamMSFTUST)
-        const mMSFTUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // const MirrorFactory = await ethers.getContractFactory("MirrorFactory", deployer)
+        // const mirrorFactory = await MirrorFactory.deploy(mirrorVault.address)
+        // await mirrorFactory.transferOwnership(multisig.address)
+
+        // // Deploy Microsoft vault
+        // const datamMSFTUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mMSFT-UST", "daoMirrorMMSFT", MSFTPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamMSFTUST)
+        // const mMSFTUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mMSFTUSTVaultAddr = "0x5eCd72e7f320361B3BAA179be9aB3AD6AAa3FE62"
         const mMSFTUSTVault = await ethers.getContractAt("Mirror", mMSFTUSTVaultAddr, deployer)
 
-        // Deploy Twitter vault
-        const datamTWTRUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mTWTR-UST", "daoMirrorMTWTR", TWTRPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamTWTRUST)
-        const mTWTRUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Twitter vault
+        // const datamTWTRUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mTWTR-UST", "daoMirrorMTWTR", TWTRPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamTWTRUST)
+        // const mTWTRUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mTWTRUSTVaultAddr = "0x18bd3966B47573A66CA66286F792caAA2670124b"
         const mTWTRUSTVault = await ethers.getContractAt("Mirror", mTWTRUSTVaultAddr, deployer)
 
-        // Deploy Tesla vault
-        const datamTSLAUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mTSLA-UST", "daoMirrorMTSLA", TSLAPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamTSLAUST)
-        const mTSLAUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Tesla vault
+        // const datamTSLAUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mTSLA-UST", "daoMirrorMTSLA", TSLAPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamTSLAUST)
+        // const mTSLAUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mTSLAUSTVaultAddr = "0x6870801E20f3e20E549B955e9a1bFbE8a4e238Df"
         const mTSLAUSTVault = await ethers.getContractAt("Mirror", mTSLAUSTVaultAddr, deployer)
 
-        // Deploy Google vault
-        const datamGOOGLUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mGOOGL-UST", "daoMirrorMGOOGL", GOOGLPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamGOOGLUST)
-        const mGOOGLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Google vault
+        // const datamGOOGLUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mGOOGL-UST", "daoMirrorMGOOGL", GOOGLPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamGOOGLUST)
+        // const mGOOGLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mGOOGLUSTVaultAddr = "0x385f56B7B1E075Bd8560f27F9EC8BeFC9600b73A"
         const mGOOGLUSTVault = await ethers.getContractAt("Mirror", mGOOGLUSTVaultAddr, deployer)
 
-        // Deploy Amazon vault
-        const datamAMZNUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mAMZN-UST", "daoMirrorMAMZN", AMZNPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamAMZNUST)
-        const mAMZNUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Amazon vault
+        // const datamAMZNUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mAMZN-UST", "daoMirrorMAMZN", AMZNPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamAMZNUST)
+        // const mAMZNUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mAMZNUSTVaultAddr = "0x8Ae48A768F8270E8349f2d4f1511311a1143e9Ed"
         const mAMZNUSTVault = await ethers.getContractAt("Mirror", mAMZNUSTVaultAddr, deployer)
 
-        // Deploy Apple vault
-        const datamAPPLUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mAPPL-UST", "daoMirrorMAPPL", APPLPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamAPPLUST)
-        const mAPPLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Apple vault
+        // const datamAPPLUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mAPPL-UST", "daoMirrorMAPPL", APPLPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamAPPLUST)
+        // const mAPPLUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mAPPLUSTVaultAddr = "0x4bc507377331d0Ff135d33CD0DE41a4322B4Abe5"
         const mAPPLUSTVault = await ethers.getContractAt("Mirror", mAPPLUSTVaultAddr, deployer)
 
-        // Deploy Netflix vault
-        const datamNFLXUST = mirrorVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Mirror mNFLX-UST", "daoMirrorMNFLX", NFLXPoolAddr,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await mirrorFactory.connect(multisig).createVault(datamNFLXUST)
-        const mNFLXUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        // // Deploy Netflix vault
+        // const datamNFLXUST = mirrorVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Mirror mNFLX-UST", "daoMirrorMNFLX", NFLXPoolAddr,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await mirrorFactory.connect(multisig).createVault(datamNFLXUST)
+        // const mNFLXUSTVaultAddr = await mirrorFactory.getVault((await mirrorFactory.getVaultLength()).sub(1))
+        const mNFLXUSTVaultAddr = "0xB0AbAF1A2c194CAF79662371233fB49414655bA9"
         const mNFLXUSTVault = await ethers.getContractAt("Mirror", mNFLXUSTVaultAddr, deployer)
 
         // Deploy Stonks

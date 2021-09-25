@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -188,7 +187,6 @@ contract Mirror is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
 
     function _yield() private {
         uint rewardMIR = lpPool.earned(address(this));
-        rewardMIR = MIR.balanceOf(address(this)); // console
         if(rewardMIR > 0) {
             uint _rewardMIR = rewardMIR; // For event
 

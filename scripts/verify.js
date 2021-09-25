@@ -1,8 +1,10 @@
 const { run } = require('hardhat')
 const { mainnet, kovan } = require("../addresses")
 
-const contractAddr = "0x3a89b8dddc27cec4E75b5A1DE789d65A7F02e9e5"
-const contractName = "StonksStrategyKovan"
+const contractAddr = "0xd45442945E740370E7Ed024F287cb787D3043948"
+const contractName = "MirrorFactory"
+
+const mirrorImpl = "0xE4809Ed214631017737A3d7FA3e78600Ee96Eb85"
 
 const stonksVaultImpl = "0xa4639BD9d9864773659EFCa50D309fA5ae68DE31" // Kovan
 const stonksStrategyImpl = "0x3a89b8dddc27cec4E75b5A1DE789d65A7F02e9e5" // Kovan
@@ -37,11 +39,11 @@ async function main() {
 
     await run('verify:verify', {
         address: contractAddr,
-        // constructorArguments: [
-        //     stonksStrategyImpl,
-        //     daoProxyAdminAddr,
-        //     dataStonksStrategy
-        // ],
+        constructorArguments: [
+            mirrorImpl,
+            // daoProxyAdminAddr,
+            // dataStonksStrategy
+        ],
         contract: `contracts/${contractName}.sol:${contractName}`
     })
 }

@@ -4,23 +4,23 @@
 
 ### Mainnet
 
-Mirror vault (implementation) contract address: 
+Mirror vault (implementation) contract address: 0xE4809Ed214631017737A3d7FA3e78600Ee96Eb85
 
-Mirror factory contract address: 
+Mirror factory contract address: 0xd45442945E740370E7Ed024F287cb787D3043948
 
-Mirror mMFST-UST vault (proxy) contract address: 
+Mirror mMFST-UST vault (proxy) contract address: 0x5eCd72e7f320361B3BAA179be9aB3AD6AAa3FE62
 
-Mirror mTWTR-UST vault (proxy) contract address: 
+Mirror mTWTR-UST vault (proxy) contract address: 0x18bd3966B47573A66CA66286F792caAA2670124b
 
-Mirror mTSLA-UST vault (proxy) contract address: 
+Mirror mTSLA-UST vault (proxy) contract address: 0x6870801E20f3e20E549B955e9a1bFbE8a4e238Df
 
-Mirror mGOOGL-UST vault (proxy) contract address: 
+Mirror mGOOGL-UST vault (proxy) contract address: 0x385f56B7B1E075Bd8560f27F9EC8BeFC9600b73A
 
-Mirror mAMZN-UST vault (proxy) contract address: 
+Mirror mAMZN-UST vault (proxy) contract address: 0x8Ae48A768F8270E8349f2d4f1511311a1143e9Ed
 
-Mirror mAPPL-UST vault (proxy) contract address: 
+Mirror mAPPL-UST vault (proxy) contract address: 0x4bc507377331d0Ff135d33CD0DE41a4322B4Abe5
 
-Mirror mNFLX-UST vault (proxy) contract address: 
+Mirror mNFLX-UST vault (proxy) contract address: 0xB0AbAF1A2c194CAF79662371233fB49414655bA9
 
 DAO Stonks V2 vault (implementation) contract address: 
 
@@ -52,7 +52,7 @@ Mirror mAPPL-UST vault (proxy) contract address: 0x568AD887f3DA8622d8c0091068360
 
 Mirror mNFLX-UST vault (proxy) contract address: 0x1DDD09828F03Bda41C4FAD2376693f91687Ab4AE
 
-DAO Stonks V2 vault (implementation) contract address: 0xa4639BD9d9864773659EFCa50D309fA5ae68DE31
+DAO Stonks V2 vault (implementation) contract address: 0xcAEf5c1404336efAed17BD7e664F5439aB2F6547
 
 DAO Stonks V2 vault (proxy) contract address: 0x7739933d775BF2eD5EAEC76BC61c581A82e25b0c
 
