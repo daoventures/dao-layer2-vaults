@@ -44,25 +44,12 @@ Sushi DPI-ETH vault (proxy) contract address: 0x83aCB6478E7716CA365e5BEa21Fe05A9
 
 Sushi DAI-ETH vault (proxy) contract address: 0x244517fE869B3054B83b6F005A895957d6feEAe6
 
-DAO Citadel V2 vault (implementation) contract address: 0xF4489528a40356a2f37A4a91c00F69b620894c0d
+DAO Citadel V2 vault (implementation) contract address: 0x5522168A3a72d4400c9e131FbaB6e52987Fb4412
 
-DAO Citadel V2 vault (proxy) contract address: 0x6435B8fc860381A7088ccD745FC73F5c844e8Bad
+DAO Citadel V2 vault (proxy) contract address: 0xc5719B5E85c30eB6a49d3C1b8058ae2435146C88
 
-DAO Citadel V2 strategy (implementation) contract address: 0xc4998e3F7CD16c4c12978D4BD3f90808b1d0AC1F
+DAO Citadel V2 strategy (implementation) contract address: 0x39494B5c492e427A04dAb78f43E4E80283D9881b
 
-DAO Citadel V2 strategy (proxy) contract address: 0xa2B42A59eE0312A5f9D56DFaD90EE6fa4A1bE184
+DAO Citadel V2 strategy (proxy) contract address: 0x039F4fbA66efDa987fFf5bBA56855cc5926b6563
 
 proxy admin contract address: 0x852c2F84adb2BAB6e6E6C260AAa95B2753E69e5f
-
-## Deployment
-
-### Deploy
-
-Deploy everything in scripts folder follow the number sequence.
-
-```
-npx hardhat run --network mainnet scripts/<script name>.js
-```
-
-### Verify
-Give me all the address and I will help in verification.

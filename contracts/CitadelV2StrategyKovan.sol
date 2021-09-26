@@ -86,11 +86,6 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;
 
-    address public treasuryWallet;
-    address public communityWallet;
-    address public strategist;
-    address public admin;
-
     event TargetComposition (uint HBTCWBTCTargetPool, uint WBTCETHTargetPool, uint DPIETHTargetPool, uint DAIETHTargetPool);
     event CurrentComposition (uint HBTCWBTCCurrentPool, uint WBTCETHCurrentPool, uint DPIETHCurrentPool, uint DAIETHCurrentPool);
     event InvestHBTCWBTC(uint WETHAmt, uint HBTCWBTCAmt);
@@ -142,7 +137,6 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
 
     function invest(uint WETHAmt) external onlyVault {
         WETH.safeTransferFrom(vault, address(this), WETHAmt);
-        WETHAmt = WETH.balanceOf(address(this));
 
         uint[] memory pools = getEachPool();
         uint pool = pools[0] + pools[1] + pools[2] + pools[3] + WETHAmt;
@@ -158,16 +152,10 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
             DPIETHTargetPool > pools[2] &&
             DAIETHTargetPool > pools[3]
         ) {
-            uint WETHAmt1500 = WETHAmt * 1500 / 10000;
-
-            // HBTC-WBTC (0%-30%)
-            investHBTCWBTC(WETHAmt * 3000 / 10000);
-            // WBTC-ETH (15%-15%)
-            investWBTCETH(WETHAmt1500);
-            // DPI-ETH (15%-15%)
-            investDPIETH(WETHAmt1500);
-            // DAI-ETH (5%-5%)
-            investDAIETH(WETHAmt * 500 / 10000);
+            investHBTCWBTC(HBTCWBTCTargetPool - pools[0]);
+            investWBTCETH((WBTCETHTargetPool - pools[1]));
+            investDPIETH((DPIETHTargetPool - pools[2]));
+            investDAIETH((DAIETHTargetPool - pools[3]));
         } else {
             uint furthest;
             uint farmIndex;
@@ -201,9 +189,9 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
             }
 
             if (farmIndex == 0) investHBTCWBTC(WETHAmt);
-            else if (farmIndex == 1) investWBTCETH(WETHAmt / 2);
-            else if (farmIndex == 2) investDPIETH(WETHAmt / 2);
-            else investDAIETH(WETHAmt / 2);
+            else if (farmIndex == 1) investWBTCETH(WETHAmt);
+            else if (farmIndex == 2) investDPIETH(WETHAmt);
+            else investDAIETH(WETHAmt);
         }
 
         emit TargetComposition(HBTCWBTCTargetPool, WBTCETHTargetPool, DPIETHTargetPool, DAIETHTargetPool);
@@ -211,7 +199,7 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
     }
 
     function investHBTCWBTC(uint WETHAmt) private {
-        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), WETHAmt);
+        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), WETHAmt, 0);
         uint256[2] memory amounts = [0, WBTCAmt];
         curvePool.add_liquidity(amounts, 0);
         uint HBTCWBTCAmt = HBTCWBTC.balanceOf(address(this));
@@ -220,78 +208,82 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
     }
 
     function investWBTCETH(uint WETHAmt) private {
-        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), WETHAmt);
-        (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(address(WBTC), address(WETH), WBTCAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), halfWETH, 0);
+        (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(address(WBTC), address(WETH), WBTCAmt, halfWETH, 0, 0, address(this), block.timestamp);
         WBTCETHVault.deposit(WBTCETHAmt);
         emit InvestWBTCETH(WETHAmt, WBTCETHAmt);
     }
 
     function investDPIETH(uint WETHAmt) private {
-        uint DPIAmt = sushiSwap(address(WETH), address(DPI), WETHAmt);
-        (,,uint DPIETHAmt) = sushiRouter.addLiquidity(address(DPI), address(WETH), DPIAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint DPIAmt = sushiSwap(address(WETH), address(DPI), halfWETH, 0);
+        (,,uint DPIETHAmt) = sushiRouter.addLiquidity(address(DPI), address(WETH), DPIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DPIETHVault.deposit(DPIETHAmt);
         emit InvestDPIETH(WETHAmt, DPIETHAmt);
     }
 
     function investDAIETH(uint WETHAmt) private {
-        uint DAIAmt = sushiSwap(address(WETH), address(DAI), WETHAmt);
-        (,,uint DAIETHAmt) = sushiRouter.addLiquidity(address(DAI), address(WETH), DAIAmt, WETHAmt, 0, 0, address(this), block.timestamp);
+        uint halfWETH = WETHAmt / 2;
+        uint DAIAmt = sushiSwap(address(WETH), address(DAI), halfWETH, 0);
+        (,,uint DAIETHAmt) = sushiRouter.addLiquidity(address(DAI), address(WETH), DAIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DAIETHVault.deposit(DAIETHAmt);
         emit InvestDAIETH(WETHAmt, DAIETHAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount) external onlyVault returns (uint WETHAmt) {
+    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint WETHAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         uint WETHAmtBefore = WETH.balanceOf(address(this));
-        withdrawHBTCWBTC(sharePerc);
-        withdrawWBTCETH(sharePerc);
-        withdrawDPIETH(sharePerc);
-        withdrawDAIETH(sharePerc);
+        withdrawHBTCWBTC(sharePerc, tokenPrice[0]);
+        withdrawWBTCETH(sharePerc, tokenPrice[1]);
+        withdrawDPIETH(sharePerc, tokenPrice[2]);
+        withdrawDAIETH(sharePerc, tokenPrice[3]);
         WETHAmt = WETH.balanceOf(address(this)) - WETHAmtBefore;
         WETH.safeTransfer(vault, WETHAmt);
         emit Withdraw(amount, WETHAmt);
     }
 
-    function withdrawHBTCWBTC(uint sharePerc) private {
+    function withdrawHBTCWBTC(uint sharePerc, uint WBTCPrice) private {
         uint HBTCWBTCAmt = HBTCWBTCVault.withdraw(HBTCWBTCVault.balanceOf(address(this)) * sharePerc / 1e18);
         curvePool.remove_liquidity_one_coin(HBTCWBTCAmt, 1, 0);
-        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTC.balanceOf(address(this)));
+        uint WBTCAmt = WBTC.balanceOf(address(this));
+        uint amountOutMin = WBTCAmt * WBTCPrice / 1e8;
+        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
         emit WithdrawHBTCWBTC(HBTCWBTCAmt, _WETHAmt);
     }
 
-    function withdrawWBTCETH(uint sharePerc) private {
+    function withdrawWBTCETH(uint sharePerc, uint WBTCPrice) private {
         uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTCAmt);
+        uint amountOutMin = WBTCAmt * WBTCPrice / 1e8;
+        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
         emit WithdrawWBTCETH(WBTCETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawDPIETH(uint sharePerc) private {
+    function withdrawDPIETH(uint sharePerc, uint DPIPrice) private {
         uint DPIETHAmt = DPIETHVault.withdraw(DPIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DPIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DPI), address(WETH), DPIETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(DPI), address(WETH), DPIAmt);
+        uint amountOutMin = DPIAmt * DPIPrice / 1e18;
+        uint _WETHAmt = sushiSwap(address(DPI), address(WETH), DPIAmt, amountOutMin);
         emit WithdrawDPIETH(DPIETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawDAIETH(uint sharePerc) private {
+    function withdrawDAIETH(uint sharePerc, uint DAIPrice) private {
         uint DAIETHAmt = DAIETHVault.withdraw(DAIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DAIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DAI), address(WETH), DAIETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(DAI), address(WETH), DAIAmt);
+        uint amountOutMin = DAIAmt * DAIPrice / 1e18;
+        uint _WETHAmt = sushiSwap(address(DAI), address(WETH), DAIAmt, amountOutMin);
         emit WithdrawDAIETH(DAIETHAmt, WETHAmt + _WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD();
         uint lastWatermark = watermark;
-        if (lastWatermark == 0) { // First invest or after emergency withdrawal
-            watermark = currentWatermark;
-        } else {
-            if (currentWatermark > lastWatermark) {
-                uint profit = currentWatermark - lastWatermark;
-                fee = profit * profitFeePerc / 10000;
-                watermark = currentWatermark - fee;
-            }
+        if (currentWatermark > lastWatermark) {
+            uint profit = currentWatermark - lastWatermark;
+            fee = profit * profitFeePerc / 10000;
+            watermark = currentWatermark - fee;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
@@ -305,10 +297,10 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
 
     /// @param amount Amount to reimburse to vault contract in ETH
     function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint WETHAmt) {
-        if (farmIndex == 0) withdrawHBTCWBTC(amount * 1e18 / getHBTCWBTCPool());
-        else if (farmIndex == 1) withdrawWBTCETH(amount * 1e18 / getWBTCETHPool());
-        else if (farmIndex == 2) withdrawDPIETH(amount * 1e18 / getDPIETHPool());
-        else if (farmIndex == 3) withdrawDAIETH(amount * 1e18 / getDAIETHPool());
+        if (farmIndex == 0) withdrawHBTCWBTC(amount * 1e18 / getHBTCWBTCPool(), 0);
+        else if (farmIndex == 1) withdrawWBTCETH(amount * 1e18 / getWBTCETHPool(), 0);
+        else if (farmIndex == 2) withdrawDPIETH(amount * 1e18 / getDPIETHPool(), 0);
+        else if (farmIndex == 3) withdrawDAIETH(amount * 1e18 / getDAIETHPool(), 0);
         WETHAmt = WETH.balanceOf(address(this));
         WETH.safeTransfer(vault, WETHAmt);
         emit Reimburse(WETHAmt);
@@ -316,21 +308,21 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
 
     function emergencyWithdraw() external onlyVault {
         // 1e18 == 100% of share
-        withdrawHBTCWBTC(1e18);
-        withdrawWBTCETH(1e18);
-        withdrawDPIETH(1e18);
-        withdrawDAIETH(1e18);
+        withdrawHBTCWBTC(1e18, 0);
+        withdrawWBTCETH(1e18, 0);
+        withdrawDPIETH(1e18, 0);
+        withdrawDAIETH(1e18, 0);
         uint WETHAmt = WETH.balanceOf(address(this));
         WETH.safeTransfer(vault, WETHAmt);
         watermark = 0;
         emit EmergencyWithdraw(WETHAmt);
     }
 
-    function sushiSwap(address from, address to, uint amount) private returns (uint) {
+    function sushiSwap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
         address[] memory path = new address[](2);
         path[0] = from;
         path[1] = to;
-        return (sushiRouter.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp))[1];
+        return (sushiRouter.swapExactTokensForTokens(amount, amountOutMin, path, address(this), block.timestamp))[1];
     }
 
     function setVault(address _vault) external onlyOwner {
@@ -351,6 +343,7 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
     function getHBTCWBTCPool() private view returns (uint) {
         uint HBTCWBTCVaultPoolInBTC = HBTCWBTCVault.getAllPoolInNative();
         uint BTCPriceInETH = uint(IChainlink(0xdeb288F737066589598e9214E782fa5A8eD689e8).latestAnswer());
+        require(BTCPriceInETH > 0, "ChainLink error");
         return HBTCWBTCVaultPoolInBTC * BTCPriceInETH / 1e18;
     }
 
@@ -382,6 +375,7 @@ contract CitadelV2StrategyKovan is Initializable, OwnableUpgradeable {
 
     function getAllPoolInUSD() public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
+        require(ETHPriceInUSD > 0, "ChainLink error");
         return getAllPool() * ETHPriceInUSD / 1e8;
     }
 

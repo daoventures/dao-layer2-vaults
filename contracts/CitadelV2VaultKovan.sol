@@ -22,17 +22,22 @@ interface IRouter {
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
 }
 
+interface ICurve {
+    function exchange(int128 i, int128 j, uint dx, uint min_dy) external;
+}
+
 interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
 interface IStrategy {
     function invest(uint amount) external;
-    function withdraw(uint sharePerc) external;
+    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
     function emergencyWithdraw() external;
+    function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
     function watermark() external view returns (uint);
     function getAllPool() external view returns (uint);
@@ -48,6 +53,7 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
+    ICurve constant curve = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     IStrategy public strategy;
     uint[] public percKeepInVault;
     uint public fees;
@@ -67,18 +73,18 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
     address public strategist;
     address public admin;
 
-    event Deposit(address indexed caller, uint depositAmt);
-    event Withdraw(address caller, uint withdrawAmt, address tokenWithdraw, uint sharesBurn);
+    event Deposit(address caller, uint amtDeposit, address tokenDeposit);
+    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint shareBurned);
     event Invest(uint amount);
-    event DistributeLPToken(address receiver, uint shareMint);
-    event TransferredOutFees(uint fees);
+    event DistributeLPToken(address receiver, uint shareMinted);
+    event TransferredOutFees(uint fees, address token);
     event Reimburse(uint farmIndex, address token, uint amount);
     event Reinvest(uint amount);
     event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
+    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
-    event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
-    event SetProfitFeePerc(uint profitFeePerc);
+    event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
+    event SetProfitFeePerc(uint oldProfitFeePerc, uint profitFeePerc);
     event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
     event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
     event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
@@ -111,11 +117,14 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         networkFeePerc = [100, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
+        USDT.safeApprove(address(curve), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
+        USDC.safeApprove(address(curve), type(uint).max);
         DAI.safeApprove(address(sushiRouter), type(uint).max);
+        DAI.safeApprove(address(curve), type(uint).max);
         WETH.safeApprove(address(sushiRouter), type(uint).max);
         WETH.safeApprove(address(strategy), type(uint).max);
     }
@@ -123,10 +132,11 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
         require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
+        require(token == USDT || token == USDC || token == DAI, "Invalid token deposit");
 
         address msgSender = _msgSender();
         token.safeTransferFrom(msgSender, address(this), amount);
-        if (token == USDT || token == USDC) amount = amount * 1e12;
+        if (token != DAI) amount *= 1e12;
         uint amtDeposit = amount;
 
         uint _networkFeePerc;
@@ -135,47 +145,76 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         else if (amount < customNetworkFeeTier) _networkFeePerc = networkFeePerc[2]; // Tier 3
         else _networkFeePerc = customNetworkFeePerc; // Custom Tier
         uint fee = amount * _networkFeePerc / 10000;
-        fees = fees + fee;
-        amount = amount - fee;
+        fees += fee;
+        amount -= fee;
 
         if (depositAmt[msgSender] == 0) {
             addresses.push(msgSender);
             depositAmt[msgSender] = amount;
-        } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
-        totalDepositAmt = totalDepositAmt + amount;
+        } else depositAmt[msgSender] += amount;
+        totalDepositAmt += amount;
 
-        emit Deposit(msgSender, amtDeposit);
+        emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
-        require(share > 0, "Shares must > 0");
-        require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
+        require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
+        require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
-        uint _totalSupply = totalSupply();
-        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
         _burn(msg.sender, share);
-        // strategy.adjustWatermark(withdrawAmt, false);
+        // if (!paused()) strategy.adjustWatermark(withdrawAmt, false);
 
         // uint tokenAmtInVault = token.balanceOf(address(this));
-        // if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
-        // if (withdrawAmt <= tokenAmtInVault) {
-        //     if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+        // if (token != DAI) tokenAmtInVault *= 1e12;
+        // if (withdrawAmt < tokenAmtInVault) {
+        //     // Enough token in vault to withdraw
+        //     if (token != DAI) withdrawAmt /= 1e12;
         //     token.safeTransfer(msg.sender, withdrawAmt);
         // } else {
-        //     if (!paused()) {
-        //         strategy.withdraw(withdrawAmt);
-        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-        //             WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-        //         ))[1];
+        //     // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+        //     (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+        //     if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+        //         // Enough if swap from token1 in vault
+        //         uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+        //         if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
+        //         curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+        //         // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+        //         uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+        //         if (token1AmtInVault > 0) {
+        //             if (token1 != address(DAI)) token1AmtInVault /= 1e12;
+        //             curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+        //         }
+        //         if (token2AmtInVault > 0) {
+        //             uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+        //             if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
+        //             if (token != DAI) minAmtOutToken2 /= 1e12;
+        //             curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+        //         }
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
         //     } else {
-        //         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-        //             WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-        //         ))[1];
+        //         // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+        //         if (!paused()) {
+        //             strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        //             if (token != DAI) tokenAmtInVault /= 1e12;
+        //             withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //                 WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
+        //             )[1]) + tokenAmtInVault;
+        //             token.safeTransfer(msg.sender, withdrawAmt);
+        //         } else {
+        //             withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+        //                 WETH.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        //             ))[1];
+        //         }
         //     }
         // }
 
-        if (token != DAI) withdrawAmt = withdrawAmt / 1e12;
+        if (token != DAI) withdrawAmt /= 1e12;
         token.safeTransfer(msg.sender, withdrawAmt);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
@@ -191,10 +230,11 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        // (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        // (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
         // strategy.invest(WETHAmt);
         // strategy.adjustWatermark(tokenAmtToInvest, true);
-        distributeLPToken();
+        uint pool = getAllPoolInUSD();
+        distributeLPToken(pool);
 
         // emit Invest(WETHAmt);
     }
@@ -209,9 +249,8 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         if (fee > 0) fees = fees + fee;
     }
 
-    function distributeLPToken() private {
-        uint pool;
-        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
+    function distributeLPToken(uint pool) private {
+        if (totalSupply() != 0) pool -= totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -260,13 +299,13 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
             token.safeTransfer(strategist, _fees - _fee - _fee); // 20%
 
             fees = 0;
-            emit TransferredOutFees(_fees); // Decimal follow _token
+            emit TransferredOutFees(_fees, address(token)); // Decimal follow _token
         }
     }
 
-    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest) {
+    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
+        pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
@@ -303,7 +342,7 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
         sushiSwap(address(WETH), token, WETHAmt);
 
-        if (token == address(USDT) || token == address(USDC)) strategy.adjustWatermark(amount * 1e12, false);
+        if (token != address(DAI)) strategy.adjustWatermark(amount * 1e12, false);
         else strategy.adjustWatermark(amount, false);
 
         emit Reimburse(farmIndex, token, amount);
@@ -319,7 +358,8 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
 
         uint WETHAmt = WETH.balanceOf(address(this));
         strategy.invest(WETHAmt);
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        uint ETHPriceInUSD = uint(IChainlink(0x9326BFA02ADD2366b30bacB125260Af641031331).latestAnswer());
+        require(ETHPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WETHAmt * ETHPriceInUSD / 1e8, true);
 
         emit Reinvest(WETHAmt);
@@ -333,21 +373,21 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
 
     function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
         require(_networkFeeTier2[0] != 0, "Minimun amount cannot be 0");
-        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must greater than minimun amount");
+        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must > minimun amount");
         /**
-         * Network fees have three tier, but it is sufficient to have minimun and maximun amount of tier 2
+         * Network fee has three tier, but it is sufficient to have minimun and maximun amount of tier 2
          * Tier 1: deposit amount < minimun amount of tier 2
          * Tier 2: minimun amount of tier 2 <= deposit amount <= maximun amount of tier 2
          * Tier 3: amount > maximun amount of tier 2
          */
-        uint[] memory oldNetworkFeeTier2 = networkFeeTier2; // For event purpose
+        uint[] memory oldNetworkFeeTier2 = networkFeeTier2;
         networkFeeTier2 = _networkFeeTier2;
         emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
     }
 
     function setCustomNetworkFeeTier(uint _customNetworkFeeTier) external onlyOwner {
         require(_customNetworkFeeTier > networkFeeTier2[1], "Must > tier 2");
-        uint oldCustomNetworkFeeTier = customNetworkFeeTier; // For event purpose
+        uint oldCustomNetworkFeeTier = customNetworkFeeTier;
         customNetworkFeeTier = _customNetworkFeeTier;
         emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
     }
@@ -356,26 +396,27 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001,
             "Not allow > 30%");
         /**
-         * _networkFeePerc content a array of 3 element, representing network fee of tier 1, tier 2 and tier 3
+         * _networkFeePerc contains an array of 3 elements, representing network fee of tier 1, tier 2 and tier 3
          * For example networkFeePerc is [100, 75, 50],
-         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (_DENOMINATOR = 10000)
+         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (Denominator = 10000)
          */
-        uint[] memory oldNetworkFeePerc = networkFeePerc; // For event purpose
+        uint[] memory oldNetworkFeePerc = networkFeePerc;
         networkFeePerc = _networkFeePerc;
         emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
     }
 
-    function setCustomNetworkFeePerc(uint _percentage) public onlyOwner {
-        require(_percentage < networkFeePerc[2], "Not allow > tier 2");
-        uint oldCustomNetworkFeePerc = customNetworkFeePerc; // For event purpose
-        customNetworkFeePerc = _percentage;
-        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _percentage);
+    function setCustomNetworkFeePerc(uint _customNetworkFeePerc) external onlyOwner {
+        require(_customNetworkFeePerc < networkFeePerc[2], "Not allow > tier 2");
+        uint oldCustomNetworkFeePerc = customNetworkFeePerc;
+        customNetworkFeePerc = _customNetworkFeePerc;
+        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _customNetworkFeePerc);
     }
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+        uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
-        emit SetProfitFeePerc(profitFeePerc);
+        emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
@@ -417,10 +458,39 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
         return "1";
     }
 
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+        if (token == USDT) {
+            token1 = address(USDC);
+            token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else if (token == USDC) {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(USDC);
+            token2AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+        }
+    }
+
+    function getCurveId(address token) private pure returns (int128) {
+        if (token == address(USDT)) return 2;
+        else if (token == address(USDC)) return 1;
+        else return 0; // DAI
+    }
+
     function getPath(address tokenA, address tokenB) private pure returns (address[] memory path) {
         path = new address[](2);
         path[0] = tokenA;
         path[1] = tokenB;
+    }
+
+    function getTotalPendingDeposits() external view returns (uint) {
+        return addresses.length;
     }
 
     function getAllPoolInETH() external view returns (uint) {
@@ -446,18 +516,20 @@ contract CitadelV2VaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradea
             feesInETH = (sushiRouter.getAmountsOut(fees, getPath(address(USDT), address(WETH))))[1];
         }
 
+        if (paused()) return WETH.balanceOf(address(this)) + WETHAmt - feesInETH;
         return strategy.getAllPool() + WETHAmt - feesInETH;
     }
 
     function getAllPoolInUSD() public view returns (uint) {
-        // uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
-        // // ETHPriceInUSD amount in 8 decimals
-
-        // if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8;
-        // uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
+        // ETHPriceInUSD amount in 8 decimals
+        uint ETHPriceInUSD = uint(IChainlink(0x9326BFA02ADD2366b30bacB125260Af641031331).latestAnswer());
+        require(ETHPriceInUSD > 0, "ChainLink error");
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
+
+        // if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 + tokenKeepInVault - fees;
+        // uint strategyPoolInUSD = strategy.getAllPool() * ETHPriceInUSD / 1e8;
         
         // return strategyPoolInUSD + tokenKeepInVault - fees;
         return tokenKeepInVault - fees;
