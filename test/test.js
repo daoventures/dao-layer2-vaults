@@ -179,8 +179,8 @@ describe("DAO Citadel V2", function () {
         await citadelV2Vault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         // console.log(ethers.utils.formatEther(await citadelV2Vault.getAvailableInvest()))
         tx = await citadelV2Vault.connect(admin).invest()
-        receipt = await tx.wait()
-        console.log(receipt.gasUsed.toString())
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
         // console.log(ethers.utils.formatEther(await citadelV2Vault.balanceOf(client2.address)))
         // console.log(ethers.utils.formatEther(await citadelV2Vault.balanceOf(client3.address)))
         // console.log(ethers.utils.formatEther(await citadelV2Vault.getAllPool())) // 12.518539076011072593
@@ -268,9 +268,9 @@ describe("DAO Citadel V2", function () {
         await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr)
         await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr)
         await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10080.837679
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10189.082714
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10185.653889
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10099.82872
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10160.598188
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10157.188876
 
         // await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDCAddr)
         // await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDCAddr)
@@ -302,8 +302,22 @@ describe("DAO Citadel V2", function () {
         // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 5169.67447168882328311
         // console.log(ethers.utils.formatEther(await DPIETHVault.getAllPoolInUSD())) // 6176.968909096732661732
         // console.log(ethers.utils.formatEther(await DAIETHVault.getAllPoolInUSD())) // 1723.370305434677156724
+
+        // Test withdraw within token keep in vault
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(citadelV2Vault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(citadelV2Vault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(citadelV2Vault.address), 18))
+        // tx = await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(25), USDTAddr)
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // // 381705 481006 532192 1184085
+        // // 380162 479524 530269 1182937
+        // // 372018 468669 529586 1149240
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(citadelV2Vault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(citadelV2Vault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(citadelV2Vault.address), 18))
     })
-    
+
 
     // it("Should work on Curve L1 HBTCWBTC vault", async function () {
     //     let tx, receipt

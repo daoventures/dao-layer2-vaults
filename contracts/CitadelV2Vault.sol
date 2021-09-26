@@ -22,6 +22,10 @@ interface IRouter {
     function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
 }
 
+interface ICurve {
+    function exchange(int128 i, int128 j, uint dx, uint min_dy) external;
+}
+
 interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
@@ -49,6 +53,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
+    ICurve constant curve = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     IStrategy public strategy;
     uint[] public percKeepInVault;
     uint public fees;
@@ -115,8 +120,11 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
+        USDT.safeApprove(address(curve), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
+        USDC.safeApprove(address(curve), type(uint).max);
         DAI.safeApprove(address(sushiRouter), type(uint).max);
+        DAI.safeApprove(address(curve), type(uint).max);
         WETH.safeApprove(address(sushiRouter), type(uint).max);
         WETH.safeApprove(address(strategy), type(uint).max);
     }
@@ -161,21 +169,51 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         uint tokenAmtInVault = token.balanceOf(address(this));
         if (token != DAI) tokenAmtInVault *= 1e12;
-        if (withdrawAmt <= tokenAmtInVault) {
+        if (withdrawAmt < tokenAmtInVault) {
+            // Enough token in vault to withdraw
             if (token != DAI) withdrawAmt /= 1e12;
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
-            if (!paused()) {
-                strategy.withdraw(withdrawAmt - tokenAmtInVault);
-                if (token != DAI) tokenAmtInVault /= 1e12;
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
-                )[1]) + tokenAmtInVault;
+            // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+            (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+            if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+                // Enough if swap from token1 in vault
+                uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+                if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
+                uint minAmtOut = amtSwapFromToken1 * 99 / 100;
+                curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, minAmtOut);
+                withdrawAmt = token.balanceOf(address(this));
+                token.safeTransfer(msg.sender, withdrawAmt);
+            } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+                // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+                uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+                if (token1AmtInVault > 0) {
+                    if (token1 != address(DAI)) token1AmtInVault /= 1e12;
+                    uint minAmtOutToken1 = token1AmtInVault * 99 / 100;
+                    curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, minAmtOutToken1);
+                }
+                if (token2AmtInVault > 0) {
+                    uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+                    if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
+                    if (token != DAI) minAmtOutToken2 /= 1e12;
+                    curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+                }
+                withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
             } else {
-                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                ))[1];
+                // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+                if (!paused()) {
+                    strategy.withdraw(withdrawAmt - tokenAmtInVault);
+                    if (token != DAI) tokenAmtInVault /= 1e12;
+                    withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+                        WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
+                    )[1]) + tokenAmtInVault;
+                    token.safeTransfer(msg.sender, withdrawAmt);
+                } else {
+                    withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+                        WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+                    ))[1];
+                }
             }
         }
 
@@ -419,6 +457,31 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return "1";
     }
 
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+        if (token == USDT) {
+            token1 = address(USDC);
+            token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else if (token == USDC) {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(USDC);
+            token2AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+        }
+    }
+
+    function getCurveId(address token) private pure returns (int128) {
+        if (token == address(USDT)) return 2;
+        else if (token == address(USDC)) return 1;
+        else return 0; // DAI
+    }
+
     function getPath(address tokenA, address tokenB) private pure returns (address[] memory path) {
         path = new address[](2);
         path[0] = tokenA;
@@ -427,23 +490,6 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getTotalPendingDeposits() external view returns (uint) {
         return addresses.length;
-    }
-
-    function getAvailableInvest() external view returns (uint availableInvest) {
-        uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
-
-        uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
-        uint USDTAmt = USDT.balanceOf(address(this)) * 1e12;
-        if (USDTAmt > USDTAmtKeepInVault) availableInvest = USDTAmt - USDTAmtKeepInVault;
-
-        uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
-        uint USDCAmt = USDC.balanceOf(address(this)) * 1e12;
-        if (USDCAmt > USDCAmtKeepInVault) availableInvest += USDCAmt - USDCAmtKeepInVault;
-
-        uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > DAIAmtKeepInVault) availableInvest += DAIAmt - DAIAmtKeepInVault;
     }
 
     function getAllPoolInETH() external view returns (uint) {
