@@ -265,9 +265,14 @@ describe("DAO Citadel V2", function () {
 
         // Withdraw
         console.log("-----withdraw-----")
-        await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr)
-        await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr)
-        await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr)
+        const router = new ethers.Contract("0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", ["function getAmountsOut(uint, address[] memory) external view returns (uint[] memory)"], deployer)
+        const WBTCPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), ["0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", WETHAddr]))[1]).mul(90).div(100)
+        const DPIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x1494CA1F11D487c2bBe4543E90080AeBa4BA3C2b", WETHAddr]))[1]).mul(90).div(100)
+        const DAIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x6B175474E89094C44Da98b954EedeAC495271d0F", WETHAddr]))[1]).mul(90).div(100)
+        const tokenPriceMin = [WBTCPriceMin, WBTCPriceMin, DPIPriceMin, DAIPriceMin]
+        await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10099.82872
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10160.598188
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10157.188876

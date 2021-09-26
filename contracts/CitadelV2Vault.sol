@@ -32,7 +32,7 @@ interface IChainlink {
 
 interface IStrategy {
     function invest(uint amount) external;
-    function withdraw(uint sharePerc) external;
+    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
@@ -157,13 +157,12 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
         require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
-        uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
         _burn(msg.sender, share);
         if (!paused()) strategy.adjustWatermark(withdrawAmt, false);
 
@@ -180,8 +179,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 // Enough if swap from token1 in vault
                 uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
                 if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
-                uint minAmtOut = amtSwapFromToken1 * 99 / 100;
-                curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, minAmtOut);
+                curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
                 withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
             } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
@@ -189,8 +187,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
                 if (token1AmtInVault > 0) {
                     if (token1 != address(DAI)) token1AmtInVault /= 1e12;
-                    uint minAmtOutToken1 = token1AmtInVault * 99 / 100;
-                    curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, minAmtOutToken1);
+                    curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
                 }
                 if (token2AmtInVault > 0) {
                     uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
@@ -203,7 +200,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
-                    strategy.withdraw(withdrawAmt - tokenAmtInVault);
+                    strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
                     if (token != DAI) tokenAmtInVault /= 1e12;
                     withdrawAmt = (sushiRouter.swapExactTokensForTokens(
                         WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
@@ -211,7 +208,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                        WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+                        WETH.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }
