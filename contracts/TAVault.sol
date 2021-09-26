@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../libs/BaseRelayRecipient.sol";
+import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -29,6 +30,7 @@ interface IChainlink {
 interface IStrategy {
     function invest(uint amount) external;
     function withdraw(uint sharePerc) external;
+    function switchMode() external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint sharePerc) external returns (uint);
@@ -111,7 +113,7 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeePerc = [100, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
         USDT.safeApprove(address(sushiRouter), type(uint).max);
         USDC.safeApprove(address(sushiRouter), type(uint).max);
@@ -126,7 +128,7 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         address msgSender = _msgSender();
         token.safeTransferFrom(msgSender, address(this), amount);
-        if (token == USDT || token == USDC) amount = amount * 1e12;
+        if (token != DAI) amount = amount * 1e12;
         uint amtDeposit = amount;
 
         uint _networkFeePerc;
@@ -154,19 +156,22 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint _totalSupply = totalSupply();
         uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
         _burn(msg.sender, share);
-        strategy.adjustWatermark(withdrawAmt, false);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
+        if (token != DAI) tokenAmtInVault = tokenAmtInVault * 1e12;
         if (withdrawAmt <= tokenAmtInVault) {
-            if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+            if (token != DAI) withdrawAmt = withdrawAmt / 1e12;
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
             if (!paused()) {
-                strategy.withdraw(withdrawAmt);
-                withdrawAmt = sushiRouter.swapExactTokensForTokens(
-                    WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                )[1];
+                uint amtWithdrawFromStrategy = withdrawAmt - tokenAmtInVault;
+                strategy.withdraw(amtWithdrawFromStrategy);
+                if (token != DAI) tokenAmtInVault /= 1e12;
+                withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+                    WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
+                )[1]) + tokenAmtInVault;
+                strategy.adjustWatermark(amtWithdrawFromStrategy, false);
+                token.safeTransfer(msg.sender, withdrawAmt);
             } else {
                 withdrawAmt = sushiRouter.swapExactTokensForTokens(
                     WETH.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
@@ -187,10 +192,10 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WETHAmt, uint tokenAmtToInvest) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
         strategy.invest(WETHAmt);
         strategy.adjustWatermark(tokenAmtToInvest, true);
-        distributeLPToken();
+        distributeLPToken(pool);
 
         emit Invest(WETHAmt);
     }
@@ -205,9 +210,8 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (fee > 0) fees = fees + fee;
     }
 
-    function distributeLPToken() private {
-        uint pool;
-        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
+    function distributeLPToken(uint pool) private {
+        if (totalSupply() != 0) pool -= totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -260,9 +264,13 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest) {
+    function switchMode() external onlyOwnerOrAdmin whenNotPaused {
+        strategy.switchMode();
+    }
+
+    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
+        pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {

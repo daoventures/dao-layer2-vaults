@@ -68,7 +68,7 @@ contract TAStrategy is Initializable {
     IDaoL1Vault public WBTCETHVault;
     IDaoL1Vault public USDCETHVault;
 
-    IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
+    IRouter constant router = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushi
     IMasterChef constant masterChef = IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
 
     address public vault;
@@ -98,14 +98,14 @@ contract TAStrategy is Initializable {
         profitFeePerc = 2000;
         mode = _mode;
 
-        WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WBTC.safeApprove(address(sushiRouter), type(uint).max);
-        USDC.safeApprove(address(sushiRouter), type(uint).max);
+        WETH.safeApprove(address(router), type(uint).max);
+        WBTC.safeApprove(address(router), type(uint).max);
+        USDC.safeApprove(address(router), type(uint).max);
 
         WBTCETH.safeApprove(address(WBTCETHVault), type(uint).max);
-        WBTCETH.safeApprove(address(sushiRouter), type(uint).max);
+        WBTCETH.safeApprove(address(router), type(uint).max);
         USDCETH.safeApprove(address(USDCETHVault), type(uint).max);
-        USDCETH.safeApprove(address(sushiRouter), type(uint).max);
+        USDCETH.safeApprove(address(router), type(uint).max);
     }
 
     function invest(uint WETHAmt) external onlyVault {
@@ -113,15 +113,15 @@ contract TAStrategy is Initializable {
         uint halfWETHAmt = WETHAmt / 2;
 
         if (mode) { // Attack
-            uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), halfWETHAmt);
-            (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(
+            uint WBTCAmt = swap2(address(WETH), address(WBTC), halfWETHAmt);
+            (,,uint WBTCETHAmt) = router.addLiquidity(
                 address(WBTC), address(WETH), WBTCAmt, halfWETHAmt, 0, 0, address(this), block.timestamp
             );
             WBTCETHVault.deposit(WBTCETHAmt);
             emit InvestWBTCETH(WETHAmt, WBTCETHAmt);
         } else { // Defence
-            uint USDCAmt = sushiSwap(address(WETH), address(USDC), halfWETHAmt);
-            (,,uint USDCETHAmt) = sushiRouter.addLiquidity(
+            uint USDCAmt = swap2(address(WETH), address(USDC), halfWETHAmt);
+            (,,uint USDCETHAmt) = router.addLiquidity(
                 address(USDC), address(WETH), USDCAmt, halfWETHAmt, 0, 0, address(this), block.timestamp
             );
             USDCETHVault.deposit(USDCETHAmt);
@@ -139,32 +139,32 @@ contract TAStrategy is Initializable {
 
     function withdrawWBTCETH(uint sharePerc) private returns (uint) {
         uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
+        (uint WBTCAmt, uint WETHAmt) = router.removeLiquidity(
             address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp
         );
-        WETHAmt += sushiSwap(address(WBTC), address(WETH), WBTCAmt);
+        WETHAmt += swap2(address(WBTC), address(WETH), WBTCAmt);
         emit WithdrawWBTCETH(WBTCETHAmt, WETHAmt);
         return WETHAmt;
     }
 
     function withdrawUSDCETH(uint sharePerc) private returns (uint) {
         uint USDCETHAmt = USDCETHVault.withdraw(USDCETHVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint USDCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
+        (uint USDCAmt, uint WETHAmt) = router.removeLiquidity(
             address(USDC), address(WETH), USDCETHAmt, 0, 0, address(this), block.timestamp
         );
-        WETHAmt += sushiSwap(address(USDC), address(WETH), USDCAmt);
+        WETHAmt += swap2(address(USDC), address(WETH), USDCAmt);
         emit WithdrawUSDCETH(USDCETHAmt, WETHAmt);
         return WETHAmt;
     }
 
-    function switchMode() external {
+    function switchMode() external onlyVault {
         if (mode) { // Attack switch to defence
             uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)));
-            (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
+            (uint WBTCAmt, uint WETHAmt) = router.removeLiquidity(
                 address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp
             );
-            uint USDCAmt = sushiSwap(address(WBTC), address(USDC), WBTCAmt);
-            (,,uint USDCETHAmt) = sushiRouter.addLiquidity(
+            uint USDCAmt = swap3(address(WBTC), address(USDC), WBTCAmt);
+            (,,uint USDCETHAmt) = router.addLiquidity(
                 address(USDC), address(WETH), USDCAmt, WETHAmt, 0, 0, address(this), block.timestamp
             );
             USDCETHVault.deposit(USDCETHAmt);
@@ -172,11 +172,11 @@ contract TAStrategy is Initializable {
             emit SwitchMode(WBTCETHAmt, USDCETHAmt, true, false);
         } else { // Defence switch to attack
             uint USDCETHAmt = USDCETHVault.withdraw(USDCETHVault.balanceOf(address(this)));
-            (uint USDCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(
+            (uint USDCAmt, uint WETHAmt) = router.removeLiquidity(
                 address(USDC), address(WETH), USDCETHAmt, 0, 0, address(this), block.timestamp
             );
-            uint WBTCAmt = sushiSwap(address(USDC), address(WBTC), USDCAmt);
-            (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(
+            uint WBTCAmt = swap3(address(USDC), address(WBTC), USDCAmt);
+            (,,uint WBTCETHAmt) = router.addLiquidity(
                 address(WBTC), address(WETH), WBTCAmt, WETHAmt, 0, 0, address(this), block.timestamp
             );
             WBTCETHVault.deposit(WBTCETHAmt);
@@ -191,7 +191,7 @@ contract TAStrategy is Initializable {
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
             fee = profit * profitFeePerc / 10000;
-            watermark = currentWatermark - fee;
+            watermark = currentWatermark;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
@@ -222,11 +222,19 @@ contract TAStrategy is Initializable {
         emit EmergencyWithdraw(WETHAmt);
     }
 
-    function sushiSwap(address from, address to, uint amount) private returns (uint) {
+    function swap2(address from, address to, uint amount) private returns (uint) {
         address[] memory path = new address[](2);
         path[0] = from;
         path[1] = to;
-        return sushiRouter.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp)[1];
+        return router.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp)[1];
+    }
+
+    function swap3(address from, address to, uint amount) private returns (uint) {
+        address[] memory path = new address[](3);
+        path[0] = from;
+        path[1] = address(WETH);
+        path[2] = to;
+        return router.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp)[2];
     }
 
     function setVault(address _vault) external {
