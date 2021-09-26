@@ -164,7 +164,6 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
         _burn(msg.sender, share);
-        if (!paused()) strategy.adjustWatermark(withdrawAmt, false);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
         if (token != DAI) tokenAmtInVault *= 1e12;
@@ -205,6 +204,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                     withdrawAmt = (sushiRouter.swapExactTokensForTokens(
                         WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
+                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (sushiRouter.swapExactTokensForTokens(
