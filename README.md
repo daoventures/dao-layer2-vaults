@@ -16,7 +16,7 @@ Uniswap V3 vault (implementation) contract address: 0x33755362194248a5870CE1cf90
 
 Uniswap V3 factory contract address: 0x10F69c2e8e15229492A987aDe4fB203D05845eAb
 
-Uniswap V3 GHST-ETH vault (proxy) contract address: 0xF9b0707dEE34d36088A093d85b300A3B910E00fC
+Uniswap V3 GHST-ETH vault (proxy) contract address: 0xF9b0707dEE34d36088A093d85b300A3B910E00fC Token ID: 128992
 
 Sushi ILV-ETH vault (implementation) contract address: 0x7422e91c420910B086126000b950DA11bfeda266
 

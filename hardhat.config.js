@@ -10,7 +10,7 @@ module.exports = {
         hardhat: {
             forking: {
                 url: process.env.ALCHEMY_URL_MAINNET,
-                blockNumber: 13230000,
+                blockNumber: 13242795,
 
                 // url: process.env.ALCHEMY_URL_KOVAN,
                 // blockNumber: 26380000, // Kovan
@@ -18,8 +18,7 @@ module.exports = {
         },
         mainnet: {
             url: process.env.ALCHEMY_URL_MAINNET,
-            gasPrice: 51000000000,
-            gasMultiplier: 1.2,
+            gasPrice: 31000000000,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
         },
         kovan: {
