@@ -67,36 +67,34 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     address public strategist;
     address public admin;
 
-
-
-    event Deposit(address indexed caller, uint amtDeposit, address tokenDeposit);
-    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint sharesBurned);
-    event Invest(uint amtInWETH);
-    event DistributeLPToken(address receiver, uint shareMinted);
-    event TransferredOutFees(uint fees, address token);
-    event Reimburse(uint farmIndex, address token, uint amount);
-    event Reinvest(uint amtInWETH);
+    event Deposit(address indexed caller, uint depositAmt);
+    event Withdraw(address indexed caller, uint withdrawAmt, uint sharesBurn);
+    event Invest(uint amount);
+    event TransferredOutFees(uint fees);
+    event Reimburse(uint farmIndex, address indexed token, uint amount);
+    event Reinvest(uint amount);
     event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
+    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint profitFeePerc);
-    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
-    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
-    event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
-    event SetAdminWallet(address oldAdmin, address newAdmin);
-    event SetBiconomy(address oldBiconomy, address newBiconomy);
 
     modifier onlyOwnerOrAdmin {
-        require(msg.sender == owner() || msg.sender == admin, "Only owner or admin");
+        require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
         _;
     }
 
     function initialize(
         string calldata name, string calldata ticker,
-        address _treasuryWallet, address _communityWallet, address _strategist, address _admin,
+        address _treasuryWallet, address _communityWallet, address _admin, address _strategist,
         address _biconomy, address _strategy
     ) external initializer {
+        require(_treasuryWallet != address(0), "Invalid treasury wallet");
+        require(_communityWallet != address(0), "Invalid community wallet");
+        require(_admin != address(0), "Invalid admin wallet");
+        require(_strategist != address(0), "Invalid strategist wallet");
+        require(_biconomy != address(0), "Invalid biconomy wallet");
+
         __ERC20_init(name, ticker);
         __Ownable_init();
 
@@ -146,7 +144,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
         totalDepositAmt = totalDepositAmt + amount;
 
-        emit Deposit(msgSender, amtDeposit, address(token));
+        emit Deposit(msgSender, amtDeposit);
     }
 
     function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
@@ -177,7 +175,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             }
         }
 
-        emit Withdraw(msg.sender, withdrawAmt, address(token), share);
+        emit Withdraw(msg.sender, withdrawAmt, share);
     }
 
     function invest() public whenNotPaused {
@@ -220,7 +218,6 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
             depositAmt[depositAcc] = 0;
-            emit DistributeLPToken(depositAcc, share);
         }
         delete addresses;
         totalDepositAmt = 0;
@@ -259,7 +256,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             token.safeTransfer(strategist, _fees - _fee - _fee); // 20%
 
             fees = 0;
-            emit TransferredOutFees(_fees, address(token)); // Decimal follow _token
+            emit TransferredOutFees(_fees); // Decimal follow _token
         }
     }
 
@@ -297,14 +294,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @param amount Amount to reimburse (decimal follow token)
     function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
+        strategy.adjustWatermark(amount, false);
         uint WETHAmt;
         WETHAmt = (sushiRouter.getAmountsOut(amount, getPath(token, address(WETH))))[1];
         WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
         sushiSwap(address(WETH), token, WETHAmt);
-        
-        if (token == address(USDT) || token == address(USDC)) strategy.adjustWatermark(amount * 1e12, false);
-        else strategy.adjustWatermark(amount, false);
-        
         emit Reimburse(farmIndex, token, amount);
     }
 
@@ -377,37 +371,6 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit SetProfitFeePerc(profitFeePerc);
     }
 
-    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
-        address oldTreasuryWallet = treasuryWallet;
-        treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
-    }
-
-    function setCommunityWallet(address _communityWallet) external onlyOwner {
-        address oldCommunityWallet = communityWallet;
-        communityWallet = _communityWallet;
-        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
-    }
-
-    function setStrategist(address _strategist) external {
-        require(msg.sender == strategist || msg.sender == owner(), "Only owner or strategist");
-        address oldStrategist = strategist;
-        strategist = _strategist;
-        emit SetStrategistWallet(oldStrategist, _strategist);
-    }
-
-    function setAdmin(address _admin) external onlyOwner {
-        address oldAdmin = admin;
-        admin = _admin;
-        emit SetAdminWallet(oldAdmin, _admin);
-    }
-
-    function setBiconomy(address _biconomy) external onlyOwner {
-        address oldBiconomy = trustedForwarder;
-        trustedForwarder = _biconomy;
-        emit SetBiconomy(oldBiconomy, _biconomy);
-    }
-
     function _msgSender() internal override(ContextUpgradeable, BaseRelayRecipient) view returns (address) {
         return BaseRelayRecipient._msgSender();
     }
@@ -422,11 +385,8 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         path[1] = tokenB;
     }
 
-    function getTotalPendingDeposits() external view returns (uint) {
-        return addresses.length;
-    }
-
-    function getAllPoolInETH(bool includeVestedILV) external view returns (uint) {
+    /// @return TVL in ETH
+    function getAllPool(bool includeVestedILV) external view returns (uint) {
         uint WETHAmt; // Stablecoins amount keep in vault convert to WETH
 
         uint USDTAmt = USDT.balanceOf(address(this));

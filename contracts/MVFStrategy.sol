@@ -204,7 +204,6 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
 
     function invest(uint WETHAmt) external onlyVault {
         WETH.safeTransferFrom(vault, address(this), WETHAmt);
-        WETHAmt = WETH.balanceOf(address(this));
 
         uint[] memory pools = getEachPool(false);
         uint pool = pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5] + WETHAmt;
