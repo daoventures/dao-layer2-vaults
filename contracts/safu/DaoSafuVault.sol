@@ -58,8 +58,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     uint[] public networkFeePerc;
     uint public customNetworkFeePerc;
 
-    // Temporarily variable for LP token distribution only
-    address[] addresses;
+
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
     uint totalDepositAmt;
 
@@ -143,12 +142,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint l1Fee = amount * strategy.getL1FeeAverage() / 10000;//review
         amount = amount - l1Fee;
 
-/*         if (depositAmt[msgSender] == 0) {
-            addresses.push(msgSender);
-            depositAmt[msgSender] = amount;
-        } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
-        totalDepositAmt = totalDepositAmt + amount; */
-
         totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//review
 
         emit Deposit(msgSender, amtDeposit);
@@ -160,7 +153,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD() /* - totalDepositAmt */) * share / _totalSupply;
+        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -202,7 +195,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.invest(WBNBAmt);
 
         strategy.adjustWatermark(tokenAmtToInvest, true);
-        // distributeLPToken();
 
         emit Invest(WBNBAmt);
     }
@@ -215,26 +207,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         );
         uint fee = strategy.collectProfitAndUpdateWatermark();
         if (fee > 0) fees = fees + fee;
-    }
-
-    function distributeLPToken() private {
-        uint pool;
-        // uint l1Fee = strategy.getL1FeeAverage();
-        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
-        address[] memory _addresses = addresses;
-        for (uint i; i < _addresses.length; i ++) {
-            address depositAcc = _addresses[i];
-            uint _depositAmt = depositAmt[depositAcc];// - (depositAmt[depositAcc] * l1Fee / 10000);
-            uint _totalSupply = totalSupply();
-            uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool; //TODO CHECK supply increase with loop, so more shares for same amount
-            //TODO check - also `_depositAmt` doesn't include 10% L1 fee, so prints more shares than previous user //review
-            _mint(depositAcc, share);
-            pool = pool + _depositAmt;
-            depositAmt[depositAcc] = 0;
-            emit DistributeLPToken(depositAcc, share);
-        }
-        delete addresses;
-        totalDepositAmt = 0;
     }
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
@@ -429,10 +401,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         path = new address[](2);
         path[0] = tokenA;
         path[1] = tokenB;
-    }
-
-    function getTotalPendingDeposits() external view returns (uint) {
-        return addresses.length;
     }
 
     function getAvailableInvest() external view returns (uint availableInvest) {

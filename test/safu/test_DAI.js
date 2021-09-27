@@ -73,13 +73,13 @@ const deployDeps = async () => {
 const deploy = async (btcbbnb, btcbbusd, btcbeth, cakebnb) => {
     const [deployer] = await ethers.getSigners();
 
-    let Strategy = await ethers.getContractFactory("CitadelV2StrategyBSC", deployer)
+    let Strategy = await ethers.getContractFactory("DaoSafuStrategy", deployer)
     let strategy = await upgrades.deployProxy(Strategy, [btcbeth, btcbbnb,
         cakebnb, btcbbusd])
 
     console.log("Strategy Proxy: ", strategy.address)
 
-    let Vault = await ethers.getContractFactory("CitadelV2VaultBSC", deployer)
+    let Vault = await ethers.getContractFactory("DaoSafuVault", deployer)
     let vault = await upgrades.deployProxy(Vault, [
         "DAO L2 Citadel V2", "daoCDV2",
         addresses.treasury, addresses.communityWallet, addresses.strategist, addresses.admin,
@@ -119,8 +119,8 @@ const setup = async () => {
         params: [addresses.admin]
     })
 
-    // const vault = await ethers.getContract("CitadelV2VaultBSC", deployer)
-    // const strategy = await ethers.getContract("CitadelV2StrategyBSC", deployer)
+    // const vault = await ethers.getContract("DaoSafuVault", deployer)
+    // const strategy = await ethers.getContract("DaoSafuStrategy", deployer)
 
     let { btcbbnb, btcbbusd, btcbeth, cakebnb } = await deployDeps()
 
@@ -165,19 +165,22 @@ describe("Citadel - DAI", async () => {
         expect(await vault.strategist()).to.be.equal(addresses.strategist)
         expect(await vault.admin()).to.be.equal(addresses.admin)
 
+        console.log("L1FEE", (await strategy.getL1FeeAverage()).toString())
 
         //check normal flow
         let user1Balance = await DAI.balanceOf(user1.address)
         let user2Balance = await DAI.balanceOf(user2.address)
         let user3Balance = await DAI.balanceOf(user3.address)
-        // console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
+        console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
         console.log("User2 Deposited: ", ethers.utils.formatEther(user2Balance))
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
-        // await vault.connect(user1).deposit(user1Balance, DAI.address)
-        // await vault.connect(adminSigner).invest()
+        await vault.connect(user1).deposit(user1Balance, DAI.address)
+        await vault.connect(adminSigner).invest()
         await vault.connect(user2).deposit(user2Balance, DAI.address)
         await vault.connect(adminSigner).invest()
+        console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
+
         await vault.connect(user3).deposit(user3Balance, DAI.address)
         await vault.connect(adminSigner).invest()
         console.log("USER 1 LP Tokens", (await vault.balanceOf(user1.address)).toString())
@@ -185,13 +188,12 @@ describe("Citadel - DAI", async () => {
         console.log("USER 2 LP Tokens", (await vault.balanceOf(user2.address)).toString())
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
 
-        // await vault.connect(adminSigner).yield()
 
-        // await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address)
+        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address)
         await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), DAI.address)
         await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address)
 
-        // console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
+        console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
         console.log("User2 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user2.address)))
         console.log("User3 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user3.address)))
 
