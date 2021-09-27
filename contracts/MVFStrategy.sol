@@ -391,7 +391,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         emit WithdrawMVI(MVIAmt, WETHAmt);
     }
 
-    function collectProfitAndUpdateWatermark() public onlyVault returns (uint fee) {
+    function collectProfitAndUpdateWatermark() external onlyVault returns (uint fee) {
         uint currentWatermark = getAllPoolInUSD(false);
         uint lastWatermark = watermark;
         if (lastWatermark == 0) { // First invest or after emergency withdrawal
