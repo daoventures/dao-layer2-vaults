@@ -165,7 +165,7 @@ describe("Citadel - DAI", async () => {
         expect(await vault.strategist()).to.be.equal(addresses.strategist)
         expect(await vault.admin()).to.be.equal(addresses.admin)
 
-        console.log("L1FEE", (await strategy.getL1FeeAverage()).toString())
+        // console.log("L1FEE", (await strategy.getL1FeeAverage()).toString())
 
         //check normal flow
         let user1Balance = await USDT.balanceOf(user1.address)
@@ -189,9 +189,9 @@ describe("Citadel - DAI", async () => {
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
 
 
-        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), USDT.address)
-        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), USDT.address)
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), USDT.address)
+        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), USDT.address, [0,0,0,0])
+        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), USDT.address, [0,0,0,0])
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), USDT.address, [0,0,0,0])
 
         console.log("User1 Withdrawn: ", ethers.utils.formatEther(await USDT.balanceOf(user1.address)))
         console.log("User2 Withdrawn: ", ethers.utils.formatEther(await USDT.balanceOf(user2.address)))
@@ -219,7 +219,7 @@ describe("Citadel - DAI", async () => {
         expect(vault.connect(user3).deposit(user3Balance, USDT.address)).to.be.revertedWith('Pausable: paused')
         expect(vault.connect(adminSigner).invest()).to.be.revertedWith('Pausable: paused')
 
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), USDT.address)
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), USDT.address, [0,0,0,0])
         console.log("User3 Withdrawn: ", ethers.utils.formatEther(await USDT.balanceOf(user3.address)))
         
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())

@@ -15,7 +15,7 @@ module.exports = {
     hardhat: {
       forking: {
         url: process.env.ALCHEMY_URL_MAINNET,
-        blockNumber: 10984219//13055980,
+        blockNumber: 11197779//10984219//13055980,
       },
     },
 
@@ -40,7 +40,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000,
+        runs: 500,
       },
     },
   },

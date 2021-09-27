@@ -28,15 +28,15 @@ interface IChainlink {
 
 interface IStrategy {
     function invest(uint amount) external;
-    function withdraw(uint sharePerc) external;
+    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
     function emergencyWithdraw() external;
     function setProfitFeePerc(uint profitFeePerc) external;
+    function profitFeePerc() external view returns (uint);
     function watermark() external view returns (uint);
     function getAllPool() external view returns (uint);
-    function getL1FeeAverage() external view returns (uint);
 }
 
 contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
@@ -58,7 +58,8 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     uint[] public networkFeePerc;
     uint public customNetworkFeePerc;
 
-
+    // Temporarily variable for LP token distribution only
+    address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
     uint totalDepositAmt;
 
@@ -67,18 +68,18 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     address public strategist;
     address public admin;
 
-    event Deposit(address indexed caller, uint depositAmt);
-    event Withdraw(address caller, uint withdrawAmt, address tokenWithdraw, uint sharesBurn);
+    event Deposit(address caller, uint amtDeposit, address tokenDeposit);
+    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint shareBurned);
     event Invest(uint amount);
-    event DistributeLPToken(address receiver, uint shareMint);
-    event TransferredOutFees(uint fees);
+    event DistributeLPToken(address receiver, uint shareMinted);
+    event TransferredOutFees(uint fees, address token);
     event Reimburse(uint farmIndex, address token, uint amount);
     event Reinvest(uint amount);
     event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint indexed oldCustomNetworkFeeTier, uint indexed newCustomNetworkFeeTier);
+    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
-    event SetCustomNetworkFeePerc(uint indexed oldCustomNetworkFeePerc, uint indexed newCustomNetworkFeePerc);
-    event SetProfitFeePerc(uint profitFeePerc);
+    event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
+    event SetProfitFeePerc(uint oldProfitFeePerc, uint profitFeePerc);
     event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
     event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
     event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
@@ -111,7 +112,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeePerc = [100, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
         USDT.safeApprove(address(router), type(uint).max);
         USDC.safeApprove(address(router), type(uint).max);
@@ -123,9 +124,9 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
         require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
+        require(token == DAI || token == USDC || token == USDT, "Invalid token");
 
         address msgSender = _msgSender();
-        uint _pool = getAllPoolInUSD();
         token.safeTransferFrom(msgSender, address(this), amount);
 
         uint amtDeposit = amount;
@@ -139,48 +140,73 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         fees = fees + fee;
         amount = amount - fee;
 
-        uint l1Fee = amount * strategy.getL1FeeAverage() / 10000;//review
-        amount = amount - l1Fee;
+        if (depositAmt[msgSender] == 0) {
+            addresses.push(msgSender);
+            depositAmt[msgSender] = amount;
+        } else depositAmt[msgSender] += amount;
+        totalDepositAmt += amount;
 
-        totalSupply() == 0 ? _mint(msgSender, amount) : _mint(msgSender, amount * totalSupply() / _pool);//review
-
-        emit Deposit(msgSender, amtDeposit);
+        emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
+        require(token == DAI || token == USDC || token == USDT, "Invalid token");
 
-        uint _totalSupply = totalSupply();
-        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
         
         if (withdrawAmt <= tokenAmtInVault) {
-            strategy.adjustWatermark(withdrawAmt, false);//review
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
-            if (!paused()) {
-                strategy.adjustWatermark(withdrawAmt, false); //review
-                strategy.withdraw(withdrawAmt - tokenAmtInVault);
-                withdrawAmt = (router.swapExactTokensForTokens(
-                    WBNB.balanceOf(address(this)), 0, getPath(address(WBNB), address(token)), address(this), block.timestamp
-                ))[1] + tokenAmtInVault;
-
+            // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+            (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+            if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+                // Enough if swap from token1 in vault
+                uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+                router.swapExactTokensForTokens(amtSwapFromToken1, amtSwapFromToken1 * 99 / 100, getPath(token1, address(token)), address(this), block.timestamp); 
+                // curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
+                withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
-            } else {
-                withdrawAmt = (router.swapExactTokensForTokens(
-                    WBNB.balanceOf(address(this)) * share / _totalSupply, 0, getPath(address(WBNB), address(token)), msg.sender, block.timestamp
-                ))[1];
+            } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+                // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+                uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+                if (token1AmtInVault > 0) {
+                    router.swapExactTokensForTokens(token1AmtInVault, token1AmtInVault * 99 / 100, getPath(token1, address(token)), address(this), block.timestamp); 
+                    // curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+                }
+                if (token2AmtInVault > 0) {
+                    // uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+                    router.swapExactTokensForTokens(amtSwapFromToken2, amtSwapFromToken2 * 99 /100, getPath(token2, address(token)), address(this), block.timestamp); 
+                    // curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+                }
+                withdrawAmt = token.balanceOf(address(this));
+                token.safeTransfer(msg.sender, withdrawAmt);
+            }else {
+                // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+                if (!paused()) {
+                    strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+                    withdrawAmt = (router.swapExactTokensForTokens(
+                        WBNB.balanceOf(address(this)), 0, getPath(address(WBNB), address(token)), address(this), block.timestamp
+                    )[1]) + tokenAmtInVault;
+                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
+                    token.safeTransfer(msg.sender, withdrawAmt);
+                } else {
+                    withdrawAmt = (router.swapExactTokensForTokens(
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                    ))[1];
+                }
             }
         }
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
-    function invest() public whenNotPaused {
+    function invest() external whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -190,11 +216,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt);
 
         strategy.invest(WBNBAmt);
 
         strategy.adjustWatermark(tokenAmtToInvest, true);
+
+        distributeLPToken(pool);
 
         emit Invest(WBNBAmt);
     }
@@ -208,6 +236,24 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint fee = strategy.collectProfitAndUpdateWatermark();
         if (fee > 0) fees = fees + fee;
     }
+
+    function distributeLPToken(uint pool) private {
+        if (totalSupply() != 0) pool -= totalDepositAmt;
+        address[] memory _addresses = addresses;
+        for (uint i; i < _addresses.length; i ++) {
+            address depositAcc = _addresses[i];
+            uint _depositAmt = depositAmt[depositAcc];
+            uint _totalSupply = totalSupply();
+            uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
+            _mint(depositAcc, share);
+            pool = pool + _depositAmt;
+            depositAmt[depositAcc] = 0;
+            emit DistributeLPToken(depositAcc, share);
+        }
+        delete addresses;
+        totalDepositAmt = 0;
+    }
+
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
         require(
@@ -240,13 +286,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             token.safeTransfer(strategist, _fees - _fee - _fee); // 20%
 
             fees = 0;
-            emit TransferredOutFees(_fees); // Decimal follow _token
+            emit TransferredOutFees(_fees, address(token)); // Decimal follow _token
         }
     }
 
-    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WBNBAmt, uint tokenAmtToInvest) {
+    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
+        pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
         if (USDTAmt > USDTAmtKeepInVault + 1e18) {
@@ -354,8 +400,9 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+        uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
-        emit SetProfitFeePerc(profitFeePerc);
+        emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
@@ -397,27 +444,33 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return "1";
     }
 
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+        if (token == USDT) {
+            token1 = address(USDC);
+            token1AmtInVault = USDC.balanceOf(address(this));
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else if (token == USDC) {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this));
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this));
+            token2 = address(USDC);
+            token2AmtInVault = USDC.balanceOf(address(this));
+        }
+    }
+
     function getPath(address tokenA, address tokenB) private pure returns (address[] memory path) {
         path = new address[](2);
         path[0] = tokenA;
         path[1] = tokenB;
     }
 
-    function getAvailableInvest() external view returns (uint availableInvest) {
-        uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
-
-        uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
-        uint USDTAmt = USDT.balanceOf(address(this));
-        if (USDTAmt > USDTAmtKeepInVault) availableInvest = USDTAmt - USDTAmtKeepInVault;
-
-        uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
-        uint USDCAmt = USDC.balanceOf(address(this));
-        if (USDCAmt > USDCAmtKeepInVault) availableInvest += USDCAmt - USDCAmtKeepInVault;
-
-        uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > DAIAmtKeepInVault) availableInvest += DAIAmt - DAIAmtKeepInVault;
+    function getTotalPendingDeposits() external view returns (uint) {
+        return addresses.length;
     }
 
     function getAllPoolInBNB() external view returns (uint) {
