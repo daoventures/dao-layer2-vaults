@@ -199,7 +199,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     }
 
     function investHBTCWBTC(uint WETHAmt) private {
-        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), WETHAmt, 0);
+        uint WBTCAmt = swap(address(WETH), address(WBTC), WETHAmt, 0);
         uint256[2] memory amounts = [0, WBTCAmt];
         curvePool.add_liquidity(amounts, 0);
         uint HBTCWBTCAmt = HBTCWBTC.balanceOf(address(this));
@@ -209,7 +209,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
     function investWBTCETH(uint WETHAmt) private {
         uint halfWETH = WETHAmt / 2;
-        uint WBTCAmt = sushiSwap(address(WETH), address(WBTC), halfWETH, 0);
+        uint WBTCAmt = swap(address(WETH), address(WBTC), halfWETH, 0);
         (,,uint WBTCETHAmt) = sushiRouter.addLiquidity(address(WBTC), address(WETH), WBTCAmt, halfWETH, 0, 0, address(this), block.timestamp);
         WBTCETHVault.deposit(WBTCETHAmt);
         emit InvestWBTCETH(WETHAmt, WBTCETHAmt);
@@ -217,7 +217,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
     function investDPIETH(uint WETHAmt) private {
         uint halfWETH = WETHAmt / 2;
-        uint DPIAmt = sushiSwap(address(WETH), address(DPI), halfWETH, 0);
+        uint DPIAmt = swap(address(WETH), address(DPI), halfWETH, 0);
         (,,uint DPIETHAmt) = sushiRouter.addLiquidity(address(DPI), address(WETH), DPIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DPIETHVault.deposit(DPIETHAmt);
         emit InvestDPIETH(WETHAmt, DPIETHAmt);
@@ -225,7 +225,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
     function investDAIETH(uint WETHAmt) private {
         uint halfWETH = WETHAmt / 2;
-        uint DAIAmt = sushiSwap(address(WETH), address(DAI), halfWETH, 0);
+        uint DAIAmt = swap(address(WETH), address(DAI), halfWETH, 0);
         (,,uint DAIETHAmt) = sushiRouter.addLiquidity(address(DAI), address(WETH), DAIAmt, halfWETH, 0, 0, address(this), block.timestamp);
         DAIETHVault.deposit(DAIETHAmt);
         emit InvestDAIETH(WETHAmt, DAIETHAmt);
@@ -249,7 +249,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         curvePool.remove_liquidity_one_coin(HBTCWBTCAmt, 1, 0);
         uint WBTCAmt = WBTC.balanceOf(address(this));
         uint amountOutMin = WBTCAmt * WBTCPrice / 1e8;
-        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
+        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
         emit WithdrawHBTCWBTC(HBTCWBTCAmt, _WETHAmt);
     }
 
@@ -257,7 +257,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp);
         uint amountOutMin = WBTCAmt * WBTCPrice / 1e8;
-        uint _WETHAmt = sushiSwap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
+        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, amountOutMin);
         emit WithdrawWBTCETH(WBTCETHAmt, WETHAmt + _WETHAmt);
     }
 
@@ -265,7 +265,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         uint DPIETHAmt = DPIETHVault.withdraw(DPIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DPIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DPI), address(WETH), DPIETHAmt, 0, 0, address(this), block.timestamp);
         uint amountOutMin = DPIAmt * DPIPrice / 1e18;
-        uint _WETHAmt = sushiSwap(address(DPI), address(WETH), DPIAmt, amountOutMin);
+        uint _WETHAmt = swap(address(DPI), address(WETH), DPIAmt, amountOutMin);
         emit WithdrawDPIETH(DPIETHAmt, WETHAmt + _WETHAmt);
     }
 
@@ -273,7 +273,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         uint DAIETHAmt = DAIETHVault.withdraw(DAIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DAIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DAI), address(WETH), DAIETHAmt, 0, 0, address(this), block.timestamp);
         uint amountOutMin = DAIAmt * DAIPrice / 1e18;
-        uint _WETHAmt = sushiSwap(address(DAI), address(WETH), DAIAmt, amountOutMin);
+        uint _WETHAmt = swap(address(DAI), address(WETH), DAIAmt, amountOutMin);
         emit WithdrawDAIETH(DAIETHAmt, WETHAmt + _WETHAmt);
     }
 
@@ -317,7 +317,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         emit EmergencyWithdraw(WETHAmt);
     }
 
-    function sushiSwap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
+    function swap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
         address[] memory path = new address[](2);
         path[0] = from;
         path[1] = to;
