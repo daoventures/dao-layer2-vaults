@@ -248,28 +248,28 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         uint HBTCWBTCAmt = HBTCWBTCVault.withdraw(HBTCWBTCVault.balanceOf(address(this)) * sharePerc / 1e18);
         curvePool.remove_liquidity_one_coin(HBTCWBTCAmt, 1, 0);
         uint WBTCAmt = WBTC.balanceOf(address(this));
-        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, WBTCAmt * WBTCPrice / 1e8;);
+        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, WBTCAmt * WBTCPrice / 1e8);
         emit WithdrawHBTCWBTC(HBTCWBTCAmt, _WETHAmt);
     }
 
     function withdrawWBTCETH(uint sharePerc, uint WBTCPrice) private {
         uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint WBTCAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, WBTCAmt * WBTCPrice / 1e8;);
+        uint _WETHAmt = swap(address(WBTC), address(WETH), WBTCAmt, WBTCAmt * WBTCPrice / 1e8);
         emit WithdrawWBTCETH(WBTCETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawDPIETH(uint sharePerc, uint DPIPrice) private {
         uint DPIETHAmt = DPIETHVault.withdraw(DPIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DPIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DPI), address(WETH), DPIETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = swap(address(DPI), address(WETH), DPIAmt, DPIAmt * DPIPrice / 1e18;);
+        uint _WETHAmt = swap(address(DPI), address(WETH), DPIAmt, DPIAmt * DPIPrice / 1e18);
         emit WithdrawDPIETH(DPIETHAmt, WETHAmt + _WETHAmt);
     }
 
     function withdrawDAIETH(uint sharePerc, uint DAIPrice) private {
         uint DAIETHAmt = DAIETHVault.withdraw(DAIETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint DAIAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(DAI), address(WETH), DAIETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = swap(address(DAI), address(WETH), DAIAmt, DAIAmt * DAIPrice / 1e18;);
+        uint _WETHAmt = swap(address(DAI), address(WETH), DAIAmt, DAIAmt * DAIPrice / 1e18);
         emit WithdrawDAIETH(DAIETHAmt, WETHAmt + _WETHAmt);
     }
 
