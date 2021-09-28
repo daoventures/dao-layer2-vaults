@@ -39,13 +39,13 @@ interface IStrategy {
     function getAllPool() external view returns (uint);
 }
 
-contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract DaoDegenVaultTestnet is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x55d398326f99059fF775485246999027B3197955);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x337610d27c682E347C9cD60BD4b3b107C9d34dDd);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0x64544969ed7EBf5f083679233325356EbE738930);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0xEC5dCb5Dbf4B114C9d0F65BcCAb49EC54F6A0867);
     IERC20Upgradeable constant WBNB = IERC20Upgradeable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
 
     IRouter constant router = IRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
@@ -114,11 +114,11 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
-        USDT.safeApprove(address(router), type(uint).max);
+/*         USDT.safeApprove(address(router), type(uint).max);
         USDC.safeApprove(address(router), type(uint).max);
         DAI.safeApprove(address(router), type(uint).max);
         WBNB.safeApprove(address(router), type(uint).max);
-        WBNB.safeApprove(address(strategy), type(uint).max);
+        WBNB.safeApprove(address(strategy), type(uint).max); */
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -157,7 +157,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         
         uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
+        /* uint tokenAmtInVault = token.balanceOf(address(this));
         
         if (withdrawAmt <= tokenAmtInVault) {
             token.safeTransfer(msg.sender, withdrawAmt);
@@ -190,27 +190,25 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[0]), getPath(address(WBNB), address(token)), address(this), block.timestamp
+                        WBNB.balanceOf(address(this)), 0, getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
                     strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[0]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WBNB), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }
-        }
+        } */
+
+        token.safeTransfer(msg.sender, withdrawAmt);
         _burn(msg.sender, share);
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
-    function getMinimumAmount(uint _amount, uint _price) private pure returns (uint) {
-        return _amount * _price / 1e18;
-    }
-
     function invest() external whenNotPaused {
-        require(
+        /* require(
             msg.sender == admin ||
             msg.sender == owner() ||
             msg.sender == address(this), "Only authorized caller"
@@ -223,11 +221,13 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         strategy.invest(WBNBAmt);
 
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        strategy.adjustWatermark(tokenAmtToInvest, true); */
 
+        uint pool = getAllPoolInUSD();
         distributeLPToken(pool);
+        
 
-        emit Invest(WBNBAmt);
+        // emit Invest(WBNBAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
@@ -347,7 +347,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         uint WBNBAmt = WBNB.balanceOf(address(this));
         strategy.invest(WBNBAmt);
-        uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer());
+        uint BNBPriceInUSD = uint(IChainlink(0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526).latestAnswer());
         require(BNBPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WBNBAmt * BNBPriceInUSD / 1e8, true);
 
@@ -476,44 +476,48 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return addresses.length;
     }
 
- /*    function getAllPoolInBNB() external view returns (uint) {
-        uint WBNBAmt; // Stablecoins amount keep in vault convert to WBNB
+    function getAllPoolInBNB() external view returns (uint) {
+        // uint WBNBAmt; // Stablecoins amount keep in vault convert to WBNB
 
-        uint USDTAmt = USDT.balanceOf(address(this));
-        if (USDTAmt > 1e18) {
-            WBNBAmt = (router.getAmountsOut(USDTAmt, getPath(address(USDT), address(WBNB))))[1];
-        }
-        uint USDCAmt = USDC.balanceOf(address(this));
-        if (USDCAmt > 1e18) {
-            uint _WBNBAmt = (router.getAmountsOut(USDCAmt, getPath(address(USDC), address(WBNB))))[1];
-            WBNBAmt = WBNBAmt + _WBNBAmt;
-        }
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > 1e18) {
-            uint _WBNBAmt = (router.getAmountsOut(DAIAmt, getPath(address(DAI), address(WBNB))))[1];
-            WBNBAmt = WBNBAmt + _WBNBAmt;
-        }
-        uint feesInBNB;
-        if (fees > 1e18) {
-            // Assume fees pay in USDT
-            feesInBNB = (router.getAmountsOut(fees, getPath(address(USDT), address(WBNB))))[1];
-        }
+        // uint USDTAmt = USDT.balanceOf(address(this));
+        // if (USDTAmt > 1e18) {
+        //     WBNBAmt = (router.getAmountsOut(USDTAmt, getPath(address(USDT), address(WBNB))))[1];
+        // }
+        // uint USDCAmt = USDC.balanceOf(address(this));
+        // if (USDCAmt > 1e18) {
+        //     uint _WBNBAmt = (router.getAmountsOut(USDCAmt, getPath(address(USDC), address(WBNB))))[1];
+        //     WBNBAmt = WBNBAmt + _WBNBAmt;
+        // }
+        // uint DAIAmt = DAI.balanceOf(address(this));
+        // if (DAIAmt > 1e18) {
+        //     uint _WBNBAmt = (router.getAmountsOut(DAIAmt, getPath(address(DAI), address(WBNB))))[1];
+        //     WBNBAmt = WBNBAmt + _WBNBAmt;
+        // }
+        // uint feesInBNB;
+        // if (fees > 1e18) {
+        //     // Assume fees pay in USDT
+        //     feesInBNB = (router.getAmountsOut(fees, getPath(address(USDT), address(WBNB))))[1];
+        // }
 
-        if (paused()) return WBNB.balanceOf(address(this)) + WBNBAmt - feesInBNB;
-        return strategy.getAllPool() + WBNBAmt - feesInBNB;
+        // if (paused()) return WBNB.balanceOf(address(this)) + WBNBAmt - feesInBNB;
+        
+        //only for testnet
+        uint BNBPriceInUSD = uint(IChainlink(0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526).latestAnswer()); 
+        return ((getAllPoolInUSD() / BNBPriceInUSD) - (fees / BNBPriceInUSD)) * 1e8;
+        // return /* strategy.getAllPool() + */ WBNBAmt - feesInBNB;
     }
- */
+
     function getAllPoolInUSD() public view returns (uint) {
         // ETHPriceInUSD amount in 8 decimals
-        uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer()); 
+        uint BNBPriceInUSD = uint(IChainlink(0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526).latestAnswer()); 
         require(BNBPriceInUSD > 0, "ChainLink error");
         
         uint tokenKeepInVault = USDT.balanceOf(address(this)) + 
             USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
 
         if (paused()) return WBNB.balanceOf(address(this)) * BNBPriceInUSD / 1e8 + tokenKeepInVault - fees;
-        uint strategyPoolInUSD = strategy.getAllPool() * BNBPriceInUSD / 1e8;
-        return strategyPoolInUSD + tokenKeepInVault - fees;
+        // uint strategyPoolInUSD = strategy.getAllPool() * BNBPriceInUSD / 1e8;
+        return /* strategyPoolInUSD +  */tokenKeepInVault - fees;
     }
 
     /// @notice Can be use for calculate both user shares & APR    
