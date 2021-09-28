@@ -53,7 +53,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
-    ICurve constant curve = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    ICurve constant curve = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7); // 3pool
     IStrategy public strategy;
     uint[] public percKeepInVault;
     uint public fees;
@@ -199,22 +199,37 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
-                    strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
-                    if (token != DAI) tokenAmtInVault /= 1e12;
-                    withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                        WETH.balanceOf(address(this)), 0, getPath(address(WETH), address(token)), address(this), block.timestamp
-                    )[1]) + tokenAmtInVault;
-                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
-                    token.safeTransfer(msg.sender, withdrawAmt);
+                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
                 } else {
-                    withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-                        WETH.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-                    ))[1];
+                    withdrawAmt = withdrawWhenPaused(token, share, tokenPrice);
                 }
             }
         }
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
+    }
+
+    function withdrawFromStrategy(
+        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata tokenPrice
+    ) private returns (uint) {
+        strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        if (token != DAI) tokenAmtInVault /= 1e12;
+        uint WETHAmt = WETH.balanceOf(address(this));
+        uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
+        withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+            WETHAmt, amountOutMin, getPath(address(WETH), address(token)), address(this), block.timestamp
+        )[1]) + tokenAmtInVault;
+        strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
+        token.safeTransfer(msg.sender, withdrawAmt);
+        return withdrawAmt;
+    }
+
+    function withdrawWhenPaused(IERC20Upgradeable token, uint share, uint[] calldata tokenPrice) private returns (uint withdrawAmt) {
+        uint WETHAmt = WETH.balanceOf(address(this));
+        uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
+        withdrawAmt = (sushiRouter.swapExactTokensForTokens(
+            WETHAmt * share / totalSupply(), amountOutMin, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+        ))[1];
     }
 
     function invest() public whenNotPaused {
@@ -487,33 +502,6 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getTotalPendingDeposits() external view returns (uint) {
         return addresses.length;
-    }
-
-    function getAllPoolInETH() external view returns (uint) {
-        uint WETHAmt; // Stablecoins amount keep in vault convert to WETH
-
-        uint USDTAmt = USDT.balanceOf(address(this));
-        if (USDTAmt > 1e6) {
-            WETHAmt = (sushiRouter.getAmountsOut(USDTAmt, getPath(address(USDT), address(WETH))))[1];
-        }
-        uint USDCAmt = USDC.balanceOf(address(this));
-        if (USDCAmt > 1e6) {
-            uint _WETHAmt = (sushiRouter.getAmountsOut(USDCAmt, getPath(address(USDC), address(WETH))))[1];
-            WETHAmt = WETHAmt + _WETHAmt;
-        }
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > 1e18) {
-            uint _WETHAmt = (sushiRouter.getAmountsOut(DAIAmt, getPath(address(DAI), address(WETH))))[1];
-            WETHAmt = WETHAmt + _WETHAmt;
-        }
-        uint feesInETH;
-        if (fees > 1e18) {
-            // Assume fees pay in USDT
-            feesInETH = (sushiRouter.getAmountsOut(fees, getPath(address(USDT), address(WETH))))[1];
-        }
-
-        if (paused()) return WETH.balanceOf(address(this)) + WETHAmt - feesInETH;
-        return strategy.getAllPool() + WETHAmt - feesInETH;
     }
 
     function getAllPoolInUSD() public view returns (uint) {
