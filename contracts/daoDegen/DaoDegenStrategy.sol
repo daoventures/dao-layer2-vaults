@@ -209,8 +209,8 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     function _investBUSDALPACA(uint _wbnbAmt) private {
         uint _amt = _wbnbAmt/2;
 
-        _swap(address(WBNB), address(BUSD), _amt);
-        _swap(address(WBNB), address(ALPACA), _amt);
+        _swap(address(WBNB), address(BUSD), _amt, 0);
+        _swap(address(WBNB), address(ALPACA), _amt, 0);
 
         uint _busdAmt = BUSD.balanceOf(address(this));
         uint _alpacaAmt = ALPACA.balanceOf(address(this));
@@ -224,7 +224,7 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     function _investBNBXVS(uint _wbnbAmt) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(XVS), _amt);
+        _swap(address(WBNB), address(XVS), _amt, 0);
 
         uint _XVSBAmt = XVS.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(XVS), _amt, _XVSBAmt);
@@ -236,7 +236,7 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     function _investBNBBELT(uint _wbnbAmt) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(BELT), _amt);
+        _swap(address(WBNB), address(BELT), _amt, 0);
 
         uint _BELTAmt = BELT.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(BELT), _amt, _BELTAmt);
@@ -249,8 +249,8 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     function _investCHESSUSDC(uint _wbnbAmt) private {
         uint _amt = _wbnbAmt / 2 ;
 
-        _swap(address(WBNB), address(CHESS), _amt);
-        _swap(address(WBNB), address(USDC), _amt);
+        _swap(address(WBNB), address(CHESS), _amt, 0);
+        _swap(address(WBNB), address(USDC), _amt, 0);
 
         uint _CHESSAmt = CHESS.balanceOf(address(this));
         uint _USDCAmt = USDC.balanceOf(address(this));
@@ -262,64 +262,72 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit InvestCHESSUSDC(_wbnbAmt, lpTokens);
     }
 
-    function withdraw(uint amount) external onlyVault returns (uint WBNBAmt) {
+    function withdraw(uint amount, uint[] calldata tokenPrices) external onlyVault returns (uint WBNBAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         
         uint WBNBAmtBefore = WBNB.balanceOf(address(this));
-        _withdrawBUSDALPACA(sharePerc);
-        _withdrawBNBXVS(sharePerc);
-        _withdrawBNBBELT(sharePerc);
-        _withdrawCHESSUSDC(sharePerc);
+        _withdrawBUSDALPACA(sharePerc, tokenPrices[0], tokenPrices[1]);// (, bnbPriceInUSD, alpacaPriceInBNB)
+        _withdrawBNBXVS(sharePerc, tokenPrices[2]); //(, xvsPriceInBNB)
+        _withdrawBNBBELT(sharePerc, tokenPrices[3]); //(, beltPriceInBNB)
+        _withdrawCHESSUSDC(sharePerc, tokenPrices[0], tokenPrices[4]); //(,BNBPriceInUsd, chessPriceInBNB)
         WBNBAmt = WBNB.balanceOf(address(this)) - WBNBAmtBefore;
         WBNB.safeTransfer(vault, WBNBAmt);
 
         emit Withdraw(amount, WBNBAmt);
     }
 
-    function _withdrawBUSDALPACA(uint _sharePerc) private {
+    function _withdrawBUSDALPACA(uint _sharePerc, uint _bnbPrice, uint _alpacaPriceInBNB) private {
         BUSDALPACAVault.withdraw(BUSDALPACAVault.balanceOf(address(this)) * _sharePerc / 1e18 );
 
         uint _amt = BUSDALPACA.balanceOf(address(this));
 
         (uint _amtBUSD, uint _amtALPACA) = _removeLiquidity(address(BUSD), address(ALPACA), _amt);
 
-        uint _wBNBAmt = _swap(address(BUSD), address(WBNB), _amtBUSD);
-        _wBNBAmt += _swap(address(ALPACA), address(WBNB), _amtALPACA);
+        uint minAmount = _amtBUSD * _bnbPrice /1e18;
+        uint _wBNBAmt = _swap(address(BUSD), address(WBNB), _amtBUSD, minAmount);
+
+        minAmount = _amtALPACA * _alpacaPriceInBNB /1e18;
+        _wBNBAmt += _swap(address(ALPACA), address(WBNB), _amtALPACA, minAmount);
 
         emit WithdrawBUSDALPACA(_amt, _wBNBAmt);
     }
 
 
-    function _withdrawBNBXVS(uint _sharePerc) private {
+    function _withdrawBNBXVS(uint _sharePerc, uint _xvsPriceInBNB) private {
         BNBXVSVault.withdraw(BNBXVSVault.balanceOf(address(this)) * _sharePerc / 1e18 );
         uint _amt = BNBXVS.balanceOf(address(this));
 
         (uint _amtXVS, uint _amtBNB) = _removeLiquidity(address(XVS), address(WBNB), _amt);
 
-        _amtBNB += _swap(address(XVS), address(WBNB), _amtXVS);
+        uint _minAmount = _amtXVS * _xvsPriceInBNB / 1e18;
+        _amtBNB += _swap(address(XVS), address(WBNB), _amtXVS, _minAmount);
 
         emit WithdrawBNBXVS(_amt, _amtBNB);
     }
 
-    function _withdrawBNBBELT(uint _sharePerc) private {
+    function _withdrawBNBBELT(uint _sharePerc, uint _beltPriceInBNB) private {
         BNBBELTVault.withdraw(BNBBELTVault.balanceOf(address(this)) * _sharePerc / 1e18 );
         uint _amt = BNBBELT.balanceOf(address(this));
         (uint _amtBELT, uint _amtBNB) = _removeLiquidity(address(BELT), address(WBNB), _amt);
 
-        _amtBNB += _swap(address(BELT), address(WBNB), _amtBELT);
+        uint minAmount = _amtBELT * _beltPriceInBNB / 1e18;
+        _amtBNB += _swap(address(BELT), address(WBNB), _amtBELT, minAmount);
 
         emit WithdrawBNBBELT(_amt, _amtBNB);
     }
 
     // function _withdrawCHESSUSDC(uint _amount, uint _allPool) private {
-    function _withdrawCHESSUSDC(uint _sharePerc) private {
+    function _withdrawCHESSUSDC(uint _sharePerc, uint _bnbPrice, uint chessPriceInBNB) private {
         CHESSUSDCVault.withdraw(CHESSUSDCVault.balanceOf(address(this)) * _sharePerc / 1e18);
         uint _amt = CHESSUSDC.balanceOf(address(this));
 
         (uint _amtCHESS, uint _amtUSDC) = _removeLiquidity(address(CHESS), address(USDC), _amt);
 
-        uint _wBNBAmt = _swap(address(CHESS), address(WBNB), _amtCHESS);
-        _wBNBAmt += _swap(address(USDC), address(WBNB), _amtUSDC);
+        uint minAmount = _amtCHESS * chessPriceInBNB / 1e18;
+
+        uint _wBNBAmt = _swap(address(CHESS), address(WBNB), _amtCHESS, minAmount);
+        minAmount = _amtUSDC * _bnbPrice / 1e18;
+        _wBNBAmt += _swap(address(USDC), address(WBNB), _amtUSDC, minAmount);
 
         emit WithdrawCHESSUSDC(_amt, _wBNBAmt);
     }
@@ -344,14 +352,14 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
-    function _swap(address _tokenA, address _tokenB, uint _amt) private returns (uint) {
+    function _swap(address _tokenA, address _tokenB, uint _amt, uint _minAmount) private returns (uint) {
         address[] memory path = new address[](2);
 
         path[0] = _tokenA;
         path[1] = _tokenB;
 
 
-        return (PnckRouter.swapExactTokensForTokens(_amt , 0, path, address(this), block.timestamp))[1];
+        return (PnckRouter.swapExactTokensForTokens(_amt , _minAmount, path, address(this), block.timestamp))[1];
     }
 
     function _addLiquidity(address _tokenA, address _tokenB, uint _amtA, uint _amtB) private returns (uint liquidity) {
@@ -364,10 +372,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     /// @param amount Amount to reimburse to vault contract in ETH
     function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint WBNBAmt) {
-        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool()); 
-        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool());
-        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool());
-        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool());
+        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool(), 0, 0); 
+        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool(),0);
+        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool(),0);
+        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool(), 0, 0);
         WBNBAmt = WBNB.balanceOf(address(this));
         WBNB.safeTransfer(vault, WBNBAmt);
         emit Reimburse(WBNBAmt);
@@ -384,10 +392,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     function emergencyWithdraw() external onlyVault {
         // 1e18 == 100% of share
-        _withdrawBUSDALPACA(1e18); 
-        _withdrawBNBXVS(1e18);
-        _withdrawBNBBELT(1e18);
-        _withdrawCHESSUSDC(1e18);
+        _withdrawBUSDALPACA(1e18, 0, 0); 
+        _withdrawBNBXVS(1e18, 0);
+        _withdrawBNBBELT(1e18, 0);
+        _withdrawCHESSUSDC(1e18, 0, 0);
         uint WBNBAmt = WBNB.balanceOf(address(this));
         WBNB.safeTransfer(vault, WBNBAmt);
         watermark = 0;
@@ -437,32 +445,6 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         percentages[1] = pools[1] * 10000 / allPool;
         percentages[2] = pools[2] * 10000 / allPool;
         percentages[3] = pools[3] * 10000 / allPool;
-    }
-
-    function getL1FeeAverage() external view returns (uint l1Fee) {
-        uint denominator;
-        if(BUSDALPACAVault.isWhitelisted(address(this)) == false) {
-            l1Fee += BUSDALPACAVault.depositFee();
-
-            denominator++;
-        }
-
-        if(BNBXVSVault.isWhitelisted(address(this)) == false) {
-            l1Fee += BNBXVSVault.depositFee();
-            denominator++;
-        }
-
-        if(BNBBELTVault.isWhitelisted(address(this)) == false) {
-            l1Fee += BNBBELTVault.depositFee();
-            denominator++;
-        }
-
-        if(CHESSUSDCVault.isWhitelisted(address(this)) == false) {
-            l1Fee += CHESSUSDCVault.depositFee();
-            denominator++;
-        }
-
-        l1Fee = l1Fee / denominator; //average
     }
 
 }
