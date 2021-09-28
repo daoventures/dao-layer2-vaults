@@ -235,7 +235,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
     function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint WETHAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         uint WETHAmtBefore = WETH.balanceOf(address(this));
-        withdrawHBTCWBTC(sharePerc, tokenPrice[0]);
+        withdrawHBTCWBTC(sharePerc, tokenPrice[1]);
         withdrawWBTCETH(sharePerc, tokenPrice[1]);
         withdrawDPIETH(sharePerc, tokenPrice[2]);
         withdrawDAIETH(sharePerc, tokenPrice[3]);
