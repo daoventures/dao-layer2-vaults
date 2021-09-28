@@ -14,13 +14,18 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.ALCHEMY_URL_MAINNET,
-        blockNumber: 11197779//10984219//13055980,
+        url: process.env.BSC_TESTNET_URL,//process.env.ALCHEMY_URL_MAINNET,
+        // blockNumber: 12752770//11197779//10984219//13055980,
       },
     },
 
     mainnet: {
       url: process.env.ALCHEMY_URL_MAINNET,
+      accounts: [`0x${process.env.PRIVATE_KEY}`],
+    },
+
+    bscTestnet: {
+      url: process.env.BSC_TESTNET_URL,
       accounts: [`0x${process.env.PRIVATE_KEY}`],
     },
     // kovan: {
