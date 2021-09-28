@@ -162,7 +162,8 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
         require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
-        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
+        uint _totalSupply = totalSupply();
+        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -201,7 +202,7 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 if (!paused()) {
                     withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
                 } else {
-                    withdrawAmt = withdrawWhenPaused(token, share, tokenPrice);
+                    withdrawAmt = withdrawWhenPaused(token, share, _totalSupply, tokenPrice);
                 }
             }
         }
@@ -224,11 +225,13 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return withdrawAmt;
     }
 
-    function withdrawWhenPaused(IERC20Upgradeable token, uint share, uint[] calldata tokenPrice) private returns (uint withdrawAmt) {
+    function withdrawWhenPaused(
+        IERC20Upgradeable token, uint share, uint _totalSupply, uint[] calldata tokenPrice
+    ) private returns (uint withdrawAmt) {
         uint WETHAmt = WETH.balanceOf(address(this));
         uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-            WETHAmt * share / totalSupply(), amountOutMin, getPath(address(WETH), address(token)), msg.sender, block.timestamp
+            WETHAmt * share / _totalSupply, amountOutMin, getPath(address(WETH), address(token)), msg.sender, block.timestamp
         ))[1];
     }
 
