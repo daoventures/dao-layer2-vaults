@@ -45,14 +45,14 @@ interface IStrategy {
     function getAllPoolInETH() external view returns (uint);
 }
 
-contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract TAVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable, BaseRelayRecipient {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0x07de306FF27a2B630B1141956844eB1552B956B5);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xb7a4F3E9097C08dA09517b5aB877F7a917224ede);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);
+    IERC20Upgradeable constant WETH = IERC20Upgradeable(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
     ICurve constant curve = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7); // 3pool
@@ -121,14 +121,14 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
-        USDT.safeApprove(address(sushiRouter), type(uint).max);
-        USDT.safeApprove(address(curve), type(uint).max);
-        USDC.safeApprove(address(sushiRouter), type(uint).max);
-        USDC.safeApprove(address(curve), type(uint).max);
-        DAI.safeApprove(address(sushiRouter), type(uint).max);
-        DAI.safeApprove(address(curve), type(uint).max);
-        WETH.safeApprove(address(sushiRouter), type(uint).max);
-        WETH.safeApprove(address(strategy), type(uint).max);
+        // USDT.safeApprove(address(sushiRouter), type(uint).max);
+        // USDT.safeApprove(address(curve), type(uint).max);
+        // USDC.safeApprove(address(sushiRouter), type(uint).max);
+        // USDC.safeApprove(address(curve), type(uint).max);
+        // DAI.safeApprove(address(sushiRouter), type(uint).max);
+        // DAI.safeApprove(address(curve), type(uint).max);
+        // WETH.safeApprove(address(sushiRouter), type(uint).max);
+        // WETH.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -168,46 +168,49 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token != DAI) tokenAmtInVault *= 1e12;
-        if (withdrawAmt < tokenAmtInVault) {
-            // Enough token in vault to withdraw
-            if (token != DAI) withdrawAmt /= 1e12;
-            token.safeTransfer(msg.sender, withdrawAmt);
-        } else {
-            // Not enough token in vault to withdraw, try if enough if swap from other token in vault
-            (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
-            if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
-                // Enough if swap from token1 in vault
-                uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
-                if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
-                curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
-                withdrawAmt = token.balanceOf(address(this));
-                token.safeTransfer(msg.sender, withdrawAmt);
-            } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
-                // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
-                uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
-                if (token1AmtInVault > 0) {
-                    if (token1 != address(DAI)) token1AmtInVault /= 1e12;
-                    curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
-                }
-                if (token2AmtInVault > 0) {
-                    uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
-                    if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
-                    if (token != DAI) minAmtOutToken2 /= 1e12;
-                    curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
-                }
-                withdrawAmt = token.balanceOf(address(this));
-                token.safeTransfer(msg.sender, withdrawAmt);
-            } else {
-                // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
-                if (!paused()) {
-                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
-                } else {
-                    withdrawAmt = withdrawWhenPaused(token, share, _totalSupply, tokenPrice);
-                }
-            }
-        }
+        // uint tokenAmtInVault = token.balanceOf(address(this));
+        // if (token != DAI) tokenAmtInVault *= 1e12;
+        // if (withdrawAmt < tokenAmtInVault) {
+        //     // Enough token in vault to withdraw
+        //     if (token != DAI) withdrawAmt /= 1e12;
+        //     token.safeTransfer(msg.sender, withdrawAmt);
+        // } else {
+        //     // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+        //     (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+        //     if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+        //         // Enough if swap from token1 in vault
+        //         uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+        //         if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
+        //         curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+        //         // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+        //         uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+        //         if (token1AmtInVault > 0) {
+        //             if (token1 != address(DAI)) token1AmtInVault /= 1e12;
+        //             curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+        //         }
+        //         if (token2AmtInVault > 0) {
+        //             uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+        //             if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
+        //             if (token != DAI) minAmtOutToken2 /= 1e12;
+        //             curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+        //         }
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else {
+        //         // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+        //         if (!paused()) {
+        //             withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
+        //         } else {
+        //             withdrawAmt = withdrawWhenPaused(token, share, _totalSupply, tokenPrice);
+        //         }
+        //     }
+        // }
+
+        if (token != DAI) withdrawAmt /= 1e12;
+        token.safeTransfer(msg.sender, withdrawAmt);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
@@ -513,16 +516,17 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getAllPoolInUSD() public view returns (uint) {
         // ETHPriceInUSD amount in 8 decimals
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
+        uint ETHPriceInUSD = uint(IChainlink(0x9326BFA02ADD2366b30bacB125260Af641031331).latestAnswer());
         require(ETHPriceInUSD > 0, "ChainLink error");
 
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
 
-        if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 + tokenKeepInVault - fees;
-        uint strategyPoolInUSD = strategy.getAllPoolInETH() * ETHPriceInUSD / 1e8;
+        // if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 + tokenKeepInVault - fees;
+        // uint strategyPoolInUSD = strategy.getAllPoolInETH() * ETHPriceInUSD / 1e8;
         
-        return strategyPoolInUSD + tokenKeepInVault - fees;
+        // return strategyPoolInUSD + tokenKeepInVault - fees;
+        return tokenKeepInVault - fees;
     }
 
     /// @notice Can be use for calculate both user shares & APR    

@@ -4,6 +4,7 @@ const IERC20_ABI = require("../abis/IERC20_ABI.json")
 const binanceAddr = "0x28C6c06298d514Db089934071355E5743bf21d60"
 
 const WETHAddr = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+const WBTCAddr = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
 const USDTAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 const USDCAddr = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 const DAIAddr = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
@@ -17,40 +18,42 @@ const USDCETHHolderAddr = "0x7ac049b7d78bc930e463709ec5e77855a5dca4c4"
 describe("DAO Technical Analysis", () => {
     it("should work for DAO L2 TA contract", async () => {
         let tx, receipt
-        const [client, client2, client3, treasury, community, strategist, admin, biconomy, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, strategist, biconomy, multisig] = await ethers.getSigners()
 
-        const deployerAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
-        await network.provider.request({method: "hardhat_impersonateAccount", params: [deployerAddr]})
-        const deployer = await ethers.getSigner(deployerAddr)
-        await client.sendTransaction({to: deployer.address, value: ethers.utils.parseEther("10")})
+        const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+        await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+        const admin = await ethers.getSigner(adminAddr)
+        await client.sendTransaction({to: admin.address, value: ethers.utils.parseEther("10")})
 
-        // Get Sushi factory contract
-        const sushiFactory = await ethers.getContractAt("SushiFactory", "0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3", deployer)
-        const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
-        const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
+        // // Get Sushi factory contract
+        // const sushiFactory = await ethers.getContractAt("SushiFactory", "0x1D5c8FA8aa068726b84f6b45992C8f0f225A4ff3", deployer)
+        // const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
+        // const sushiVaultInterface = new ethers.utils.Interface(sushiVaultArtifact.abi)
 
-        // Deploy WBTC-ETH vault
-        const dataWBTCETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi WBTC-ETH", "daoSushiWBTC", 21,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await sushiFactory.createVault(dataWBTCETH)
-        const WBTCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy WBTC-ETH vault
+        // const dataWBTCETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi WBTC-ETH", "daoSushiWBTC", 21,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await sushiFactory.createVault(dataWBTCETH)
+        // const WBTCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const WBTCETHVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
         const WBTCETHVault = await ethers.getContractAt("Sushi", WBTCETHVaultAddr, deployer)
 
-        // Deploy USDC-ETH vault
-        const dataUSDCETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi USDC-ETH", "daoSushiUSDC", 1,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await sushiFactory.createVault(dataUSDCETH)
-        const USDCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy USDC-ETH vault
+        // const dataUSDCETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi USDC-ETH", "daoSushiUSDC", 1,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await sushiFactory.createVault(dataUSDCETH)
+        // const USDCETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const USDCETHVaultAddr = "0x4Fe35F3e3728942715378a3D5684f86b693328a3"
         const USDCETHVault = await ethers.getContractAt("Sushi", USDCETHVaultAddr, deployer)
 
         // Deploy TA
@@ -170,29 +173,35 @@ describe("DAO Technical Analysis", () => {
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(taVault.address), 6))
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(taVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(taVault.address), 18))
-        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 42647.572324
+        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 42970.786224113422386047
 
         // Test emergency withdraw
         // await taVault.connect(admin).emergencyWithdraw()
         // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 0.0
         // console.log(ethers.utils.formatEther(await USDCETHVault.getAllPoolInUSD())) // 0.0
         // const WETHContract = new ethers.Contract(WETHAddr, IERC20_ABI, deployer)
-        // console.log(ethers.utils.formatEther(await WETHContract.balanceOf(taVault.address))) // 14.643717229501333573
+        // console.log(ethers.utils.formatEther(await WETHContract.balanceOf(taVault.address))) // 15.669826602259295335
         // console.log(ethers.utils.formatEther(await WETHContract.balanceOf(taStrategy.address))) // 0.0
 
         // await taVault.connect(admin).reinvest()
-        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 46039.980338524794987562
-        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 49620.896521780086561388
-        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 0.996078890042288741
+        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 45837.846871726958492802
+        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 49455.255420010409665919
+        // console.log(ethers.utils.formatEther(await taStrategy.getAllPoolInUSD())) // 45632.136797212981861994
+        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 0.995745963113083014
 
         // Withdraw
         console.log("-----withdraw-----")
-        await taVault.connect(client).withdraw((await taVault.balanceOf(client.address)).div(3), USDTAddr)
-        await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDTAddr)
-        await taVault.connect(client3).withdraw(taVault.balanceOf(client3.address), USDTAddr)
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9898.337912
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9938.781063
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9937.282906
+        const router = new ethers.Contract("0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", ["function getAmountsOut(uint, address[] memory) external view returns (uint[] memory)"], deployer)
+        const ETHPriceInUSDTMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), [WETHAddr, USDTAddr]))[1]).mul(95).div(100)
+        const WBTCPriceInETHMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), [WBTCAddr, WETHAddr]))[1]).mul(95).div(100)
+        const USDCPriceInETHMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 6), [USDCAddr, WETHAddr]))[1]).mul(95).div(100)
+        const tokenPriceMin = [ETHPriceInUSDTMin, WBTCPriceInETHMin, USDCPriceInETHMin]
+        await taVault.connect(client).withdraw((await taVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await taVault.connect(client3).withdraw(taVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9880.041115
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9960.582594
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9958.794169
 
         // await taVault.connect(client).withdraw((await taVault.balanceOf(client.address)).div(3), USDCAddr)
         // await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDCAddr)
@@ -208,34 +217,53 @@ describe("DAO Technical Analysis", () => {
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 9914.286645146000722542
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 9912.257331309285483505
 
-        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 19864.137651407471570659
-        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 1.003239275323609675
-        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 17558.37660576223741718
-        // console.log(ethers.utils.formatEther(await taStrategy.getAllPoolInUSD())) // 17557.066593430156050524
-        // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 17557.066593430156050524
+        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 19769.235125979954469072
+        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 0.998446218483836084
+        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 17425.287775807584638142
+        // console.log(ethers.utils.formatEther(await taStrategy.getAllPoolInUSD())) // 17423.684769182526665147
+        // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 17423.684769182526666624
         // console.log(ethers.utils.formatEther(await USDCETHVault.getAllPoolInUSD())) // 0.0
 
         // Switch mode
-        await taVault.switchMode()
-        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 19760.679346736693181761
-        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 0.99801410842104511
-        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 17558.37660576223741718
-        // console.log(ethers.utils.formatEther(await taStrategy.getAllPoolInUSD())) // 17453.60828875937765897
+        const WBTCPriceInUSDCMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), 
+            [WBTCAddr, WETHAddr, USDCAddr]))[2]).mul(95).div(100)
+        const USDCPriceInWBTCMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 6), 
+            [USDCAddr, WETHAddr, WBTCAddr]))[2]).mul(95).div(100)
+        const _tokenPriceMin = [WBTCPriceInUSDCMin, USDCPriceInWBTCMin]
+        await taVault.switchMode(_tokenPriceMin)
+        // console.log(ethers.utils.formatEther(await taVault.getAllPoolInUSD())) // 19666.567354513814575266
+        // console.log(ethers.utils.formatEther(await taVault.getPricePerFullShare())) // 0.993260977500697705
+        // console.log(ethers.utils.formatEther(await taStrategy.watermark())) // 17425.287775807584638142
+        // console.log(ethers.utils.formatEther(await taStrategy.getAllPoolInUSD())) // 17321.016997716386771341
         // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 0.0
-        // console.log(ethers.utils.formatEther(await USDCETHVault.getAllPoolInUSD())) // 17453.608288759377659313
+        // console.log(ethers.utils.formatEther(await USDCETHVault.getAllPoolInUSD())) // 17321.016997716386772756
 
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9960.582594
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9958.794169
         await taVault.connect(client2).deposit(USDTContract.balanceOf(client2.address), USDTAddr)
         await USDTContract.connect(client3).approve(taVault.address, ethers.constants.MaxUint256)
         await taVault.connect(client3).deposit(USDTContract.balanceOf(client3.address), USDTAddr)
         await taVault.connect(admin).invest()
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9774.332551
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9766.350036
 
-        await taVault.switchMode()
+        await taVault.switchMode(_tokenPriceMin)
 
-        await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDTAddr)
-        await taVault.connect(client3).withdraw(taVault.balanceOf(client3.address), USDTAddr)
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9720.263106
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9712.508904
+        await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await taVault.connect(client3).withdraw(taVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9754.991008
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9750.718494
+
+        // Test withdraw within token keep in vault
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(taVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(taVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(taVault.address), 18))
+        // tx = await taVault.connect(client).withdraw((await taVault.balanceOf(client.address)).div(35), USDTAddr, tokenPriceMin)
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // // 208220 306840 358037 494129
+        // // 206677 305358 356114 455294
+        // // 198521 294503 355431 481292
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(taVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(taVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(taVault.address), 18))
     })
 })

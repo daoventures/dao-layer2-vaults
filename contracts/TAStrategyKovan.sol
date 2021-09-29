@@ -55,7 +55,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract TAStrategy is Initializable {
+contract TAStrategyKovan is Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -98,14 +98,14 @@ contract TAStrategy is Initializable {
         profitFeePerc = 2000;
         mode = _mode;
 
-        WETH.safeApprove(address(router), type(uint).max);
-        WBTC.safeApprove(address(router), type(uint).max);
-        USDC.safeApprove(address(router), type(uint).max);
+        // WETH.safeApprove(address(router), type(uint).max);
+        // WBTC.safeApprove(address(router), type(uint).max);
+        // USDC.safeApprove(address(router), type(uint).max);
 
-        WBTCETH.safeApprove(address(WBTCETHVault), type(uint).max);
-        WBTCETH.safeApprove(address(router), type(uint).max);
-        USDCETH.safeApprove(address(USDCETHVault), type(uint).max);
-        USDCETH.safeApprove(address(router), type(uint).max);
+        // WBTCETH.safeApprove(address(WBTCETHVault), type(uint).max);
+        // WBTCETH.safeApprove(address(router), type(uint).max);
+        // USDCETH.safeApprove(address(USDCETHVault), type(uint).max);
+        // USDCETH.safeApprove(address(router), type(uint).max);
     }
 
     function invest(uint WETHAmt) external onlyVault {
