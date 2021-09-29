@@ -477,33 +477,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return addresses.length;
     }
 
-    function getAllPoolInBNB() external view returns (uint) {
-        uint WBNBAmt; // Stablecoins amount keep in vault convert to WBNB
-
-        uint USDTAmt = USDT.balanceOf(address(this));
-        if (USDTAmt > 1e18) {
-            WBNBAmt = (router.getAmountsOut(USDTAmt, getPath(address(USDT), address(WBNB))))[1];
-        }
-        uint USDCAmt = USDC.balanceOf(address(this));
-        if (USDCAmt > 1e18) {
-            uint _WBNBAmt = (router.getAmountsOut(USDCAmt, getPath(address(USDC), address(WBNB))))[1];
-            WBNBAmt = WBNBAmt + _WBNBAmt;
-        }
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > 1e18) {
-            uint _WBNBAmt = (router.getAmountsOut(DAIAmt, getPath(address(DAI), address(WBNB))))[1];
-            WBNBAmt = WBNBAmt + _WBNBAmt;
-        }
-        uint feesInBNB;
-        if (fees > 1e18) {
-            // Assume fees pay in USDT
-            feesInBNB = (router.getAmountsOut(fees, getPath(address(USDT), address(WBNB))))[1];
-        }
-
-        if (paused()) return WBNB.balanceOf(address(this)) + WBNBAmt - feesInBNB;
-        return strategy.getAllPool() + WBNBAmt - feesInBNB;
-    }
-
     function getAllPoolInUSD() public view returns (uint) {
         // ETHPriceInUSD amount in 8 decimals
         uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer()); 
