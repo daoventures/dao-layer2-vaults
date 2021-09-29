@@ -190,13 +190,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)), 0, getPath(address(WBNB), address(token)), address(this), block.timestamp
+                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[3]), getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
                     strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)) * share / totalSupply(), 0, getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[3]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }
@@ -204,6 +204,11 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         _burn(msg.sender, share);
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
+
+    function getMinimumAmount(uint _amount, uint _price) private pure returns (uint) {
+        return _amount * _price / 1e18;
+    }
+
 
     function invest() external whenNotPaused {
         require(
