@@ -190,13 +190,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[3]), getPath(address(WBNB), address(token)), address(this), block.timestamp
+                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[4]), getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
                     strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[3]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[4]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }
