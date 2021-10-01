@@ -27,6 +27,9 @@ Replace the address of vault and strategy implementation in `deploy/daoDegen/mai
 npx hardhat deploy --network [mainnet/bscTestnet] --tags degen_mainnet_verify
 ```
 
+## L1 whitelist
+Whitelist the address of strategy by calling `setWhitelist` function in all the L1 vaults used.
+
 
 ## Addresses - BSC testnet
 Strategy Proxy - [0xD1Fc92873FcC59708CF26e2b8302188735cAf526](https://testnet.bscscan.com/address/0xD1Fc92873FcC59708CF26e2b8302188735cAf526#readProxyContract)

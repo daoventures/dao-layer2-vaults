@@ -168,7 +168,6 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 // Enough if swap from token1 in vault
                 uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
                 router.swapExactTokensForTokens(amtSwapFromToken1, amtSwapFromToken1 * 99 / 100, getPath(token1, address(token)), address(this), block.timestamp); 
-                // curve.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
                 withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
             } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
@@ -176,12 +175,9 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
                 if (token1AmtInVault > 0) {
                     router.swapExactTokensForTokens(token1AmtInVault, token1AmtInVault * 99 / 100, getPath(token1, address(token)), address(this), block.timestamp); 
-                    // curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
                 }
                 if (token2AmtInVault > 0) {
-                    // uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
                     router.swapExactTokensForTokens(amtSwapFromToken2, amtSwapFromToken2 * 99 /100, getPath(token2, address(token)), address(this), block.timestamp); 
-                    // curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
                 }
                 withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
@@ -190,13 +186,13 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[0]), getPath(address(WBNB), address(token)), address(this), block.timestamp
+                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[6]), getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
                     strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[0]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[6]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }

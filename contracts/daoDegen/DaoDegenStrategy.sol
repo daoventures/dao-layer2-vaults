@@ -56,7 +56,6 @@ interface IChainlink {
 contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable public constant CAKE  = IERC20Upgradeable(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     IERC20Upgradeable public constant WBNB = IERC20Upgradeable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     IERC20Upgradeable public constant BUSD = IERC20Upgradeable(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
 
@@ -120,7 +119,6 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
         profitFeePerc = 2000;
 
-        CAKE.safeApprove(address(PnckRouter), type(uint).max);
         WBNB.safeApprove(address(PnckRouter), type(uint).max);
         ALPACA.safeApprove(address(PnckRouter), type(uint).max);
         BUSD.safeApprove(address(PnckRouter), type(uint).max);
@@ -266,10 +264,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         
         uint WBNBAmtBefore = WBNB.balanceOf(address(this));
-        _withdrawBUSDALPACA(sharePerc, tokenPrices[0], tokenPrices[1]);// (, bnbPriceInUSD, alpacaPriceInBNB)
+        _withdrawBUSDALPACA(sharePerc, tokenPrices[0], tokenPrices[1]);// (, busdPriceInBNB, alpacaPriceInBNB)
         _withdrawBNBXVS(sharePerc, tokenPrices[2]); //(, xvsPriceInBNB)
         _withdrawBNBBELT(sharePerc, tokenPrices[3]); //(, beltPriceInBNB)
-        _withdrawCHESSUSDC(sharePerc, tokenPrices[0], tokenPrices[4]); //(,BNBPriceInUsd, chessPriceInBNB)
+        _withdrawCHESSUSDC(sharePerc, tokenPrices[5], tokenPrices[4]); //(,USDCPriceInBNB, chessPriceInBNB)
         WBNBAmt = WBNB.balanceOf(address(this)) - WBNBAmtBefore;
         WBNB.safeTransfer(vault, WBNBAmt);
 

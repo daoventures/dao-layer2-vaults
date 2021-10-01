@@ -191,9 +191,9 @@ describe("DaoDegen - DAI", async () => {
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
 
 
-        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address, [0,0,0,0,0])
-        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), DAI.address, [0,0,0,0,0])
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0])
+        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address, [0,0,0,0,0,0,0])
+        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), DAI.address, [0,0,0,0,0,0,0])
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0,0,0])
 
         console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
         console.log("User2 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user2.address)))
@@ -221,7 +221,7 @@ describe("DaoDegen - DAI", async () => {
         expect(vault.connect(user3).deposit(user3Balance, DAI.address)).to.be.revertedWith('Pausable: paused')
         expect(vault.connect(adminSigner).invest()).to.be.revertedWith('Pausable: paused')
 
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0])
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0,0,0])
         console.log("User3 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user3.address)))
         
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())
