@@ -442,31 +442,45 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
     }
 
     function getMMSFTUSTPoolInUSD() private view returns (uint) {
-        return mMSFTUSTVault.getAllPoolInUSD();
+        uint mMSFTUSTVaultPool = mMSFTUSTVault.getAllPoolInUSD();
+        if (mMSFTUSTVaultPool == 0) return 0;
+        return mMSFTUSTVaultPool * mMSFTUSTVault.balanceOf(address(this)) / mMSFTUSTVault.totalSupply();
     }
 
     function getMTWTRUSTPoolInUSD() private view returns (uint) {
-        return mTWTRUSTVault.getAllPoolInUSD();
+        uint mTWTRUSTVaultPool = mTWTRUSTVault.getAllPoolInUSD();
+        if (mTWTRUSTVaultPool == 0) return 0;
+        return mTWTRUSTVaultPool * mTWTRUSTVault.balanceOf(address(this)) / mTWTRUSTVault.totalSupply();
     }
 
     function getMTSLAUSTPoolInUSD() private view returns (uint) {
-        return mTSLAUSTVault.getAllPoolInUSD();
+        uint mTSLAUSTVaultPool = mTSLAUSTVault.getAllPoolInUSD();
+        if (mTSLAUSTVaultPool == 0) return 0;
+        return mTSLAUSTVaultPool * mTSLAUSTVault.balanceOf(address(this)) / mTSLAUSTVault.totalSupply();
     }
 
     function getMGOOGLUSTPoolInUSD() private view returns (uint) {
-        return mGOOGLUSTVault.getAllPoolInUSD();
+        uint mGOOGLUSTVaultPool = mGOOGLUSTVault.getAllPoolInUSD();
+        if (mGOOGLUSTVaultPool == 0) return 0;
+        return mGOOGLUSTVaultPool * mGOOGLUSTVault.balanceOf(address(this)) / mGOOGLUSTVault.totalSupply();
     }
 
     function getMAMZNUSTPoolInUSD() private view returns (uint) {
-        return mAMZNUSTVault.getAllPoolInUSD();
+        uint mAMZNUSTVaultPool = mAMZNUSTVault.getAllPoolInUSD();
+        if (mAMZNUSTVaultPool == 0) return 0;
+        return mAMZNUSTVaultPool * mAMZNUSTVault.balanceOf(address(this)) / mAMZNUSTVault.totalSupply();
     }
 
     function getMAAPLUSTPoolInUSD() private view returns (uint) {
-        return mAAPLUSTVault.getAllPoolInUSD();
+        uint mAAPLUSTVaultPool = mAAPLUSTVault.getAllPoolInUSD();
+        if (mAAPLUSTVaultPool == 0) return 0;
+        return mAAPLUSTVaultPool * mAAPLUSTVault.balanceOf(address(this)) / mAAPLUSTVault.totalSupply();
     }
 
     function getMNFLXUSTPoolInUSD() private view returns (uint) {
-        return mNFLXUSTVault.getAllPoolInUSD();
+        uint mNFLXUSTVaultPool = mNFLXUSTVault.getAllPoolInUSD();
+        if (mNFLXUSTVaultPool == 0) return 0;
+        return mNFLXUSTVaultPool * mNFLXUSTVault.balanceOf(address(this)) / mNFLXUSTVault.totalSupply();
     }
 
     function getEachPoolInUSD() private view returns (uint[] memory pools) {
