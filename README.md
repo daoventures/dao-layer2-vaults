@@ -52,13 +52,13 @@ Mirror mAPPL-UST vault (proxy) contract address: 0x568AD887f3DA8622d8c0091068360
 
 Mirror mNFLX-UST vault (proxy) contract address: 0x1DDD09828F03Bda41C4FAD2376693f91687Ab4AE
 
-DAO Stonks V2 vault (implementation) contract address: 0xcAEf5c1404336efAed17BD7e664F5439aB2F6547
+DAO Stonks V2 vault (implementation) contract address: 0x27B7701ca49dc3A993e27Fa2d004aAB7E958eA13
 
-DAO Stonks V2 vault (proxy) contract address: 0x7739933d775BF2eD5EAEC76BC61c581A82e25b0c
+DAO Stonks V2 vault (proxy) contract address: 0xb8e43526D2FEE347F88E690ee86d047895472D04
 
-DAO Stonks V2 strategy (implementation) contract address: 0x3a89b8dddc27cec4E75b5A1DE789d65A7F02e9e5
+DAO Stonks V2 strategy (implementation) contract address: 0x038cbe75BE8A7829934008EBF08cF727B8F0e7Fb
 
-DAO Stonks V2 strategy (proxy) contract address: 0xA8a3b0412A25C1183DFcFed6dc7b6aCd584A6383
+DAO Stonks V2 strategy (proxy) contract address: 0x9cC2659d2516ECAFE1aBC1C5B45Baf2709A9F597
 
 proxy admin contract address: 0x852c2F84adb2BAB6e6E6C260AAa95B2753E69e5f
 

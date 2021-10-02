@@ -36,6 +36,7 @@ const USTAddr = "0xa47c8bf37f92abed4a126bda807a7b7498661acd"
 const USDTAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 const USDCAddr = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 const DAIAddr = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+const WETHAddr = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
 
 describe("DAO Stonks V2", () => {
     it("should work for DAO L2 Stonks contract", async () => {
@@ -226,8 +227,8 @@ describe("DAO Stonks V2", () => {
         await USDTContract.connect(client2).approve(stonksVault.address, ethers.constants.MaxUint256)
         await USDCContract.connect(client3).approve(stonksVault.address, ethers.constants.MaxUint256)
         tx = await stonksVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
-        receipt = await tx.wait()
-        console.log(receipt.gasUsed.toString())
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
         await stonksVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
         // console.log(ethers.utils.formatEther(await stonksVault.getAvailableInvest()))
         tx = await stonksVault.connect(admin).invest()
@@ -305,12 +306,21 @@ describe("DAO Stonks V2", () => {
 
         // Withdraw
         console.log("-----withdraw-----")
-        await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDTAddr)
-        await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDTAddr)
-        await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), USDTAddr)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10020.343307
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10130.696151
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10130.037173
+        const router = new ethers.Contract("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", ["function getAmountsOut(uint, address[] memory) external view returns (uint[] memory)"], deployer)
+        const mMSFTPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x41BbEDd7286dAab5910a1f15d12CBda839852BD7", USTAddr]))[1]).mul(95).div(100)
+        const mTWTRPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0xEdb0414627E6f1e3F082DE65cD4F9C693D78CCA9", USTAddr]))[1]).mul(95).div(100)
+        const mTSLAPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x21cA39943E91d704678F5D00b6616650F066fD63", USTAddr]))[1]).mul(95).div(100)
+        const mGOOGLPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x59A921Db27Dd6d4d974745B7FfC5c33932653442", USTAddr]))[1]).mul(95).div(100)
+        const mAMZNPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x0cae9e4d663793c2a2A0b211c1Cf4bBca2B9cAa7", USTAddr]))[1]).mul(95).div(100)
+        const mAAPLPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0xd36932143F6eBDEDD872D5Fb0651f4B72Fd15a84", USTAddr]))[1]).mul(95).div(100)
+        const mNFLXPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0xC8d674114bac90148d11D3C1d33C61835a0F9DCD", USTAddr]))[1]).mul(95).div(100)
+        const tokenPriceMin = [mMSFTPriceMin, mTWTRPriceMin, mTSLAPriceMin, mGOOGLPriceMin, mAMZNPriceMin, mAAPLPriceMin, mNFLXPriceMin]
+        await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9933.050914
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9991.288565
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9990.723274
 
         // await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDCAddr)
         // await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDCAddr)
@@ -338,6 +348,20 @@ describe("DAO Stonks V2", () => {
         // console.log(ethers.utils.formatEther(await mAMZNUSTVault.getAllPoolInUSD())) // 3068.045883581543136473
         // console.log(ethers.utils.formatEther(await mAPPLUSTVault.getAllPoolInUSD())) // 2829.988068633484443712
         // console.log(ethers.utils.formatEther(await mNFLXUSTVault.getAllPoolInUSD())) // 2829.973223391664680776
+
+        // Test withdraw within token keep in vault
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(stonksVault.address), 18))
+        // tx = await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(35), DAIAddr, tokenPriceMin)
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // // 433705 532396 583597 1877735
+        // // 432162 530915 581675 1875996
+        // // 424018 520060 580992 1864395
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(stonksVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(stonksVault.address), 18))
     })
 
 
