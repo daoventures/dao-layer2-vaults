@@ -15,12 +15,13 @@ interface IRouter {
 }
 
 interface ICurve {
+    function exchange(int128 i, int128 j, uint dx, uint min_dy) external;
     function exchange_underlying(int128 i, int128 j, uint dx, uint min_dy) external returns (uint);
 }
 
 interface IStrategy {
     function invest(uint amount) external;
-    function withdraw(uint sharePerc) external;
+    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
     function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
@@ -40,11 +41,12 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IERC20Upgradeable constant DAI = IERC20Upgradeable(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     IERC20Upgradeable constant UST = IERC20Upgradeable(0xa47c8bf37f92aBed4A126BDA807A7b7498661acD);
-    mapping(address => int128) curveId;
+    mapping(address => int128) private curveId;
     IERC20Upgradeable constant WETH = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     IRouter constant uniRouter = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // For calculate Stablecoin keep in vault in ETH only
     ICurve constant curve = ICurve(0x890f4e345B1dAED0367A877a1612f86A1f86985f); // UST pool
+    ICurve constant curve3p = ICurve(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7); // 3pool
     IStrategy public strategy;
     uint[] public percKeepInVault;
     uint public fees;
@@ -65,7 +67,7 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     address public admin;
 
     event Deposit(address caller, uint amtDeposit, address tokenDeposit);
-    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint sharesBurned);
+    event Withdraw(address caller, uint amtWithdraw, address tokenWithdraw, uint shareBurned);
     event Invest(uint amtInUST);
     event DistributeLPToken(address receiver, uint shareMinted);
     event TransferredOutFees(uint fees, address token);
@@ -108,7 +110,7 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeePerc = [100, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [200, 200, 200]; // USDT, USDC, DAI
+        percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
         curveId[address(USDT)] = 3;
         curveId[address(USDC)] = 2;
@@ -116,8 +118,11 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         curveId[address(UST)] = 0;
 
         USDT.safeApprove(address(curve), type(uint).max);
+        USDT.safeApprove(address(curve3p), type(uint).max);
         USDC.safeApprove(address(curve), type(uint).max);
+        USDC.safeApprove(address(curve3p), type(uint).max);
         DAI.safeApprove(address(curve), type(uint).max);
+        DAI.safeApprove(address(curve3p), type(uint).max);
         UST.safeApprove(address(curve), type(uint).max);
         UST.safeApprove(address(strategy), type(uint).max);
     }
@@ -125,10 +130,11 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
         require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
+        require(token == USDT || token == USDC || token == DAI, "Invalid token deposit");
 
         address msgSender = _msgSender();
         token.safeTransferFrom(msgSender, address(this), amount);
-        if (token == USDT || token == USDC) amount = amount * 1e12;
+        if (token != DAI) amount *= 1e12;
         uint amtDeposit = amount;
 
         uint _networkFeePerc;
@@ -137,46 +143,109 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         else if (amount < customNetworkFeeTier) _networkFeePerc = networkFeePerc[2]; // Tier 3
         else _networkFeePerc = customNetworkFeePerc; // Custom Tier
         uint fee = amount * _networkFeePerc / 10000;
-        fees = fees + fee;
-        amount = amount - fee;
+        fees += fee;
+        amount -= fee;
 
         if (depositAmt[msgSender] == 0) {
             addresses.push(msgSender);
             depositAmt[msgSender] = amount;
-        } else depositAmt[msgSender] = depositAmt[msgSender] + amount;
-        totalDepositAmt = totalDepositAmt + amount;
+        } else depositAmt[msgSender] += amount;
+        totalDepositAmt += amount;
 
         emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
-        require(share > 0, "Shares must > 0");
-        require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
+        require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
+        require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = getAllPoolInUSD() * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
-        strategy.adjustWatermark(withdrawAmt, false);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token == USDT || token == USDC) tokenAmtInVault = tokenAmtInVault * 1e12;
-        if (withdrawAmt <= tokenAmtInVault) {
-            if (token == USDT || token == USDC) withdrawAmt = withdrawAmt / 1e12;
+        if (token != DAI) tokenAmtInVault *= 1e12;
+        if (withdrawAmt < tokenAmtInVault) {
+            // Enough token in vault to withdraw
+            if (token != DAI) withdrawAmt /= 1e12;
             token.safeTransfer(msg.sender, withdrawAmt);
         } else {
-            if (!paused()) {
-                strategy.withdraw(withdrawAmt);
-                withdrawAmt = curve.exchange_underlying(curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this)), 0);
-                token.safeTransfer(msg.sender, withdrawAmt);
+            // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+            (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+            if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+                // Enough if swap from token1 in vault
+                withdrawAmt = swapFrom1Token(withdrawAmt, token, tokenAmtInVault, token1);
+            } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+                // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+                withdrawAmt = swapFrom2Token(withdrawAmt, token, tokenAmtInVault, token1, token1AmtInVault, token2, token2AmtInVault);
             } else {
-                withdrawAmt = curve.exchange_underlying(
-                    curveId[address(UST)], curveId[address(token)], UST.balanceOf(address(this))* share / _totalSupply, 0
-                );
+                // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+                if (!paused()) {
+                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
+                } else {
+                    withdrawAmt = withdrawWhenPaused(token, share, _totalSupply);
+                }
             }
         }
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
+    }
+
+    function swapFrom1Token(
+        uint withdrawAmt, IERC20Upgradeable token, uint tokenAmtInVault, address token1
+    ) private returns (uint) {
+        uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+        if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
+        curve3p.exchange(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
+        withdrawAmt = token.balanceOf(address(this));
+        token.safeTransfer(msg.sender, withdrawAmt);
+        return withdrawAmt;
+    }
+
+    function swapFrom2Token(
+        uint withdrawAmt,
+        IERC20Upgradeable token, uint tokenAmtInVault,
+        address token1, uint token1AmtInVault,
+        address token2, uint token2AmtInVault
+    ) private returns (uint) {
+        uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+        if (token1AmtInVault > 0) {
+            if (token1 != address(DAI)) token1AmtInVault /= 1e12;
+            curve3p.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+        }
+        if (token2AmtInVault > 0) {
+            uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+            if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
+            if (token != DAI) minAmtOutToken2 /= 1e12;
+            curve3p.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+        }
+        withdrawAmt = token.balanceOf(address(this));
+        token.safeTransfer(msg.sender, withdrawAmt);
+        return withdrawAmt;
+    }
+
+    function withdrawFromStrategy(
+        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata tokenPrice
+    ) private returns (uint) {
+        strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
+        if (token != DAI) tokenAmtInVault /= 1e12;
+        uint USTAmt = UST.balanceOf(address(this));
+        uint amountOutMin = USTAmt * 99 / 100;
+        if (token != DAI) amountOutMin /= 1e12;
+        withdrawAmt = curve.exchange_underlying(
+            curveId[address(UST)], curveId[address(token)], USTAmt, amountOutMin
+        ) + tokenAmtInVault;
+        token.safeTransfer(msg.sender, withdrawAmt);
+        return withdrawAmt;
+    }
+
+    function withdrawWhenPaused(IERC20Upgradeable token, uint share, uint _totalSupply) private returns (uint withdrawAmt) {
+        uint USTAmt = UST.balanceOf(address(this));
+        withdrawAmt = curve.exchange_underlying(
+            curveId[address(UST)], curveId[address(token)], USTAmt * share / _totalSupply, USTAmt * 99 / 100
+        );
     }
 
     function invest() public whenNotPaused {
@@ -189,10 +258,10 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint USTAmt, uint tokenAmtToInvest) = swapTokenToUST(USDTAmt, USDCAmt, DAIAmt);
+        (uint USTAmt, uint tokenAmtToInvest, uint pool) = swapTokenToUST(USDTAmt, USDCAmt, DAIAmt);
         strategy.invest(USTAmt);
         strategy.adjustWatermark(tokenAmtToInvest, true);
-        distributeLPToken();
+        distributeLPToken(pool);
 
         emit Invest(USTAmt);
     }
@@ -207,9 +276,8 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (fee > 0) fees = fees + fee;
     }
 
-    function distributeLPToken() private {
-        uint pool;
-        if (totalSupply() != 0) pool = getAllPoolInUSD() - totalDepositAmt;
+    function distributeLPToken(uint pool) private {
+        if (totalSupply() != 0) pool -= totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -262,22 +330,21 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    /// @notice This function also calculate amount of Stablecoins keep in vault
-    function swapTokenToUST(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint USTAmt, uint tokenAmtToInvest) {
+    function swapTokenToUST(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint USTAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
+        pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            USTAmt = curveSwap(address(USDT), address(UST), USDTAmt);
+            USTAmt = curve.exchange_underlying(curveId[address(USDT)], curveId[address(UST)], USDTAmt, 0);
             tokenAmtToInvest = USDTAmt * 1e12;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
         if (USDCAmt > USDCAmtKeepInVault + 1e6) {
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _USTAmt = curveSwap(address(USDC), address(UST), USDCAmt);
+            uint _USTAmt = curve.exchange_underlying(curveId[address(USDC)], curveId[address(UST)], USDCAmt, 0);
             USTAmt = USTAmt + _USTAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
@@ -285,7 +352,7 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
             DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint _USTAmt = curveSwap(address(DAI), address(UST), DAIAmt);
+            uint _USTAmt = curve.exchange_underlying(curveId[address(DAI)], curveId[address(UST)], DAIAmt, 0);
             USTAmt = USTAmt + _USTAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
@@ -297,9 +364,9 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @param amount Amount to reimburse (decimal follow token)
     function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
-        if (token == address(USDT) || token == address(USDC)) amount = amount * 1e12;
+        if (token != address(DAI)) amount *= 1e12;
         uint USTAmt = strategy.reimburse(farmIndex, amount);
-        curveSwap(address(UST), token, USTAmt);
+        curve.exchange_underlying(curveId[address(UST)], curveId[token], USTAmt, 0);
         strategy.adjustWatermark(amount, false);
 
         emit Reimburse(farmIndex, token, amount);
@@ -318,10 +385,6 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.adjustWatermark(USTAmt, true);
 
         emit Reinvest(USTAmt);
-    }
-
-    function curveSwap(address from, address to, uint amount) private returns (uint) {
-        return curve.exchange_underlying(curveId[from], curveId[to], amount, 0);
     }
 
     function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
@@ -411,6 +474,31 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return "1";
     }
 
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+        if (token == USDT) {
+            token1 = address(USDC);
+            token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else if (token == USDC) {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(DAI);
+            token2AmtInVault = DAI.balanceOf(address(this));
+        } else {
+            token1 = address(USDT);
+            token1AmtInVault = USDT.balanceOf(address(this)) * 1e12;
+            token2 = address(USDC);
+            token2AmtInVault = USDC.balanceOf(address(this)) * 1e12;
+        }
+    }
+
+    function getCurveId(address token) private pure returns (int128) {
+        if (token == address(USDT)) return 2;
+        else if (token == address(USDC)) return 1;
+        else return 0; // DAI
+    }
+
     function getPath(address tokenA, address tokenB) private pure returns (address[] memory path) {
         path = new address[](2);
         path[0] = tokenA;
@@ -419,49 +507,6 @@ contract StonksVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function getTotalPendingDeposits() external view returns (uint) {
         return addresses.length;
-    }
-
-    function getAvailableInvest() external view returns (uint availableInvest) {
-        uint[] memory _percKeepInVault = percKeepInVault;
-        uint pool = getAllPoolInUSD();
-
-        uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
-        uint USDTAmt = USDT.balanceOf(address(this)) * 1e12;
-        if (USDTAmt > USDTAmtKeepInVault) availableInvest = USDTAmt - USDTAmtKeepInVault;
-
-        uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
-        uint USDCAmt = USDC.balanceOf(address(this)) * 1e12;
-        if (USDCAmt > USDCAmtKeepInVault) availableInvest += USDCAmt - USDCAmtKeepInVault;
-
-        uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > DAIAmtKeepInVault) availableInvest += DAIAmt - DAIAmtKeepInVault;
-    }
-
-    function getAllPoolInETH() external view returns (uint) {
-        uint WETHAmt; // Stablecoins amount keep in vault convert to WETH
-
-        uint USDTAmt = USDT.balanceOf(address(this));
-        if (USDTAmt > 1e6) {
-            WETHAmt = (uniRouter.getAmountsOut(USDTAmt, getPath(address(USDT), address(WETH))))[1];
-        }
-        uint USDCAmt = USDC.balanceOf(address(this));
-        if (USDCAmt > 1e6) {
-            uint _WETHAmt = (uniRouter.getAmountsOut(USDCAmt, getPath(address(USDC), address(WETH))))[1];
-            WETHAmt = WETHAmt + _WETHAmt;
-        }
-        uint DAIAmt = DAI.balanceOf(address(this));
-        if (DAIAmt > 1e18) {
-            uint _WETHAmt = (uniRouter.getAmountsOut(DAIAmt, getPath(address(DAI), address(WETH))))[1];
-            WETHAmt = WETHAmt + _WETHAmt;
-        }
-        uint feesInETH;
-        if (fees > 1e18) {
-            // Assume fees pay in USDT
-            feesInETH = (uniRouter.getAmountsOut(fees, getPath(address(USDT), address(WETH))))[1];
-        }
-
-        return strategy.getAllPoolInETH() + WETHAmt - feesInETH;
     }
 
     function getAllPoolInUSD() public view returns (uint) {

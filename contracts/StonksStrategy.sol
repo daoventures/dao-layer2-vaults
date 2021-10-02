@@ -252,7 +252,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMMSFTUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mMSFTAmt = swap(address(UST), address(mMSFT), halfUST);
+        uint mMSFTAmt = swap(address(UST), address(mMSFT), halfUST, 0);
         (,,uint mMSFTUSTAmt) = uniRouter.addLiquidity(address(mMSFT), address(UST), mMSFTAmt, halfUST, 0, 0, address(this), block.timestamp);
         mMSFTUSTVault.deposit(mMSFTUSTAmt);
         emit InvestMMSFTUST(USTAmt, mMSFTUSTAmt);
@@ -260,7 +260,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMTWTRUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mTWTRAmt = swap(address(UST), address(mTWTR), halfUST);
+        uint mTWTRAmt = swap(address(UST), address(mTWTR), halfUST, 0);
         (,,uint mTWTRUSTAmt) = uniRouter.addLiquidity(address(mTWTR), address(UST), mTWTRAmt, halfUST, 0, 0, address(this), block.timestamp);
         mTWTRUSTVault.deposit(mTWTRUSTAmt);
         emit InvestMTWTRUST(USTAmt, mTWTRUSTAmt);
@@ -268,7 +268,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMTSLAUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mTSLAAmt = swap(address(UST), address(mTSLA), halfUST);
+        uint mTSLAAmt = swap(address(UST), address(mTSLA), halfUST, 0);
         (,,uint mTSLAUSTAmt) = uniRouter.addLiquidity(address(mTSLA), address(UST), mTSLAAmt, halfUST, 0, 0, address(this), block.timestamp);
         mTSLAUSTVault.deposit(mTSLAUSTAmt);
         emit InvestMTSLAUST(USTAmt, mTSLAUSTAmt);
@@ -276,7 +276,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMGOOGLUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mGOOGLAmt = swap(address(UST), address(mGOOGL), halfUST);
+        uint mGOOGLAmt = swap(address(UST), address(mGOOGL), halfUST, 0);
         (,,uint mGOOGLUSTAmt) = uniRouter.addLiquidity(address(mGOOGL), address(UST), mGOOGLAmt, halfUST, 0, 0, address(this), block.timestamp);
         mGOOGLUSTVault.deposit(mGOOGLUSTAmt);
         emit InvestMGOOGLUST(USTAmt, mGOOGLUSTAmt);
@@ -284,7 +284,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMAMZNUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mAMZNAmt = swap(address(UST), address(mAMZN), halfUST);
+        uint mAMZNAmt = swap(address(UST), address(mAMZN), halfUST, 0);
         (,,uint mAMZNUSTAmt) = uniRouter.addLiquidity(address(mAMZN), address(UST), mAMZNAmt, halfUST, 0, 0, address(this), block.timestamp);
         mAMZNUSTVault.deposit(mAMZNUSTAmt);
         emit InvestMAMZNUST(USTAmt, mAMZNUSTAmt);
@@ -292,7 +292,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMAAPLUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mAAPLAmt = swap(address(UST), address(mAAPL), halfUST);
+        uint mAAPLAmt = swap(address(UST), address(mAAPL), halfUST, 0);
         (,,uint mAAPLUSTAmt) = uniRouter.addLiquidity(address(mAAPL), address(UST), mAAPLAmt, halfUST, 0, 0, address(this), block.timestamp);
         mAAPLUSTVault.deposit(mAAPLUSTAmt);
         emit InvestMAAPLUST(USTAmt, mAAPLUSTAmt);
@@ -300,74 +300,74 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function investMNFLXUST(uint USTAmt) private {
         uint halfUST = USTAmt / 2;
-        uint mNFLXAmt = swap(address(UST), address(mNFLX), halfUST);
+        uint mNFLXAmt = swap(address(UST), address(mNFLX), halfUST, 0);
         (,,uint mNFLXUSTAmt) = uniRouter.addLiquidity(address(mNFLX), address(UST), mNFLXAmt, halfUST, 0, 0, address(this), block.timestamp);
         mNFLXUSTVault.deposit(mNFLXUSTAmt);
         emit InvestMNFLXUST(USTAmt, mNFLXUSTAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount) external onlyVault returns (uint USTAmt) {
+    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint USTAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         uint USTAmtBefore = UST.balanceOf(address(this));
-        withdrawMMSFTUST(sharePerc);
-        withdrawMTWTRUST(sharePerc);
-        withdrawMTSLAUST(sharePerc);
-        withdrawMGOOGLUST(sharePerc);
-        withdrawMAMZNUST(sharePerc);
-        withdrawMAAPLUST(sharePerc);
-        withdrawMNFLXUST(sharePerc);
+        withdrawMMSFTUST(sharePerc, tokenPrice[0]);
+        withdrawMTWTRUST(sharePerc, tokenPrice[1]);
+        withdrawMTSLAUST(sharePerc, tokenPrice[2]);
+        withdrawMGOOGLUST(sharePerc, tokenPrice[3]);
+        withdrawMAMZNUST(sharePerc, tokenPrice[4]);
+        withdrawMAAPLUST(sharePerc, tokenPrice[5]);
+        withdrawMNFLXUST(sharePerc, tokenPrice[6]);
         USTAmt = UST.balanceOf(address(this)) - USTAmtBefore;
         UST.safeTransfer(vault, USTAmt);
         emit Withdraw(amount, USTAmt);
     }
 
-    function withdrawMMSFTUST(uint sharePerc) private {
+    function withdrawMMSFTUST(uint sharePerc, uint mMSFTPrice) private {
         uint mMSFTUSTAmt = mMSFTUSTVault.withdraw(mMSFTUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mMSFTAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mMSFT), address(UST), mMSFTUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mMSFT), address(UST), mMSFTAmt);
+        uint _USTAmt = swap(address(mMSFT), address(UST), mMSFTAmt, mMSFTAmt * mMSFTPrice / 1e18);
         emit WithdrawMMSFTUST(mMSFTUSTAmt, USTAmt + _USTAmt);
     }
     
-    function withdrawMTWTRUST(uint sharePerc) private {
+    function withdrawMTWTRUST(uint sharePerc, uint mTWTRPrice) private {
         uint mTWTRUSTAmt = mTWTRUSTVault.withdraw(mTWTRUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mTWTRAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mTWTR), address(UST), mTWTRUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mTWTR), address(UST), mTWTRAmt);
+        uint _USTAmt = swap(address(mTWTR), address(UST), mTWTRAmt, mTWTRAmt * mTWTRPrice / 1e18);
         emit WithdrawMTWTRUST(mTWTRUSTAmt, USTAmt + _USTAmt);
     }
 
-    function withdrawMTSLAUST(uint sharePerc) private {
+    function withdrawMTSLAUST(uint sharePerc, uint mTSLAPrice) private {
         uint mTSLAUSTAmt = mTSLAUSTVault.withdraw(mTSLAUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mTSLAAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mTSLA), address(UST), mTSLAUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mTSLA), address(UST), mTSLAAmt);
+        uint _USTAmt = swap(address(mTSLA), address(UST), mTSLAAmt, mTSLAAmt * mTSLAPrice / 1e18);
         emit WithdrawMTSLAUST(mTSLAUSTAmt, USTAmt + _USTAmt);
     }
 
-    function withdrawMGOOGLUST(uint sharePerc) private {
+    function withdrawMGOOGLUST(uint sharePerc, uint mGOOGLPrice) private {
         uint mGOOGLUSTAmt = mGOOGLUSTVault.withdraw(mGOOGLUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mGOOGLAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mGOOGL), address(UST), mGOOGLUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mGOOGL), address(UST), mGOOGLAmt);
+        uint _USTAmt = swap(address(mGOOGL), address(UST), mGOOGLAmt, mGOOGLAmt * mGOOGLPrice / 1e18);
         emit WithdrawMGOOGLUST(mGOOGLUSTAmt, USTAmt + _USTAmt);
     }
 
-    function withdrawMAMZNUST(uint sharePerc) private {
+    function withdrawMAMZNUST(uint sharePerc, uint mAMZNPrice) private {
         uint mAMZNUSTAmt = mAMZNUSTVault.withdraw(mAMZNUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mAMZNAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mAMZN), address(UST), mAMZNUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mAMZN), address(UST), mAMZNAmt);
+        uint _USTAmt = swap(address(mAMZN), address(UST), mAMZNAmt, mAMZNAmt * mAMZNPrice / 1e18);
         emit WithdrawMAMZNUST(mAMZNUSTAmt, USTAmt + _USTAmt);
     }
 
-    function withdrawMAAPLUST(uint sharePerc) private {
+    function withdrawMAAPLUST(uint sharePerc, uint mAAPLPrice) private {
         uint mAAPLUSTAmt = mAAPLUSTVault.withdraw(mAAPLUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mAAPLAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mAAPL), address(UST), mAAPLUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mAAPL), address(UST), mAAPLAmt);
+        uint _USTAmt = swap(address(mAAPL), address(UST), mAAPLAmt, mAAPLAmt * mAAPLPrice / 1e18);
         emit WithdrawMAAPLUST(mAAPLUSTAmt, USTAmt + _USTAmt);
     }
 
-    function withdrawMNFLXUST(uint sharePerc) private {
+    function withdrawMNFLXUST(uint sharePerc, uint mNFLXPrice) private {
         uint mNFLXUSTAmt = mNFLXUSTVault.withdraw(mNFLXUSTVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint mNFLXAmt, uint USTAmt) = uniRouter.removeLiquidity(address(mNFLX), address(UST), mNFLXUSTAmt, 0, 0, address(this), block.timestamp);
-        uint _USTAmt = swap(address(mNFLX), address(UST), mNFLXAmt);
+        uint _USTAmt = swap(address(mNFLX), address(UST), mNFLXAmt, mNFLXAmt * mNFLXPrice / 1e18);
         emit WithdrawMNFLXUST(mNFLXUSTAmt, USTAmt + _USTAmt);
     }
 
@@ -377,7 +377,7 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
             fee = profit * profitFeePerc / 10000;
-            watermark = currentWatermark - fee;
+            watermark = currentWatermark;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
@@ -391,13 +391,13 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     /// @param amount Amount to reimburse to vault contract in USD
     function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint USTAmt) {
-        if (farmIndex == 0) withdrawMMSFTUST(amount * 1e18 / getMMSFTUSTPoolInUSD());
-        else if (farmIndex == 1) withdrawMTWTRUST(amount * 1e18 / getMTWTRUSTPoolInUSD());
-        else if (farmIndex == 2) withdrawMTSLAUST(amount * 1e18 / getMTSLAUSTPoolInUSD());
-        else if (farmIndex == 3) withdrawMGOOGLUST(amount * 1e18 / getMGOOGLUSTPoolInUSD());
-        else if (farmIndex == 4) withdrawMAMZNUST(amount * 1e18 / getMAMZNUSTPoolInUSD());
-        else if (farmIndex == 5) withdrawMAAPLUST(amount * 1e18 / getMAAPLUSTPoolInUSD());
-        else if (farmIndex == 6) withdrawMNFLXUST(amount * 1e18 / getMNFLXUSTPoolInUSD());
+        if (farmIndex == 0) withdrawMMSFTUST(amount * 1e18 / getMMSFTUSTPoolInUSD(), 0);
+        else if (farmIndex == 1) withdrawMTWTRUST(amount * 1e18 / getMTWTRUSTPoolInUSD(), 0);
+        else if (farmIndex == 2) withdrawMTSLAUST(amount * 1e18 / getMTSLAUSTPoolInUSD(), 0);
+        else if (farmIndex == 3) withdrawMGOOGLUST(amount * 1e18 / getMGOOGLUSTPoolInUSD(), 0);
+        else if (farmIndex == 4) withdrawMAMZNUST(amount * 1e18 / getMAMZNUSTPoolInUSD(), 0);
+        else if (farmIndex == 5) withdrawMAAPLUST(amount * 1e18 / getMAAPLUSTPoolInUSD(), 0);
+        else if (farmIndex == 6) withdrawMNFLXUST(amount * 1e18 / getMNFLXUSTPoolInUSD(), 0);
         USTAmt = UST.balanceOf(address(this));
         UST.safeTransfer(vault, USTAmt);
         emit Reimburse(USTAmt);
@@ -405,13 +405,13 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
 
     function emergencyWithdraw() external onlyVault {
         // 1e18 == 100% of share
-        withdrawMMSFTUST(1e18);
-        withdrawMTWTRUST(1e18);
-        withdrawMTSLAUST(1e18);
-        withdrawMGOOGLUST(1e18);
-        withdrawMAMZNUST(1e18);
-        withdrawMAAPLUST(1e18);
-        withdrawMNFLXUST(1e18);
+        withdrawMMSFTUST(1e18, 0);
+        withdrawMTWTRUST(1e18, 0);
+        withdrawMTSLAUST(1e18, 0);
+        withdrawMGOOGLUST(1e18, 0);
+        withdrawMAMZNUST(1e18, 0);
+        withdrawMAAPLUST(1e18, 0);
+        withdrawMNFLXUST(1e18, 0);
         uint USTAmt = UST.balanceOf(address(this));
         UST.safeTransfer(vault, USTAmt);
         watermark = 0;
@@ -419,11 +419,11 @@ contract StonksStrategy is Initializable, OwnableUpgradeable {
         emit EmergencyWithdraw(USTAmt);
     }
 
-    function swap(address from, address to, uint amount) private returns (uint) {
+    function swap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
         address[] memory path = new address[](2);
         path[0] = from;
         path[1] = to;
-        return uniRouter.swapExactTokensForTokens(amount, 0, path, address(this), block.timestamp)[1];
+        return uniRouter.swapExactTokensForTokens(amount, amountOutMin, path, address(this), block.timestamp)[1];
     }
 
     function setVault(address _vault) external onlyOwner {
