@@ -337,21 +337,29 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
 
     function getHBTCWBTCPool() private view returns (uint) {
         uint HBTCWBTCVaultPoolInBTC = HBTCWBTCVault.getAllPoolInNative();
+        if (HBTCWBTCVaultPoolInBTC == 0) return 0;
+        uint share = HBTCWBTCVaultPoolInBTC * HBTCWBTCVault.balanceOf(address(this)) / HBTCWBTCVault.totalSupply();
         uint BTCPriceInETH = uint(IChainlink(0xdeb288F737066589598e9214E782fa5A8eD689e8).latestAnswer());
         require(BTCPriceInETH > 0, "ChainLink error");
-        return HBTCWBTCVaultPoolInBTC * BTCPriceInETH / 1e18;
+        return share * BTCPriceInETH / 1e18;
     }
 
     function getWBTCETHPool() private view returns (uint) {
-        return WBTCETHVault.getAllPoolInETH();
+        uint WBTCETHVaultPool = WBTCETHVault.getAllPoolInETH();
+        if (WBTCETHVaultPool == 0) return 0;
+        return WBTCETHVaultPool * WBTCETHVault.balanceOf(address(this)) / WBTCETHVault.totalSupply();
     }
 
     function getDPIETHPool() private view returns (uint) {
-        return DPIETHVault.getAllPoolInETH();
+        uint DPIETHVaultPool = DPIETHVault.getAllPoolInETH();
+        if (DPIETHVaultPool == 0) return 0;
+        return DPIETHVaultPool * DPIETHVault.balanceOf(address(this)) / DPIETHVault.totalSupply();
     }
 
     function getDAIETHPool() private view returns (uint) {
-        return DAIETHVault.getAllPoolInETH();
+        uint DAIETHVaultPool = DAIETHVault.getAllPoolInETH();
+        if (DAIETHVaultPool == 0) return 0;
+        return DAIETHVaultPool * DAIETHVault.balanceOf(address(this)) / DAIETHVault.totalSupply();
     }
 
     function getEachPool() private view returns (uint[] memory pools) {
