@@ -255,11 +255,15 @@ contract TAStrategy is Initializable {
     }
 
     function getWBTCETHPoolInETH() private view returns (uint) {
-        return WBTCETHVault.getAllPoolInETH();
+        uint WBTCETHVaultPool = WBTCETHVault.getAllPoolInETH();
+        if (WBTCETHVaultPool == 0) return 0;
+        return WBTCETHVaultPool * WBTCETHVault.balanceOf(address(this)) / WBTCETHVault.totalSupply();
     }
 
     function getUSDCETHPoolInETH() private view returns (uint) {
-        return USDCETHVault.getAllPoolInETH();
+        uint USDCETHVaultPool = USDCETHVault.getAllPoolInETH();
+        if (USDCETHVaultPool == 0) return 0;
+        return USDCETHVaultPool * USDCETHVault.balanceOf(address(this)) / USDCETHVault.totalSupply();
     }
 
     /// @notice This function return only farms TVL in ETH
