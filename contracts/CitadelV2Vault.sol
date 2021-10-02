@@ -214,13 +214,13 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata tokenPrice
     ) private returns (uint) {
         strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
         if (token != DAI) tokenAmtInVault /= 1e12;
         uint WETHAmt = WETH.balanceOf(address(this));
         uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
             WETHAmt, amountOutMin, getPath(address(WETH), address(token)), address(this), block.timestamp
         )[1]) + tokenAmtInVault;
-        strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
         token.safeTransfer(msg.sender, withdrawAmt);
         return withdrawAmt;
     }
@@ -352,12 +352,12 @@ contract CitadelV2Vault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     /// @param amount Amount to reimburse (decimal follow token)
     function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
         uint WETHAmt;
-        WETHAmt = (sushiRouter.getAmountsOut(amount, getPath(token, address(WETH))))[1];
+        WETHAmt = sushiRouter.getAmountsOut(amount, getPath(token, address(WETH)))[1];
         WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
         sushiSwap(address(WETH), token, WETHAmt);
 
-        if (token != address(DAI)) strategy.adjustWatermark(amount * 1e12, false);
-        else strategy.adjustWatermark(amount, false);
+        if (token != address(DAI)) amount *= 1e12;
+        strategy.adjustWatermark(amount, false);
 
         emit Reimburse(farmIndex, token, amount);
     }
