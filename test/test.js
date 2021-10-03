@@ -151,26 +151,48 @@ describe("DAO Stonks V2", () => {
         const mNFLXUSTVault = await ethers.getContractAt("Mirror", mNFLXUSTVaultAddr, deployer)
 
         // Deploy Stonks
-        const StonksStrategy = await ethers.getContractFactory("StonksStrategy", deployer)
-        const stonksStrategy = await upgrades.deployProxy(StonksStrategy, [
-            mMSFTUSTVaultAddr, mTWTRUSTVaultAddr, mTSLAUSTVaultAddr, mGOOGLUSTVaultAddr, mAMZNUSTVaultAddr, mAPPLUSTVaultAddr, mNFLXUSTVaultAddr
-        ])
-        const StonksVault = await ethers.getContractFactory("StonksVault", deployer)
-        const stonksVault = await upgrades.deployProxy(StonksVault, [
-            "DAO L2 Stonks V2", "daoSTO2",
-            treasury.address, community.address, strategist.address, admin.address,
-            biconomy.address, stonksStrategy.address
-        ])
-        await stonksStrategy.setVault(stonksVault.address)
+        const daoProxyAdminAddr = "0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44"
+        // const StonksStrategy = await ethers.getContractFactory("StonksStrategy", deployer)
+        // const stonksStrategy = await upgrades.deployProxy(StonksStrategy, [
+        //     mMSFTUSTVaultAddr, mTWTRUSTVaultAddr, mTSLAUSTVaultAddr, mGOOGLUSTVaultAddr, mAMZNUSTVaultAddr, mAPPLUSTVaultAddr, mNFLXUSTVaultAddr
+        // ])
+        const stonksStrategyProxyAddr = "0x07450fFdAA82eC583F2928bF69293d05e53A4ae9"
+        const stonksStrategy = await ethers.getContractAt("StonksStrategy", stonksStrategyProxyAddr, deployer)
+
+        // const StonksVault = await ethers.getContractFactory("StonksVault", deployer)
+        // const stonksVault = await upgrades.deployProxy(StonksVault, [
+        //     "DAO L2 Stonks V2", "daoSTO2",
+        //     treasury.address, community.address, strategist.address, admin.address,
+        //     biconomy.address, stonksStrategy.address
+        // ])
+        // const stonksVaultImplAddr = "0x5e6F52DC4569900D7B523e12809dC5910c11E2b0"
+        // const stonksVaultArtifact = await artifacts.readArtifact("StonksVault")
+        // const stonksVaultInterface = new ethers.utils.Interface(stonksVaultArtifact.abi)
+        // const dataStonksVault = stonksVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L2 Stonks V2", "daoSTO2",
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //         biconomy.address, stonksStrategyProxyAddr
+        //     ]
+        // )
+        // const StonksVaultProxy = await ethers.getContractFactory("StonksProxy", deployer)
+        // const stonksVaultProxy = await StonksVaultProxy.deploy(stonksVaultImplAddr, daoProxyAdminAddr, dataStonksVault)
+        // const stonksVault = await ethers.getContractAt("StonksVault", stonksVaultProxy.address, deployer)
+        const stonksVaultProxyAddr = "0xD0b14644B0F91239075ED8a415769C4E20D37cF9"
+        const stonksVault = await ethers.getContractAt("StonksVault", stonksVaultProxyAddr, deployer)
+
+        // await stonksStrategy.connect(admin).setVault(stonksVault.address)
+        // await stonksStrategy.setVault(stonksVault.address)
         
         // Set whitelist
-        await mMSFTUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mTWTRUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mTSLAUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mGOOGLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mAMZNUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mAPPLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
-        await mNFLXUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mMSFTUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mTWTRUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mTSLAUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mGOOGLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mAMZNUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mAPPLUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
+        // await mNFLXUSTVault.connect(admin).setWhitelistAddress(stonksStrategy.address, true)
 
         // Unlock & transfer Stablecoins to client
         network.provider.request({method: "hardhat_impersonateAccount", params: [binanceAddr]})
@@ -318,9 +340,9 @@ describe("DAO Stonks V2", () => {
         await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
         await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
         await stonksVault.connect(client3).withdraw(stonksVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9933.050914
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9991.288565
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9990.723274
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9932.5676
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9989.817763
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9989.20185
 
         // await stonksVault.connect(client).withdraw((await stonksVault.balanceOf(client.address)).div(3), USDCAddr)
         // await stonksVault.connect(client2).withdraw(stonksVault.balanceOf(client2.address), USDCAddr)
