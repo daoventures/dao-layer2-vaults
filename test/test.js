@@ -1,4 +1,4 @@
-const { ethers, upgrades, network } = require("hardhat");
+const { ethers, upgrades, network, artifacts } = require("hardhat");
 const IERC20_ABI = require("../abis/IERC20_ABI.json")
 
 const USDTAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
@@ -103,23 +103,60 @@ describe("DAO Citadel V2", function () {
         // await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
 
         // Deploy Citadel V2
-        const CitadelV2Strategy = await ethers.getContractFactory("CitadelV2Strategy", deployer)
-        const citadelV2Strategy = await upgrades.deployProxy(CitadelV2Strategy, [
-            HBTCWBTCVaultAddr, WBTCETHVaultAddr, DPIETHVaultAddr, DAIETHVaultAddr
-        ])
-        const CitadelV2Vault = await ethers.getContractFactory("CitadelV2Vault", deployer)
-        const citadelV2Vault = await upgrades.deployProxy(CitadelV2Vault, [
-            "DAO L2 Citadel V2", "daoCDV2",
-            treasury.address, community.address, strategist.address, admin.address,
-            biconomy.address, citadelV2Strategy.address
-        ])
-        await citadelV2Strategy.setVault(citadelV2Vault.address)
-        
+        // const CitadelV2StrategyFactory = await ethers.getContractFactory("CitadelV2Strategy", deployer)
+        // const citadelV2StrategyImpl = await CitadelV2StrategyFactory.deploy()
+        // const citadelV2StrategyImplAddr = "0x20a671BD1CEdC0C4ac5f74b14ab76dE8BC25B33C"
+        const daoProxyAdminAddr = "0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44"
+        // const citadelV2StrategyArtifact = await artifacts.readArtifact("CitadelV2Strategy")
+        // const citadelV2StrategyInterface = new ethers.utils.Interface(citadelV2StrategyArtifact.abi)
+        // const dataCitadelV2Strategy = citadelV2StrategyInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         HBTCWBTCVaultAddr, WBTCETHVaultAddr, DPIETHVaultAddr, DAIETHVaultAddr
+        //     ]
+        // )
+        // const CitadelV2StrategyProxy = await ethers.getContractFactory("CitadelV2Proxy", deployer)
+        // const citadelV2StrategyProxy = await CitadelV2StrategyProxy.deploy(
+        //     // citadelV2StrategyImpl.address, daoProxyAdminAddr, dataCitadelV2Strategy,
+        //     citadelV2StrategyImplAddr, daoProxyAdminAddr, dataCitadelV2Strategy,
+        // )
+        const citadelV2StrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
+        const citadelV2Strategy = await ethers.getContractAt("CitadelV2Strategy", citadelV2StrategyProxyAddr, deployer)
+        // const citadelV2Strategy = await ethers.getContractAt("CitadelV2Strategy", citadelV2StrategyProxy.address, deployer)
+
+        // const CitadelV2Vault = await ethers.getContractFactory("CitadelV2Vault", deployer)
+        // const citadelV2Vault = await upgrades.deployProxy(CitadelV2Vault, [
+        //     "DAO L2 Citadel V2", "daoCDV2",
+        //     treasury.address, community.address, strategist.address, admin.address,
+        //     biconomy.address, citadelV2Strategy.address
+        // ])
+        // const citadelV2VaultImplAddr = "0xfbE9613a6bd9d28ceF286b01357789b2b02E46f5"
+        // const citadelV2VaultArtifact = await artifacts.readArtifact("CitadelV2Vault")
+        // const citadelV2VaultInterface = new ethers.utils.Interface(citadelV2VaultArtifact.abi)
+        // const dataCitadelV2Vault = citadelV2VaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L2 Citadel V2", "daoCDV2",
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //         biconomy.address, citadelV2Strategy.address
+        //     ]
+        // )
+        // const CitadelV2VaultProxy = await ethers.getContractFactory("CitadelV2Proxy", deployer)
+        // const citadelV2VaultProxy = await CitadelV2VaultProxy.deploy(
+        //     citadelV2VaultImplAddr, daoProxyAdminAddr, dataCitadelV2Vault,
+        // )
+        const citadelV2VaultProxyAddr = "0xCc6C417E991e810477b486d992faACa1b7440E76"
+        const citadelV2Vault = await ethers.getContractAt("CitadelV2Vault", citadelV2VaultProxyAddr, deployer)
+        // const citadelV2Vault = await ethers.getContractAt("CitadelV2Vault", citadelV2VaultProxy.address, deployer)
+
+        // await citadelV2Strategy.connect(admin).setVault(citadelV2Vault.address)
+        // await citadelV2Strategy.setVault(citadelV2Vault.address)
+
         // Set whitelist
-        await HBTCWBTCVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
-        await WBTCETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
-        await DPIETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
-        await DAIETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
+        // await HBTCWBTCVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
+        // await WBTCETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
+        // await DPIETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
+        // await DAIETHVault.connect(admin).setWhitelistAddress(citadelV2Strategy.address, true)
 
         // Unlock & transfer Stablecoins to client
         network.provider.request({method: "hardhat_impersonateAccount", params: [binanceAddr]})
@@ -266,17 +303,17 @@ describe("DAO Citadel V2", function () {
         // Withdraw
         console.log("-----withdraw-----")
         const router = new ethers.Contract("0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", ["function getAmountsOut(uint, address[] memory) external view returns (uint[] memory)"], deployer)
-        const USDTPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), [WETHAddr, USDTAddr]))[1]).mul(90).div(100)
-        const WBTCPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), ["0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", WETHAddr]))[1]).mul(90).div(100)
-        const DPIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x1494CA1F11D487c2bBe4543E90080AeBa4BA3C2b", WETHAddr]))[1]).mul(90).div(100)
-        const DAIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x6B175474E89094C44Da98b954EedeAC495271d0F", WETHAddr]))[1]).mul(90).div(100)
-        const tokenPriceMin = [USDTPriceMin, WBTCPriceMin, DPIPriceMin, DAIPriceMin]
+        const ETHPriceInUSDTMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), [WETHAddr, USDTAddr]))[1]).mul(95).div(100)
+        const WBTCPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), ["0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", WETHAddr]))[1]).mul(95).div(100)
+        const DPIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x1494CA1F11D487c2bBe4543E90080AeBa4BA3C2b", WETHAddr]))[1]).mul(95).div(100)
+        const DAIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x6B175474E89094C44Da98b954EedeAC495271d0F", WETHAddr]))[1]).mul(95).div(100)
+        const tokenPriceMin = [ETHPriceInUSDTMin, WBTCPriceMin, DPIPriceMin, DAIPriceMin]
         await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
         await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
         await citadelV2Vault.connect(client3).withdraw(citadelV2Vault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10099.82872
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10160.598188
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10157.188876
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10150.470384
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10205.559932
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10202.746124
 
         // await citadelV2Vault.connect(client).withdraw((await citadelV2Vault.balanceOf(client.address)).div(3), USDCAddr)
         // await citadelV2Vault.connect(client2).withdraw(citadelV2Vault.balanceOf(client2.address), USDCAddr)

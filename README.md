@@ -18,13 +18,13 @@ Sushi DPI-ETH vault (proxy) contract address: 0x397E18750351a707A010A5eB188a7A6A
 
 Sushi DAI-ETH vault (proxy) contract address: 0x37e19484982425b77624FF95612D6aFE8f3159F4
 
-DAO Citadel V2 vault (implementation) contract address: 
+DAO Citadel V2 vault (implementation) contract address: 0xfbE9613a6bd9d28ceF286b01357789b2b02E46f5
 
-DAO Citadel V2 vault (proxy) contract address: 
+DAO Citadel V2 vault (proxy) contract address: 0xCc6C417E991e810477b486d992faACa1b7440E76
 
-DAO Citadel V2 strategy (implementation) contract address: 
+DAO Citadel V2 strategy (implementation) contract address: 0x20a671BD1CEdC0C4ac5f74b14ab76dE8BC25B33C
 
-DAO Citadel V2 strategy (proxy) contract address: 
+DAO Citadel V2 strategy (proxy) contract address: 0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414
 
 proxy admin contract address: 0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44
 
