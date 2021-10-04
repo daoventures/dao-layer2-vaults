@@ -249,8 +249,8 @@ describe("DAO Technical Analysis", () => {
 
         await taVault.connect(client2).withdraw(taVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
         await taVault.connect(client3).withdraw(taVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9754.991008
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9750.718494
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9754.991008
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9750.718494
 
         // Test withdraw within token keep in vault
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(taVault.address), 6))

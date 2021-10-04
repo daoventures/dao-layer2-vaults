@@ -32,7 +32,7 @@ Sushi WBTC-ETH vault (proxy) contract address: 0x70850d2e00D3FC3Ec6c4750C99FC504
 
 Sushi USDC-ETH vault (proxy) contract address: 0xd30301880aB51ce6C146E30E839c0884F2Cbd21E
 
-DAO Technical-Analysis V2 vault (implementation) contract address: 0x8a3CbcE40a8f92A1f27b250F0C9061ceeae328bE
+DAO Technical-Analysis V2 vault (implementation) contract address: 0xd44Dd0A0A96F26D0E309A961caad6d47408e0A1c
 
 DAO Technical-Analysis V2 vault (proxy) contract address: 0xb72B89Fa6D222973379cbd9c5C88768e3a050Aed
 

@@ -241,21 +241,22 @@ contract TAVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function invest() public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+        // require(
+        //     msg.sender == admin ||
+        //     msg.sender == owner() ||
+        //     msg.sender == address(this), "Only authorized caller"
+        // );
 
-        if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(WETHAmt);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        // (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
+        // strategy.invest(WETHAmt);
+        // strategy.adjustWatermark(tokenAmtToInvest, true);
+        uint pool = getAllPoolInUSD();
         distributeLPToken(pool);
 
-        emit Invest(WETHAmt);
+        // emit Invest(WETHAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
