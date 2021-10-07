@@ -55,9 +55,9 @@ async function main() {
         [
             "DAO L2 Tech Anlys", "daoTAS",
             // mainnet.treasury, mainnet.community, mainnet.strategist, mainnet.admin,
-            // mainnet.biconomy, taVault.address
+            // mainnet.biconomy, taStrategyProxy.address
             kovan.treasury, kovan.community, kovan.strategist, kovan.admin,
-            kovan.biconomy, taVault.address
+            kovan.biconomy, taStrategyProxy.address
         ]
     )
     const TAVaultProxy = await ethers.getContractFactory("TAProxy", deployer)

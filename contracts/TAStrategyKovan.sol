@@ -159,31 +159,31 @@ contract TAStrategyKovan is Initializable {
 
     function switchMode(uint[] calldata tokenPrice) external onlyVault {
         if (mode) { // Attack switch to defence
-            uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)));
-            (uint WBTCAmt, uint WETHAmt) = router.removeLiquidity(
-                address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp
-            );
-            // tokenPrice[0] = 1 WBTC Price In USDC
-            uint USDCAmt = swap3(address(WBTC), address(USDC), WBTCAmt, WBTCAmt * tokenPrice[0] / 1e8);
-            (,,uint USDCETHAmt) = router.addLiquidity(
-                address(USDC), address(WETH), USDCAmt, WETHAmt, 0, 0, address(this), block.timestamp
-            );
-            USDCETHVault.deposit(USDCETHAmt);
+            // uint WBTCETHAmt = WBTCETHVault.withdraw(WBTCETHVault.balanceOf(address(this)));
+            // (uint WBTCAmt, uint WETHAmt) = router.removeLiquidity(
+            //     address(WBTC), address(WETH), WBTCETHAmt, 0, 0, address(this), block.timestamp
+            // );
+            // // tokenPrice[0] = 1 WBTC Price In USDC
+            // uint USDCAmt = swap3(address(WBTC), address(USDC), WBTCAmt, WBTCAmt * tokenPrice[0] / 1e8);
+            // (,,uint USDCETHAmt) = router.addLiquidity(
+            //     address(USDC), address(WETH), USDCAmt, WETHAmt, 0, 0, address(this), block.timestamp
+            // );
+            // USDCETHVault.deposit(USDCETHAmt);
             mode = false;
-            emit SwitchMode(WBTCETHAmt, USDCETHAmt, true, false);
+            // emit SwitchMode(WBTCETHAmt, USDCETHAmt, true, false);
         } else { // Defence switch to attack
-            uint USDCETHAmt = USDCETHVault.withdraw(USDCETHVault.balanceOf(address(this)));
-            (uint USDCAmt, uint WETHAmt) = router.removeLiquidity(
-                address(USDC), address(WETH), USDCETHAmt, 0, 0, address(this), block.timestamp
-            );
-            // tokenPrice[1] = 1 USDC Price In WBTC
-            uint WBTCAmt = swap3(address(USDC), address(WBTC), USDCAmt, USDCAmt * tokenPrice[1] / 1e6);
-            (,,uint WBTCETHAmt) = router.addLiquidity(
-                address(WBTC), address(WETH), WBTCAmt, WETHAmt, 0, 0, address(this), block.timestamp
-            );
-            WBTCETHVault.deposit(WBTCETHAmt);
+            // uint USDCETHAmt = USDCETHVault.withdraw(USDCETHVault.balanceOf(address(this)));
+            // (uint USDCAmt, uint WETHAmt) = router.removeLiquidity(
+            //     address(USDC), address(WETH), USDCETHAmt, 0, 0, address(this), block.timestamp
+            // );
+            // // tokenPrice[1] = 1 USDC Price In WBTC
+            // uint WBTCAmt = swap3(address(USDC), address(WBTC), USDCAmt, USDCAmt * tokenPrice[1] / 1e6);
+            // (,,uint WBTCETHAmt) = router.addLiquidity(
+            //     address(WBTC), address(WETH), WBTCAmt, WETHAmt, 0, 0, address(this), block.timestamp
+            // );
+            // WBTCETHVault.deposit(WBTCETHAmt);
             mode = true;
-            emit SwitchMode(USDCETHAmt, WBTCETHAmt, false, true);
+            // emit SwitchMode(USDCETHAmt, WBTCETHAmt, false, true);
         }
     }
 
