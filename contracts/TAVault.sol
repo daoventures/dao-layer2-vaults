@@ -527,6 +527,6 @@ contract TAVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return getAllPoolInUSD() * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
 }
