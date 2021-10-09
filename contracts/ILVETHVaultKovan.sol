@@ -317,7 +317,7 @@ contract ILVETHVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgradeable
         uint totalReserveInETH = reserveILV * ILVPriceInETH / 1e18 + reserveWETH;
         uint ILVETHPriceInETH = totalReserveInETH * 1e18 / ILVETH.totalSupply();
 
-        uint ILVETHPerILV = ILVETHPriceInETH * 1e18 / ILVPriceInETH;
+        uint ILVETHPerILV = ILVPriceInETH * 1e18 / ILVETHPriceInETH;
         uint vestedILVAmtInILVETH = ILVETHPerILV * vestedILV / 1e18;
 
         return getTotalILVETH() + vestedILVAmtInILVETH;
