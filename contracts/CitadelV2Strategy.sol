@@ -279,6 +279,7 @@ contract CitadelV2Strategy is Initializable, OwnableUpgradeable {
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
             fee = profit * profitFeePerc / 10000;
+            watermark = currentWatermark;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
