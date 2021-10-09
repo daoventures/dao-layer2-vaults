@@ -1,29 +1,29 @@
 const { run } = require('hardhat')
 const { mainnet } = require("../addresses")
 
-const contractAddr = "0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2"
+const contractAddr = "0x49C4cAEeC828b96147E726c0Ff6f675429Ea891e"
 const contractName = "MVFStrategyProxy"
 
-const ILVETHVaultAddr = "0x7422e91c420910B086126000b950DA11bfeda266"
-const daoProxyAdminAddr = "0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44"
+const AXSETHVaultAddr = "0x6A4EfC6Ab4792Fc8DCd5A488791CBDD45675d239" // Kovan
+const SLPETHVaultAddr = "0x777d14f93166FA67e9cd6b869bd0F87F45FdC497" // Kovan
+const ILVETHVaultAddr = "0x4Ba84ba0e07a30Bdde5E73aB8f94959b7ce1f7EF" // Kovan
+const GHSTETHVaultAddr = "0x8C2bf8B337A7dc91660DD7783f9A4EFCEcC7bf65" // Kovan
+const daoProxyAdminAddr = "0x0A25131608AbAeCA03AE160efAAFb008dd34a4ab" // Kovan
+const mvfStrategyImplAddr = "0x9A5cC5AD35076B06a73bc8D98282761b14A998e0" // Kovan
 
 async function main() {
-    const mvfStrategyArtifact = await artifacts.readArtifact("MVFStrategy")
+    // const mvfStrategyArtifact = await artifacts.readArtifact("MVFStrategy")
+    const mvfStrategyArtifact = await artifacts.readArtifact("MVFStrategyKovan")
     const mvfStrategyInterface = new ethers.utils.Interface(mvfStrategyArtifact.abi)
     const dataMVFStrategy = mvfStrategyInterface.encodeFunctionData(
         "initialize",
-        [
-            "0xcE097910Fc2DB329683353dcebF881A48cbA181e",
-            "0x4aE61842Eb4E4634F533cb35B697a01319C457e2",
-            "0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e",
-            "0xF9b0707dEE34d36088A093d85b300A3B910E00fC",
-        ]
+        [AXSETHVaultAddr, SLPETHVaultAddr, ILVETHVaultAddr, GHSTETHVaultAddr]
     )
 
     await run('verify:verify', {
         address: contractAddr,
         constructorArguments: [
-            "0xB56AE1cDb49e45332932Ef664dD7B8925276dA3A",
+            mvfStrategyImplAddr,
             daoProxyAdminAddr,
             dataMVFStrategy
           ],
