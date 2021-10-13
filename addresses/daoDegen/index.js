@@ -5,9 +5,9 @@ module.exports = {
         BNBBELTVault: "0xF3Bc6FC080ffCC30d93dF48BFA2aA14b869554bb",
         BUSDCHESSVault: "0x1472976E0B97F5B2fC93f1FFF14e2b5C4447b64F",
 
-        strategist: "0x54D003d451c973AD7693F825D5b78Adfc0efe934",
-        communityWallet: "0xdd6c35aFF646B2fB7d8A8955Ccbe0994409348d0",
-        treasury: "0x59E83877bD248cBFe392dbB5A8a29959bcb48592",
+        strategist: "0x743de13981A93d2604B73Ae2EAE62449700c44Bc",
+        communityWallet: "0xfd43FdB432B485094FC0a53b4B6e3D32686A273a",
+        treasury: "0xD9a98f578b4c99ba4a897E1f44d4Cc3dFcaA6247",
         admin: "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99",
         biconomy: "0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8"
     },
@@ -17,9 +17,9 @@ module.exports = {
         BNBBELTVault: "0xF3Bc6FC080ffCC30d93dF48BFA2aA14b869554bb",
         BUSDCHESSVault: "0x1472976E0B97F5B2fC93f1FFF14e2b5C4447b64F",
 
-        strategist: "0x54D003d451c973AD7693F825D5b78Adfc0efe934",
-        communityWallet: "0xdd6c35aFF646B2fB7d8A8955Ccbe0994409348d0",
-        treasury: "0x59E83877bD248cBFe392dbB5A8a29959bcb48592",
+        strategist: "0x743de13981A93d2604B73Ae2EAE62449700c44Bc",
+        communityWallet: "0xfd43FdB432B485094FC0a53b4B6e3D32686A273a",
+        treasury: "0xD9a98f578b4c99ba4a897E1f44d4Cc3dFcaA6247",
         admin: "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99",
         biconomy: "0x61456BF1715C1415730076BB79ae118E806E74d2"
     }
