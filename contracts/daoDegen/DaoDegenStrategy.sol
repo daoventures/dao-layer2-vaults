@@ -337,7 +337,7 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
             fee = profit * profitFeePerc / 10000;
-            watermark = currentWatermark - fee;
+            watermark = currentWatermark;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
@@ -401,19 +401,23 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     }
 
     function getBUSDALPACAPool() private view  returns (uint) {
-        return BUSDALPACAVault.getAllPoolInBNB();
+        uint amt =  BUSDALPACAVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BUSDALPACAVault.balanceOf(address(this)) / BUSDALPACAVault.totalSupply();
     }
 
     function getBNBXVSPool() private view returns (uint) {
-        return BNBXVSVault.getAllPoolInBNB();
+        uint amt =  BNBXVSVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BNBXVSVault.balanceOf(address(this)) / BNBXVSVault.totalSupply();
     }
 
     function getBNBBELTPool() private view returns (uint) {
-        return BNBBELTVault.getAllPoolInBNB();
+        uint amt = BNBBELTVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BNBBELTVault.balanceOf(address(this)) / BNBBELTVault.totalSupply();
     }
 
     function getCHESSUSDCPool() private view returns (uint) {
-        return CHESSUSDCVault.getAllPoolInBNB();
+        uint amt = CHESSUSDCVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * CHESSUSDCVault.balanceOf(address(this)) / CHESSUSDCVault.totalSupply();
     }
 
     function getEachPool() private view returns (uint[] memory pools) {

@@ -61,7 +61,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint totalDepositAmt;
+    uint public totalDepositAmt;
 
     address public treasuryWallet;
     address public communityWallet;
@@ -185,10 +185,11 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     withdrawAmt = (router.swapExactTokensForTokens(
                         WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[6]), getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
-                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
+                    
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
@@ -487,6 +488,6 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return getAllPoolInUSD() * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
 }
