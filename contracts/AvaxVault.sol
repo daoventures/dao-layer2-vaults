@@ -30,19 +30,19 @@ interface IChainlink {
 }
 
 interface IStrategy {
-    function invest(uint amount) external;
-    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
+    function invest(uint amount, uint[] calldata tokenPriceMin) external;
+    function withdraw(uint sharePerc, uint[] calldata tokenPriceMin) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint tokenPriceMin) external returns (uint);
     function emergencyWithdraw() external;
     function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
     function watermark() external view returns (uint);
-    function getAllPool() external view returns (uint);
+    function getAllPoolInAVAX() external view returns (uint);
 }
 
-contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
+contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
         ReentrancyGuardUpgradeable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -229,7 +229,7 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         ))[1];
     }
 
-    function invest() public whenNotPaused {
+    function invest(uint[] calldata tokenPriceMin) public whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -239,8 +239,8 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(WAVAXAmt);
+        (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, tokenPriceMin[0]);
+        strategy.invest(WAVAXAmt, tokenPriceMin);
         strategy.adjustWatermark(tokenAmtToInvest, true);
         distributeLPToken(pool);
 
@@ -310,21 +310,23 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWAVAX(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWAVAX(
+        uint USDTAmt, uint USDCAmt, uint DAIAmt, uint tokenPriceInAVAXMin
+    ) private returns (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WAVAXAmt = swap(address(USDT), address(WAVAX), USDTAmt);
+            WAVAXAmt = swap(address(USDT), address(WAVAX), USDTAmt, tokenPriceInAVAXMin);
             tokenAmtToInvest = USDTAmt * 1e12;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
         if (USDCAmt > USDCAmtKeepInVault + 1e6) {
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WAVAXAmt = swap(address(USDC), address(WAVAX), USDCAmt);
+            uint _WAVAXAmt = swap(address(USDC), address(WAVAX), USDCAmt, tokenPriceInAVAXMin);
             WAVAXAmt = WAVAXAmt + _WAVAXAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
@@ -332,7 +334,7 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
             DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint _WAVAXAmt = swap(address(DAI), address(WAVAX), DAIAmt);
+            uint _WAVAXAmt = swap(address(DAI), address(WAVAX), DAIAmt, tokenPriceInAVAXMin);
             WAVAXAmt = WAVAXAmt + _WAVAXAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
@@ -343,11 +345,11 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin {
         uint WAVAXAmt;
         WAVAXAmt = joeRouter.getAmountsOut(amount, getPath(token, address(WAVAX)))[1];
-        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt);
-        swap(address(WAVAX), token, WAVAXAmt);
+        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt, tokenPriceMin[0]);
+        swap(address(WAVAX), token, WAVAXAmt, tokenPriceMin[1]);
 
         if (token != address(DAI)) amount *= 1e12;
         strategy.adjustWatermark(amount, false);
@@ -360,11 +362,11 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.emergencyWithdraw();
     }
 
-    function reinvest() external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         uint WAVAXAmt = WAVAX.balanceOf(address(this));
-        strategy.invest(WAVAXAmt);
+        strategy.invest(WAVAXAmt, tokenPriceMin);
         uint AVAXPriceInUSD = uint(IChainlink(0x0A77230d17318075983913bC2145DB16C7366156).latestAnswer());
         require(AVAXPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WAVAXAmt * AVAXPriceInUSD / 1e8, true);
@@ -372,10 +374,11 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Reinvest(WAVAXAmt);
     }
 
-    function swap(address from, address to, uint amount) private returns (uint) {
-        return (joeRouter.swapExactTokensForTokens(
-            amount, 0, getPath(from, to), address(this), block.timestamp
-        ))[1];
+    function swap(address from, address to, uint amount, uint tokenPriceMin) private returns (uint) {
+        uint amountDecimal = from != address(USDT) || from != address(USDC) ? 1e18 : 1e6;
+        return joeRouter.swapExactTokensForTokens(
+            amount, amount * tokenPriceMin / amountDecimal, getPath(from, to), address(this), block.timestamp
+        )[1];
     }
 
     function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
@@ -494,7 +497,7 @@ contract AvaxDeXVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
 
         if (paused()) return WAVAX.balanceOf(address(this)) * AVAXPriceInUSD / 1e8 + tokenKeepInVault - fees;
-        uint strategyPoolInUSD = strategy.getAllPool() * AVAXPriceInUSD / 1e8;
+        uint strategyPoolInUSD = strategy.getAllPoolInAVAX() * AVAXPriceInUSD / 1e8;
         
         return strategyPoolInUSD + tokenKeepInVault - fees;
     }
