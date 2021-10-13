@@ -333,7 +333,7 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         if (currentWatermark > lastWatermark) {
             uint profit = currentWatermark - lastWatermark;
             fee = profit * profitFeePerc / 10000;
-            watermark = currentWatermark - fee;
+            watermark = currentWatermark;
         }
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
@@ -397,19 +397,23 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
     }
 
     function getBTCBETHPool() private view  returns (uint) {
-        return BTCBWETHVault.getAllPoolInBNB();
+        uint amt = BTCBWETHVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BTCBWETHVault.balanceOf(address(this)) / BTCBWETHVault.totalSupply(); //to exclude L1 deposits from other addresses
     }
 
     function getBTCBBNBPool() private view returns (uint) {
-        return BTCBBNBVault.getAllPoolInBNB();
+        uint amt = BTCBBNBVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BTCBBNBVault.balanceOf(address(this)) / BTCBBNBVault.totalSupply();
     }
 
     function getCAKEBNBPool() private view returns (uint) {
-        return CAKEBNBVault.getAllPoolInBNB();
+        uint amt = CAKEBNBVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * CAKEBNBVault.balanceOf(address(this)) / CAKEBNBVault.totalSupply();
     }
 
     function getBTCBBUSDPool() private view returns (uint) {
-        return BTCBBUSDVault.getAllPoolInBNB();
+        uint amt = BTCBBUSDVault.getAllPoolInBNB();
+        return amt == 0 ? 0 : amt * BTCBBUSDVault.balanceOf(address(this)) / BTCBBUSDVault.totalSupply();
     }
 
     function getEachPool() private view returns (uint[] memory pools) {

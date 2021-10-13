@@ -61,7 +61,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint totalDepositAmt;
+    uint public totalDepositAmt;
 
     address public treasuryWallet;
     address public communityWallet;
@@ -176,12 +176,12 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
                 if (token1AmtInVault > 0) {
                     router.swapExactTokensForTokens(token1AmtInVault, token1AmtInVault * 99 / 100, getPath(token1, address(token)), address(this), block.timestamp); 
-                    // curve.exchange(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+                    
                 }
                 if (token2AmtInVault > 0) {
-                    // uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+                    
                     router.swapExactTokensForTokens(amtSwapFromToken2, amtSwapFromToken2 * 99 /100, getPath(token2, address(token)), address(this), block.timestamp); 
-                    // curve.exchange(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+                    
                 }
                 withdrawAmt = token.balanceOf(address(this));
                 token.safeTransfer(msg.sender, withdrawAmt);
@@ -189,10 +189,11 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
                     strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     withdrawAmt = (router.swapExactTokensForTokens(
                         WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[4]), getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
-                    strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
+                    
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
@@ -492,6 +493,6 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return getAllPoolInUSD() * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
 }
