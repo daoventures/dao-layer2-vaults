@@ -15,7 +15,7 @@ const pngRouterAddr = "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106"
 const lydRouterAddr = "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27"
 
 describe("DAO Avalanche", function () {
-    it("Should work on AVAX-DeXToken strategy", async function () {
+    it("Should work on DeXToken-AVAX strategy", async function () {
         let tx, receipt, tokenPriceMin
         const [deployer, client, client2, client3, treasury, community, admin, multisig] = await ethers.getSigners()
 
@@ -101,21 +101,21 @@ describe("DAO Avalanche", function () {
         const proxyAdmin = await proxyAdminFac.deploy()
 
         // Deploy Avax-DeX strategy
-        const AvaxDeXStrategyFac = await ethers.getContractFactory("AvaxDeXStrategy", deployer)
-        const avaxDeXStrategyImpl = await AvaxDeXStrategyFac.deploy()
-        const avaxDeXStrategyArtifact = await artifacts.readArtifact("AvaxDeXStrategy")
-        const avaxDeXStrategyInterface = new ethers.utils.Interface(avaxDeXStrategyArtifact.abi)
-        const dataAvaxDeXStrategy = avaxDeXStrategyInterface.encodeFunctionData(
+        const DeXAvaxStrategyFac = await ethers.getContractFactory("DeXAvaxStrategy", deployer)
+        const deXAvaxStrategyImpl = await DeXAvaxStrategyFac.deploy()
+        const deXAvaxStrategyArtifact = await artifacts.readArtifact("DeXAvaxStrategy")
+        const deXAvaxStrategyInterface = new ethers.utils.Interface(deXAvaxStrategyArtifact.abi)
+        const dataDeXAvaxStrategy = deXAvaxStrategyInterface.encodeFunctionData(
             "initialize",
             [JOEAVAXVaultAddr, PNGAVAXVaultAddr, LYDAVAXVaultAddr]
         )
-        const AvaxDeXStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
-        const avaxDeXStrategyProxy = await AvaxDeXStrategyProxy.deploy(
-            avaxDeXStrategyImpl.address, proxyAdmin.address, dataAvaxDeXStrategy,
+        const DeXAvaxStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
+        const deXAvaxStrategyProxy = await DeXAvaxStrategyProxy.deploy(
+            deXAvaxStrategyImpl.address, proxyAdmin.address, dataDeXAvaxStrategy,
         )
-        const avaxDeXStrategy = await ethers.getContractAt("AvaxDeXStrategy", avaxDeXStrategyProxy.address, deployer)
-        // const avaxDeXStrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
-        // const avaxDeXStrategy = await ethers.getContractAt("AvaxDeXStrategy", avaxDeXStrategyProxyAddr, deployer)
+        const deXAvaxStrategy = await ethers.getContractAt("DeXAvaxStrategy", deXAvaxStrategyProxy.address, deployer)
+        // const deXAvaxStrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
+        // const deXAvaxStrategy = await ethers.getContractAt("DeXAvaxStrategy", deXAvaxStrategyProxyAddr, deployer)
 
         const AvaxVaultFac = await ethers.getContractFactory("AvaxVault", deployer)
         const avaxVaultImpl = await AvaxVaultFac.deploy()
@@ -125,7 +125,7 @@ describe("DAO Avalanche", function () {
             "initialize",
             [
                 "DAO L2 AVAX", "daoAVAX",
-                treasury.address, community.address, admin.address, avaxDeXStrategy.address
+                treasury.address, community.address, admin.address, deXAvaxStrategy.address
             ]
         )
         const AvaxVaultProxy = await ethers.getContractFactory("AvaxProxy", deployer)
@@ -136,12 +136,12 @@ describe("DAO Avalanche", function () {
         // const avaxVaultProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
         // const avaxVault = await ethers.getContractAt("AvaxVault", avaxVaultProxyAddr, deployer)
 
-        await avaxDeXStrategy.connect(admin).setVault(avaxVault.address)
+        await deXAvaxStrategy.connect(admin).setVault(avaxVault.address)
 
         // Set whitelist
-        await JOEAVAXVault.connect(admin).setWhitelistAddress(avaxDeXStrategy.address, true)
-        await PNGAVAXVault.connect(admin).setWhitelistAddress(avaxDeXStrategy.address, true)
-        await LYDAVAXVault.connect(admin).setWhitelistAddress(avaxDeXStrategy.address, true)
+        await JOEAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
+        await PNGAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
+        await LYDAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
 
         // Swap & transfer Stablecoins to client
         const joeRouter = new ethers.Contract(joeRouterAddr, router_ABI, deployer)    
@@ -200,10 +200,10 @@ describe("DAO Avalanche", function () {
         //     .div(ethers.utils.parseEther("1"))
         // )) // User share in USD
         // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.996769848851548141
-        // console.log((await avaxDeXStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
+        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
         // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client.address))) // 29700.0
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.getAllPoolInUSD())) // 26931.064510890979812288
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 27027.0
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 26931.064510890979812288
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 27027.0
 
         // Farm invest
         await JOEAVAXVault.connect(admin).invest()
@@ -232,9 +232,9 @@ describe("DAO Avalanche", function () {
         // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client3.address))) // 9932.082126487391421081
         // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 49339.979943167760077136
         // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.995476887118225392
-        // console.log((await avaxDeXStrategy.getCurrentCompositionPerc()).toString()); // 4499,4499,1001
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.getAllPoolInUSD())) // 45484.736073167760077136
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 45644.75613
+        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4499,4499,1001
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 45484.736073167760077136
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45644.75613
 
         // Farm invest
         await JOEAVAXVault.connect(admin).invest()
@@ -278,8 +278,8 @@ describe("DAO Avalanche", function () {
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString()) // 282400
         // console.log(ethers.utils.formatEther(await avaxVault.fees())) // 10.564558377891538148
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 45697.578921889457690743
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.getAllPoolInUSD())) // 45697.578921889457690743
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45697.578921889457690743
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 45697.578921889457690743
         // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.999558027058594013
 
         // Test reimburse
@@ -295,8 +295,8 @@ describe("DAO Avalanche", function () {
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 44697.578644351970332677
-        // console.log((await avaxDeXStrategy.getCurrentCompositionPerc()).toString());
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 44697.578644351970332677
+        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString());
 
         // Check farm vault pool
         // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20464.744092911234147069
@@ -310,8 +310,8 @@ describe("DAO Avalanche", function () {
         // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD()))
 
         // await avaxVault.connect(admin).reinvest(tokenPriceMin)
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 45737.700863078580395425
-        // console.log((await avaxDeXStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45737.700863078580395425
+        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
         // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 49411.658560794983399728
         // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.996923065394557798
         // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20499.739575482749036949
@@ -320,184 +320,53 @@ describe("DAO Avalanche", function () {
 
         // Withdraw
         console.log("-----withdraw-----")
-        // const router = new ethers.Contract("0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", ["function getAmountsOut(uint, address[] memory) external view returns (uint[] memory)"], deployer)
-        // const ETHPriceInUSDTMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), [WETHAddr, USDTAddr]))[1]).mul(95).div(100)
-        // const WBTCPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 8), ["0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", WETHAddr]))[1]).mul(95).div(100)
-        // const DPIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x1494CA1F11D487c2bBe4543E90080AeBa4BA3C2b", WETHAddr]))[1]).mul(95).div(100)
-        // const DAIPriceMin = ((await router.getAmountsOut(ethers.utils.parseUnits("1", 18), ["0x6B175474E89094C44Da98b954EedeAC495271d0F", WETHAddr]))[1]).mul(95).div(100)
-        // const tokenPriceMin = [ETHPriceInUSDTMin, WBTCPriceMin, DPIPriceMin, DAIPriceMin]
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 10150.470384
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 10205.559932
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 10202.746124
 
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDCAddr)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDCAddr)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDCAddr)
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 10180.343218
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 10381.290337
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 10379.336119
+        tokenPriceMin = [AVAXPriceInUSDTMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
+        await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9842.995039
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9859.888491
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9853.75948
 
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), DAIAddr)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), DAIAddr)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), DAIAddr)
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 10188.99532479945092177
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 10389.651400790601417889
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 10387.228190402203059514
+        // tokenPriceMin = [AVAXPriceInUSDCMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
+        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDCAddr, tokenPriceMin)
+        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDCAddr, tokenPriceMin)
+        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDCAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 9844.080167
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 9861.726068
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9856.199273
 
-        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 20316.853362721838665978
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 1.026103705187971649
-        // console.log((await avaxDeXStrategy.getCurrentCompositionPerc()).toString()); // 2812,2842,3396,947
-        // console.log(ethers.utils.formatEther(await avaxDeXStrategy.watermark())) // 17765.855121744309519553
+        // tokenPriceMin = [AVAXPriceInDAIMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
+        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), DAIAddr, tokenPriceMin)
+        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), DAIAddr, tokenPriceMin)
+        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), DAIAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 9841.539386186864417744
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 9854.417211070852915627
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 9840.180822409327116238
 
-        // const chainLinkBTCETH = new ethers.Contract("0xdeb288F737066589598e9214E782fa5A8eD689e8", ["function latestAnswer() external view returns (int256)"], deployer)
-        // const BTCPriceInETH = await chainLinkBTCETH.latestAnswer()
-        // const chainLinkETHUSD = new ethers.Contract("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", ["function latestAnswer() external view returns (int256)"], deployer)
-        // const ETHPriceInUSD = await chainLinkETHUSD.latestAnswer()
-        // const HBTCWBTCPoolInBTC = await HBTCWBTCVault.getAllPoolInNative()
-        // const HBTCWBTCPoolInETH = HBTCWBTCPoolInBTC.mul(BTCPriceInETH).div(ethers.utils.parseEther("1"))
-        // const HBTCWBTCPoolInUSD = HBTCWBTCPoolInETH.mul(ETHPriceInUSD).div(ethers.utils.parseUnits("1", 8))
-        // console.log(ethers.utils.formatEther(HBTCWBTCPoolInUSD)) // 5115.186846517446372228
-        // console.log(ethers.utils.formatEther(await WBTCETHVault.getAllPoolInUSD())) // 5169.67447168882328311
-        // console.log(ethers.utils.formatEther(await DPIETHVault.getAllPoolInUSD())) // 6176.968909096732661732
-        // console.log(ethers.utils.formatEther(await DAIETHVault.getAllPoolInUSD())) // 1723.370305434677156724
+        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 19782.81963545362035058
+        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.999132304820889916
+        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4525,4479,995
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 17432.783199093938958873
+        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 17420.262203324014417115
+
+        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20499.739575482749036949
+        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD())) // 4500 20498.043471501565513769
+        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD())) // 1000 4569.196146681062913684
 
         // Test withdraw within token keep in vault
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
-        // tx = await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(5), USDTAddr, tokenPriceMin)
+        // tx = await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(35), USDTAddr, tokenPriceMin)
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString())
-        // // 369454 468086 519283 1183375
-        // // 367911 466604 517360 1182275
-        // // 359767 455749 516677 1148577
+        // // 320574 891124 1150322 1269075
+        // // 320636 891799 1151599 1269295
+        // // 320536 891835 1151635 1269195
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
     })
-
-
-    // it("Should work on Curve L1 HBTCWBTC vault", async function () {
-    //     let tx, receipt
-    //     // const [deployer, client, client2, treasury, community, strategist, admin, multisig] = await ethers.getSigners()
-    //     const [deployer, client, client2, treasury, community, strategist, multisig] = await ethers.getSigners()
-
-    //     const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
-    //     await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
-    //     await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
-    //     const admin = await ethers.getSigner(adminAddr)
-
-    //     // Deploy
-    //     // const CurveVault = await ethers.getContractFactory("Curve", deployer)
-    //     // const curveVault = await CurveVault.deploy()
-    //     // const curveVaultArtifact = await artifacts.readArtifact("Curve")
-    //     // const curveVaultInterface = new ethers.utils.Interface(curveVaultArtifact.abi)
-
-    //     // const CurveFactory = await ethers.getContractFactory("CurveFactory", deployer)
-    //     // const curveFactory = await CurveFactory.deploy(curveVault.address)
-        
-    //     // const dataHBTCWBTC = curveVaultInterface.encodeFunctionData(
-    //     //     "initialize",
-    //     //     [
-    //     //         "DAO L1 Curve HBTC-WBTC", "daoCurveHBTC", 8,
-    //     //         treasury.address, community.address, strategist.address, admin.address,
-    //     //     ]
-    //     // )
-    //     // tx = await curveFactory.createVault(dataHBTCWBTC)
-    //     // await tx.wait()
-    //     // const HBTCWBTCVaultAddr = await curveFactory.getVault((await curveFactory.getVaultLength()).sub(1))
-    //     // const HBTCWBTCVault = await ethers.getContractAt("Curve", HBTCWBTCVaultAddr, deployer)
-    //     // await HBTCWBTCVault.transferOwnership(multisig.address)
-    //     const HBTCWBTCVault = await ethers.getContractAt("Curve", "0xB2010f55C684A9F1701178920f5269a1180504E1", deployer)
-
-    //     // Deploy CurveZap
-    //     // const CurveZap = await ethers.getContractFactory("CurveHBTCZap", deployer)
-    //     // const curveZap = await CurveZap.deploy(HBTCWBTCVaultAddr)
-    //     // await HBTCWBTCVault.connect(admin).setCurveZap(curveZap.address)
-    //     await HBTCWBTCVault.connect(admin).setCurveZap("0x12922b9b65A13331554C9dDDC2D19C9ec06fA47F")
-
-    //     // Unlock & transfer
-    //     network.provider.request({method: "hardhat_impersonateAccount", params: [HBTCWBTCHolderAddr]})
-    //     const HBTCWBTCHolderAcc = await ethers.getSigner(HBTCWBTCHolderAddr)
-    //     const HBTCWBTCContract = new ethers.Contract(HBTCWBTCLpAddr, IERC20_ABI, HBTCWBTCHolderAcc)
-    //     await HBTCWBTCContract.transfer(client.address, ethers.utils.parseEther("1"))
-    //     await HBTCWBTCContract.transfer(client2.address, ethers.utils.parseEther("1"))
-
-    //     // Whitelist
-    //     await HBTCWBTCVault.connect(admin).setWhitelistAddress(client.address, true)
-    //     // await HBTCWBTCVault.connect(admin).setWhitelistAddress(client2.address, true)
-
-    //     // Deposit
-    //     await HBTCWBTCContract.connect(client).approve(HBTCWBTCVault.address, ethers.constants.MaxUint256)
-    //     tx = await HBTCWBTCVault.connect(client).deposit(ethers.utils.parseEther("1"))
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.balanceOf(client.address)))
-
-    //     // Invest
-    //     tx = await HBTCWBTCVault.connect(admin).invest()
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-
-    //     // Yield
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.getPricePerFullShare(false)))
-    //     network.provider.request({method: "hardhat_impersonateAccount", params: [binanceAddr]})
-    //     const binanceAcc = await ethers.getSigner(binanceAddr)
-    //     const CRVContract = new ethers.Contract(CRVAddr, IERC20_ABI, binanceAcc)
-    //     await CRVContract.transfer(HBTCWBTCVault.address, ethers.utils.parseEther("10"))
-    //     tx = await HBTCWBTCVault.connect(admin).yield()
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.getPricePerFullShare(false)))
-
-    //     // Check fees (yield fees)
-    //     // console.log(ethers.utils.formatEther(await admin.getBalance()))
-    //     // console.log(ethers.utils.formatEther(await community.getBalance()))
-    //     // console.log(ethers.utils.formatEther(await strategist.getBalance()))
-
-    //     // Second deposit
-    //     await HBTCWBTCContract.connect(client2).approve(HBTCWBTCVault.address, ethers.constants.MaxUint256)
-    //     tx = await HBTCWBTCVault.connect(client2).deposit(ethers.utils.parseEther("1"))
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.balanceOf(client2.address)))
-
-    //     // Check fees (deposit fees)
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCContract.balanceOf(treasury.address)))
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCContract.balanceOf(community.address)))
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCContract.balanceOf(strategist.address)))
-
-    //     // Second invest
-    //     tx = await HBTCWBTCVault.connect(admin).invest()
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-
-    //     // Emergency withdrawal
-    //     // await HBTCWBTCVault.connect(admin).emergencyWithdraw()
-    //     // await HBTCWBTCVault.connect(admin).reinvest()
-
-    //     // // Getter function
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.getPendingRewards()))
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.getAllPool()))
-    //     // console.log(ethers.utils.formatEther(await HBTCWBTCVault.getAllPoolInNative())) // All pool in BTC
-    //     // console.log(ethers.utils.formatEther((await HBTCWBTCVault.balanceOf(client.address))
-    //     //     .mul(await HBTCWBTCVault.getPricePerFullShare(true))
-    //     //     .div(ethers.utils.parseEther("1"))
-    //     // )) // User share in BTC
-
-    //     // Withdraw
-    //     console.log("-----withdraw-----")
-    //     tx = await HBTCWBTCVault.connect(client).withdraw(HBTCWBTCVault.balanceOf(client.address))
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-    //     console.log(ethers.utils.formatEther(await HBTCWBTCContract.balanceOf(client.address))) // 1.000398083317176751
-
-    //     tx = await HBTCWBTCVault.connect(client2).withdraw(HBTCWBTCVault.balanceOf(client2.address))
-    //     // receipt = await tx.wait()
-    //     // console.log(receipt.gasUsed.toString())
-    //     console.log(ethers.utils.formatEther(await HBTCWBTCContract.balanceOf(client2.address))) // 0.9
-    // });
 });

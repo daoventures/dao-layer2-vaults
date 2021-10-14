@@ -34,8 +34,6 @@ interface IRouter {
         address to,
         uint deadline
     ) external returns (uint amountA, uint amountB);
-
-    function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts);
 }
 
 interface IDaoL1Vault is IERC20Upgradeable {
@@ -49,7 +47,7 @@ interface IChainlink {
     function latestAnswer() external view returns (int256);
 }
 
-contract AvaxDeXStrategy is Initializable {
+contract DeXAvaxStrategy is Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable constant WAVAX = IERC20Upgradeable(0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7);
@@ -214,8 +212,8 @@ contract AvaxDeXStrategy is Initializable {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         uint WAVAXAmtBefore = WAVAX.balanceOf(address(this));
         withdrawJOEAVAX(sharePerc, tokenPrice[1]);
-        withdrawPNGAVAX(sharePerc, tokenPrice[1]);
-        withdrawLYDAVAX(sharePerc, tokenPrice[2]);
+        withdrawPNGAVAX(sharePerc, tokenPrice[2]);
+        withdrawLYDAVAX(sharePerc, tokenPrice[3]);
         WAVAXAmt = WAVAX.balanceOf(address(this)) - WAVAXAmtBefore;
         WAVAX.safeTransfer(vault, WAVAXAmt);
         emit Withdraw(amount, WAVAXAmt);
