@@ -1,7 +1,7 @@
 const { run } = require("hardhat")
 
-const vaultImpl = "0x984baa2bed520988b486bedb47857d9108cececa"
-const strategyImpl = "0x86f490f050d9f7b45eb11a984f2bced3881ddefe"
+const vaultImpl = "0xEBADF005F74a0d96FB75232Aa947C346535F57Ec"
+const strategyImpl = "0xD18B48324f96D15575f9fAF9A8d21255A36825C4"
 
 module.exports = async () => {
 
