@@ -135,8 +135,8 @@ contract DeXAvaxStrategy is Initializable {
             LYDAVAXTargetPool > pools[2]
         ) {
             investJOEAVAX(JOEAVAXTargetPool - pools[0], tokenPriceMin[1]);
-            investPNGAVAX((PNGAVAXTargetPool - pools[1]), tokenPriceMin[2]);
-            investLYDAVAX((LYDAVAXTargetPool - pools[2]), tokenPriceMin[3]);
+            investPNGAVAX(PNGAVAXTargetPool - pools[1], tokenPriceMin[2]);
+            investLYDAVAX(LYDAVAXTargetPool - pools[2], tokenPriceMin[3]);
         } else {
             uint furthest;
             uint farmIndex;

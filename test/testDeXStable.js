@@ -11,8 +11,13 @@ const PNGAddr = "0x60781C2586D68229fde47564546784ab3fACA982"
 const LYDAddr = "0x4C9B4E1AC6F24CdE3660D5E4Ef1eBF77C710C084"
 
 const joeRouterAddr = "0x60aE616a2155Ee3d9A68541Ba4544862310933d4"
+const joeStakingContractAddr = "0xd6a4F121CA35509aF06A0Be99093d08462f53052"
+
 const pngRouterAddr = "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106"
+const pngStakingContractAddr = "0x7216d1e173c1f1Ed990239d5c77d74714a837Cd5"
+
 const lydRouterAddr = "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27"
+const lydStakingContractAddr = "0xFb26525B14048B7BB1F3794F6129176195Db7766"
 
 describe("DAO Avalanche", function () {
     it("Should work on DeXToken-AVAX strategy", async function () {
@@ -24,124 +29,107 @@ describe("DAO Avalanche", function () {
         // const admin = await ethers.getSigner(adminAddr)
         // await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
 
-        // Deploy JoeImpl
-        const JoeVault = await ethers.getContractFactory("JoeImpl", deployer)
-        const joeVault = await JoeVault.deploy()
-        const joeVaultArtifact = await artifacts.readArtifact("JoeImpl")
-        const joeVaultInterface = new ethers.utils.Interface(joeVaultArtifact.abi)
+        // Deploy AvaxVaultL1
+        const avaxVaultL1Fac = await ethers.getContractFactory("AvaxVaultL1", deployer)
+        const avaxVaultL1 = await avaxVaultL1Fac.deploy()
+        const avaxVaultL1Artifact = await artifacts.readArtifact("AvaxVaultL1")
+        const avaxVaultL1Interface = new ethers.utils.Interface(avaxVaultL1Artifact.abi)
 
-        const JoeFactory = await ethers.getContractFactory("JoeFactory", deployer)
-        const joeFactory = await JoeFactory.deploy(joeVault.address)
-        await joeFactory.transferOwnership(multisig.address)
+        const avaxVaultL1FactoryFac = await ethers.getContractFactory("AvaxVaultL1Factory", deployer)
+        const avaxVaultL1Factory = await avaxVaultL1FactoryFac.deploy(avaxVaultL1.address)
+        await avaxVaultL1Factory.transferOwnership(multisig.address)
         
-        // Deploy JOE-AVAX
-        const dataJOEAVAX = joeVaultInterface.encodeFunctionData(
+        // Deploy JOE-USDC
+        const dataJOEUSDC = avaxVaultL1Interface.encodeFunctionData(
             "initialize",
             [
-                "DAO L1 Joe JOE-AVAX", "daoJoeJOE", 0,
+                "DAO L1 Joe JOE-USDC", "daoJoeUSDC",
+                joeRouterAddr, joeStakingContractAddr, JOEAddr, 58, false,
                 treasury.address, community.address, admin.address,
             ]
         )
-        tx = await joeFactory.connect(multisig).createVault(dataJOEAVAX)
+        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataJOEUSDC)
         await tx.wait()
-        const JOEAVAXVaultAddr = await joeFactory.getVault((await joeFactory.getVaultLength()).sub(1))
-        // const JOEAVAXVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
-        const JOEAVAXVault = await ethers.getContractAt("JoeImpl", JOEAVAXVaultAddr, deployer)
+        const JOEUSDCVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        // const JOEUSDCVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        const JOEUSDCVault = await ethers.getContractAt("AvaxVaultL1", JOEUSDCVaultAddr, deployer)
 
-        // Deploy PngImpl
-        const PngVault = await ethers.getContractFactory("PngImpl", deployer)
-        const pngVault = await PngVault.deploy()
-        const pngVaultArtifact = await artifacts.readArtifact("PngImpl")
-        const pngVaultInterface = new ethers.utils.Interface(pngVaultArtifact.abi)
-
-        const PngFactory = await ethers.getContractFactory("PngFactory", deployer)
-        const pngFactory = await PngFactory.deploy(pngVault.address)
-        await pngFactory.transferOwnership(multisig.address)
-
-        // Deploy PNG-AVAX
-        const dataPNGAVAX = pngVaultInterface.encodeFunctionData(
+        // Deploy PNG-USDT
+        const dataPNGUSDT = avaxVaultL1Interface.encodeFunctionData(
             "initialize",
             [
-                "DAO L1 Pangolin PNG-AVAX", "daoPngPNG",
+                "DAO L1 Pangolin PNG-USDT", "daoPngUSDT",
+                pngRouterAddr, pngStakingContractAddr, PNGAddr, 999, true,
                 treasury.address, community.address, admin.address,
             ]
         )
-        tx = await pngFactory.connect(multisig).createVault(dataPNGAVAX)
+        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataPNGUSDT)
         await tx.wait()
-        const PNGAVAXVaultAddr = await pngFactory.getVault((await pngFactory.getVaultLength()).sub(1))
-        // const PNGAVAXVaultAddr = "0x397E18750351a707A010A5eB188a7A6AbFda4Fcd"
-        const PNGAVAXVault = await ethers.getContractAt("PngImpl", PNGAVAXVaultAddr, deployer)
+        const PNGUSDTVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        // const PNGUSDTVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        const PNGUSDTVault = await ethers.getContractAt("AvaxVaultL1", PNGUSDTVaultAddr, deployer)
 
-        // Deploy LydImpl
-        const LydVault = await ethers.getContractFactory("LydImpl", deployer)
-        const lydVault = await LydVault.deploy()
-        const lydVaultArtifact = await artifacts.readArtifact("LydImpl")
-        const lydVaultInterface = new ethers.utils.Interface(lydVaultArtifact.abi)
-
-        const LydFactory = await ethers.getContractFactory("LydFactory", deployer)
-        const lydFactory = await LydFactory.deploy(lydVault.address)
-        await lydFactory.transferOwnership(multisig.address)
-
-        // Deploy LYD-AVAX
-        const dataLYDAVAX = lydVaultInterface.encodeFunctionData(
+        // Deploy LYD-DAI
+        const dataLYDDAI = avaxVaultL1Interface.encodeFunctionData(
             "initialize",
             [
-                "DAO L1 Lydia LYD-AVAX", "daoLydLYD", 4,
+                "DAO L1 Lydia LYD-DAI", "daolydDAI",
+                lydRouterAddr, lydStakingContractAddr, LYDAddr, 26, false,
                 treasury.address, community.address, admin.address,
             ]
         )
-        tx = await lydFactory.connect(multisig).createVault(dataLYDAVAX)
+        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataLYDDAI)
         await tx.wait()
-        const LYDAVAXVaultAddr = await lydFactory.getVault((await lydFactory.getVaultLength()).sub(1))
-        // const LYDAVAXVaultAddr = "0x37e19484982425b77624FF95612D6aFE8f3159F4"
-        const LYDAVAXVault = await ethers.getContractAt("LydImpl", LYDAVAXVaultAddr, deployer)
+        const LYDDAIVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        // const LYDDAIVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        const LYDDAIVault = await ethers.getContractAt("AvaxVaultL1", LYDDAIVaultAddr, deployer)
 
         // Deploy proxy admin
         const proxyAdminFac = await ethers.getContractFactory("DAOProxyAdmin", deployer)
         const proxyAdmin = await proxyAdminFac.deploy()
 
-        // Deploy Avax-DeX strategy
-        const DeXAvaxStrategyFac = await ethers.getContractFactory("DeXAvaxStrategy", deployer)
-        const deXAvaxStrategyImpl = await DeXAvaxStrategyFac.deploy()
-        const deXAvaxStrategyArtifact = await artifacts.readArtifact("DeXAvaxStrategy")
-        const deXAvaxStrategyInterface = new ethers.utils.Interface(deXAvaxStrategyArtifact.abi)
-        const dataDeXAvaxStrategy = deXAvaxStrategyInterface.encodeFunctionData(
+        // Deploy DeX-Stable strategy
+        const DeXStableStrategyFac = await ethers.getContractFactory("DeXStableStrategy", deployer)
+        const deXStableStrategyImpl = await DeXStableStrategyFac.deploy()
+        const deXStableStrategyArtifact = await artifacts.readArtifact("DeXStableStrategy")
+        const deXStableStrategyInterface = new ethers.utils.Interface(deXStableStrategyArtifact.abi)
+        const dataDeXStableStrategy = deXStableStrategyInterface.encodeFunctionData(
             "initialize",
-            [JOEAVAXVaultAddr, PNGAVAXVaultAddr, LYDAVAXVaultAddr]
+            [JOEUSDCVaultAddr, PNGUSDTVaultAddr, LYDDAIVaultAddr]
         )
-        const DeXAvaxStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
-        const deXAvaxStrategyProxy = await DeXAvaxStrategyProxy.deploy(
-            deXAvaxStrategyImpl.address, proxyAdmin.address, dataDeXAvaxStrategy,
+        const DeXStableStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
+        const deXStableStrategyProxy = await DeXStableStrategyProxy.deploy(
+            deXStableStrategyImpl.address, proxyAdmin.address, dataDeXStableStrategy,
         )
-        const deXAvaxStrategy = await ethers.getContractAt("DeXAvaxStrategy", deXAvaxStrategyProxy.address, deployer)
-        // const deXAvaxStrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
-        // const deXAvaxStrategy = await ethers.getContractAt("DeXAvaxStrategy", deXAvaxStrategyProxyAddr, deployer)
+        const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxy.address, deployer)
+        // const deXStableStrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
+        // const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxyAddr, deployer)
 
-        const AvaxVaultFac = await ethers.getContractFactory("AvaxVault", deployer)
-        const avaxVaultImpl = await AvaxVaultFac.deploy()
-        const avaxVaultArtifact = await artifacts.readArtifact("AvaxVault")
-        const avaxVaultInterface = new ethers.utils.Interface(avaxVaultArtifact.abi)
-        const dataAvaxVault = avaxVaultInterface.encodeFunctionData(
+        const AvaxStableVaultFac = await ethers.getContractFactory("AvaxStableVault", deployer)
+        const avaxStableVaultImpl = await AvaxStableVaultFac.deploy()
+        const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVault")
+        const avaxStableVaultInterface = new ethers.utils.Interface(avaxStableVaultArtifact.abi)
+        const dataAvaxStableVault = avaxStableVaultInterface.encodeFunctionData(
             "initialize",
             [
                 "DAO L2 AVAX", "daoAVAX",
-                treasury.address, community.address, admin.address, deXAvaxStrategy.address
+                treasury.address, community.address, admin.address, deXStableStrategy.address
             ]
         )
-        const AvaxVaultProxy = await ethers.getContractFactory("AvaxProxy", deployer)
-        const avaxVaultProxy = await AvaxVaultProxy.deploy(
-            avaxVaultImpl.address, proxyAdmin.address, dataAvaxVault,
+        const AvaxStableVaultProxy = await ethers.getContractFactory("AvaxProxy", deployer)
+        const avaxStableVaultProxy = await AvaxStableVaultProxy.deploy(
+            avaxStableVaultImpl.address, proxyAdmin.address, dataAvaxStableVault,
         )
-        const avaxVault = await ethers.getContractAt("AvaxVault", avaxVaultProxy.address, deployer)
-        // const avaxVaultProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
-        // const avaxVault = await ethers.getContractAt("AvaxVault", avaxVaultProxyAddr, deployer)
+        const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxy.address, deployer)
+        // const avaxStableVaultProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
+        // const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxyAddr, deployer)
 
-        await deXAvaxStrategy.connect(admin).setVault(avaxVault.address)
+        await deXStableStrategy.connect(admin).setVault(avaxStableVault.address)
 
         // Set whitelist
-        await JOEAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
-        await PNGAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
-        await LYDAVAXVault.connect(admin).setWhitelistAddress(deXAvaxStrategy.address, true)
+        await JOEUSDCVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
+        await PNGUSDTVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
+        await LYDDAIVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
 
         // Swap & transfer Stablecoins to client
         const joeRouter = new ethers.Contract(joeRouterAddr, router_ABI, deployer)    
@@ -167,206 +155,201 @@ describe("DAO Avalanche", function () {
         await DAIContract.transfer(client.address, ethers.utils.parseUnits("10000", 18))
 
         // Deposit
-        await USDTContract.connect(client).approve(avaxVault.address, ethers.constants.MaxUint256)
-        await USDCContract.connect(client).approve(avaxVault.address, ethers.constants.MaxUint256)
-        await DAIContract.connect(client).approve(avaxVault.address, ethers.constants.MaxUint256)
-        tx = await avaxVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        await USDTContract.connect(client).approve(avaxStableVault.address, ethers.constants.MaxUint256)
+        await USDCContract.connect(client).approve(avaxStableVault.address, ethers.constants.MaxUint256)
+        await DAIContract.connect(client).approve(avaxStableVault.address, ethers.constants.MaxUint256)
+        tx = await avaxStableVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
         // receipt = await tx.wait()
-        // console.log(receipt.gasUsed.toString()) // 213727
-        await avaxVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        await avaxVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
-        // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client.address))) // 0.0
+        // console.log(receipt.gasUsed.toString()) // 213760
+        await avaxStableVault.connect(client).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        await avaxStableVault.connect(client).deposit(ethers.utils.parseUnits("10000", 18), DAIAddr)
+        // console.log(ethers.utils.formatEther(await avaxStableVault.balanceOf(client.address))) // 0.0
 
         // Invest
         const pngRouter = new ethers.Contract(pngRouterAddr, router_ABI, deployer)    
         const lydRouter = new ethers.Contract(lydRouterAddr, router_ABI, deployer)    
-        const USDCPriceInAVAX = (await joeRouter.getAmountsOut(ethers.utils.parseUnits("1", 6), [USDCAddr, WAVAXAddr]))[1]
-        const USDCPriceInAVAXMin = USDCPriceInAVAX.mul(95).div(100)
-        const AVAXPriceInJOE = (await joeRouter.getAmountsOut(ethers.utils.parseUnits("1", 18), [WAVAXAddr, JOEAddr]))[1]
-        const AVAXPriceInJOEMin = AVAXPriceInJOE.mul(95).div(100)
-        const AVAXPriceInPNG = (await pngRouter.getAmountsOut(ethers.utils.parseUnits("1", 18), [WAVAXAddr, PNGAddr]))[1]
-        const AVAXPriceInPNGMin = AVAXPriceInPNG.mul(95).div(100)
-        const AVAXPriceInLYD = (await lydRouter.getAmountsOut(ethers.utils.parseUnits("1", 18), [WAVAXAddr, LYDAddr]))[1]
-        const AVAXPriceInLYDMin = AVAXPriceInLYD.mul(95).div(100)
+        const USDCPriceInJOE = (await joeRouter.getAmountsOut(ethers.utils.parseUnits("1", 6), [USDCAddr, JOEAddr]))[1]
+        const USDCPriceInJOEMin = USDCPriceInJOE.mul(95).div(100)
+        const USDTPriceInPNG = (await pngRouter.getAmountsOut(ethers.utils.parseUnits("1", 6), [USDTAddr, PNGAddr]))[1]
+        const USDTPriceInPNGMin = USDTPriceInPNG.mul(95).div(100)
+        const DAIPriceInLYD = (await lydRouter.getAmountsOut(ethers.utils.parseUnits("1", 18), [DAIAddr, LYDAddr]))[1]
+        const DAIPriceInLYDMin = DAIPriceInLYD.mul(95).div(100)
 
-        tokenPriceMin = [USDCPriceInAVAXMin, AVAXPriceInJOEMin, AVAXPriceInPNGMin, AVAXPriceInLYDMin]
-        tx = await avaxVault.connect(admin).invest(tokenPriceMin)
+        tokenPriceMin = [0, USDCPriceInJOEMin, USDTPriceInPNGMin, DAIPriceInLYDMin]
+        // tokenPriceMin: Fist element 0 because slippage swap between Stablecoins with Curve is set in contract
+        tx = await avaxStableVault.connect(admin).invest(tokenPriceMin)
         // receipt = await tx.wait()
-        // console.log(receipt.gasUsed.toString()) // 1549948
-        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 29604.064510890979812288
+        // console.log(receipt.gasUsed.toString()) // 2615548
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 29561.851422398943466473
         // console.log(ethers.utils.formatEther(
-        //     (await avaxVault.balanceOf(client.address))
-        //     .mul(await avaxVault.getPricePerFullShare())
+        //     (await avaxStableVault.balanceOf(client.address))
+        //     .mul(await avaxStableVault.getPricePerFullShare())
         //     .div(ethers.utils.parseEther("1"))
         // )) // User share in USD
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.996769848851548141
-        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
-        // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client.address))) // 29700.0
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 26931.064510890979812288
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 27027.0
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 0.995348532740705167
+        // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8012,995,991
+        // console.log(ethers.utils.formatEther(await avaxStableVault.balanceOf(client.address))) // 29700.0
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 26888.851422398943466473
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 27027.0
 
         // Farm invest
-        await JOEAVAXVault.connect(admin).invest()
-        await PNGAVAXVault.connect(admin).invest()
-        await LYDAVAXVault.connect(admin).invest()
+        await JOEUSDCVault.connect(admin).invest()
+        await PNGUSDTVault.connect(admin).invest()
+        await LYDDAIVault.connect(admin).invest()
 
         // Check fees
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(treasury.address), 6)) // 150.0
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(community.address), 6)) // 150.0
-        // console.log(ethers.utils.formatEther(await avaxVault.fees())) // 0.0
+        // console.log(ethers.utils.formatEther(await avaxStableVault.fees())) // 0.0
 
         // Check Stablecoins keep in vault
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6)) // 891.0
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6)) // 891.0
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18)) // 891.0
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6)) // 891.0
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6)) // 891.0
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18)) // 891.0
 
         // Second invest
-        await USDTContract.connect(client2).approve(avaxVault.address, ethers.constants.MaxUint256)
-        await USDCContract.connect(client3).approve(avaxVault.address, ethers.constants.MaxUint256)
-        await avaxVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
-        await avaxVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        tx = await avaxVault.connect(admin).invest(tokenPriceMin)
+        await USDTContract.connect(client2).approve(avaxStableVault.address, ethers.constants.MaxUint256)
+        await USDCContract.connect(client3).approve(avaxStableVault.address, ethers.constants.MaxUint256)
+        await avaxStableVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
+        await avaxStableVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
+        tx = await avaxStableVault.connect(admin).invest(tokenPriceMin)
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString()) // 1227257
-        // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client2.address))) // 9932.082126487391421081
-        // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client3.address))) // 9932.082126487391421081
-        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 49339.979943167760077136
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.995476887118225392
-        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4499,4499,1001
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 45484.736073167760077136
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45644.75613
+        // console.log(ethers.utils.formatEther(await avaxStableVault.balanceOf(client2.address))) // 9946.264724719311007985
+        // console.log(ethers.utils.formatEther(await avaxStableVault.balanceOf(client3.address))) // 9946.264724719311007985
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 49193.733169807869510202
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 0.991958541254941639
+        // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8014,994,990
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 45341.022085807869510202
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 45647.288916
 
         // Farm invest
-        await JOEAVAXVault.connect(admin).invest()
-        await PNGAVAXVault.connect(admin).invest()
-        await LYDAVAXVault.connect(admin).invest()
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getPricePerFullShare(true))) // 20.135850201528075922
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getPricePerFullShare(false))) // 1.0
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getPricePerFullShare(true))) // 17.268105419952374524
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getPricePerFullShare(false))) // 1.0
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getPricePerFullShare(true))) // 3.936646766338057283
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getPricePerFullShare(false))) // 1.0
+        await JOEUSDCVault.connect(admin).invest()
+        await PNGUSDTVault.connect(admin).invest()
+        await LYDDAIVault.connect(admin).invest()
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getPricePerFullShare(true))) // 2732112.241636324268525623
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getPricePerFullShare(false))) // 1.0
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getPricePerFullShare(true))) // 2277173.917980692040873329
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getPricePerFullShare(false))) // 1.0
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getPricePerFullShare(true))) // 0.452341872902175398
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getPricePerFullShare(false))) // 1.0
 
         // Check farm vault pool
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20464.744092911234147069
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD())) // 4500 20464.05268839398514812
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD())) // 1000 4555.939291862540779607
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD())) // 8000 36339.587876207428668568
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD())) // 1000 4510.548778915419681055
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD())) // 1000 4490.885430685021160579
 
         // Yield in farms
         for (let i=0; i<10000; i++) {
             await network.provider.send("evm_mine")
         }
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getPendingRewards())) // 4.194296135963758004
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getPendingRewards())) // 0.410789862988081663
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getPendingRewards())) // 33.258511976690202149
-        await JOEAVAXVault.connect(admin).yield()
-        await PNGAVAXVault.connect(admin).yield()
-        await LYDAVAXVault.connect(admin).yield()
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getPricePerFullShare(false))) // 1.000246578297388232
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getPricePerFullShare(false))) // 1.000017612922989381
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getPricePerFullShare(false))) // 1.000288940137158355
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getPendingRewards())) // 10.526053939259000515
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getPendingRewards())) // 0.071328041682289088
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getPendingRewards())) // 58.2357063965079293
+        await JOEUSDCVault.connect(admin).yield()
+        await PNGUSDTVault.connect(admin).yield()
+        await LYDDAIVault.connect(admin).yield()
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getPricePerFullShare(false))) // 1.000345434947775379
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getPricePerFullShare(false))) // 1.000013635622723089
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getPricePerFullShare(false))) // 1.000000000005041914
 
         // Assume profit
         await joeRouter.swapExactAVAXForTokens(
-            0, [WAVAXAddr, JOEAddr], JOEAVAXVaultAddr, Math.ceil(Date.now() / 1000),
-            {value: ethers.utils.parseEther("5")}
+            0, [WAVAXAddr, JOEAddr], JOEUSDCVaultAddr, Math.ceil(Date.now() / 1000),
+            {value: ethers.utils.parseEther("10")}
         )
-        await JOEAVAXVault.connect(admin).yield()
+        await JOEUSDCVault.connect(admin).yield()
 
         // Collect profit
-        tx = await avaxVault.connect(admin).collectProfitAndUpdateWatermark()
+        tx = await avaxStableVault.connect(admin).collectProfitAndUpdateWatermark()
         // receipt = await tx.wait()
-        // console.log(receipt.gasUsed.toString()) // 282400
-        // console.log(ethers.utils.formatEther(await avaxVault.fees())) // 10.564558377891538148
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45697.578921889457690743
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 45697.578921889457690743
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.999558027058594013
+        // console.log(receipt.gasUsed.toString()) // 360696
+        // console.log(ethers.utils.formatEther(await avaxStableVault.fees())) // 23.152950197600713014
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 45763.053666988003565072
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 45763.053666988003565072
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 1.000001660559618456
 
         // Test reimburse
-        const AVAXPriceInUSDTMin = ((await joeRouter.getAmountsOut(ethers.utils.parseEther("1"), [WAVAXAddr, USDTAddr]))[1]).mul(95).div(100)
-        const AVAXPriceInUSDCMin = ((await joeRouter.getAmountsOut(ethers.utils.parseEther("1"), [WAVAXAddr, USDCAddr]))[1]).mul(95).div(100)
-        const AVAXPriceInDAIMin = ((await joeRouter.getAmountsOut(ethers.utils.parseEther("1"), [WAVAXAddr, DAIAddr]))[1]).mul(95).div(100)
-        const JOEPriceInAVAXMin = ((await joeRouter.getAmountsOut(ethers.utils.parseEther("1"), [JOEAddr, WAVAXAddr]))[1]).mul(95).div(100)
-        const PNGPriceInAVAXMin = ((await pngRouter.getAmountsOut(ethers.utils.parseEther("1"), [PNGAddr, WAVAXAddr]))[1]).mul(95).div(100)
-        const LYDPriceInAVAXMin = ((await lydRouter.getAmountsOut(ethers.utils.parseEther("1"), [LYDAddr, WAVAXAddr]))[1]).mul(95).div(100)
-        // await avaxVault.connect(admin).reimburse(0, USDTAddr, ethers.utils.parseUnits("1000", 6), [JOEPriceInAVAXMin, AVAXPriceInUSDTMin])
-        // await avaxVault.connect(admin).reimburse(1, USDCAddr, ethers.utils.parseUnits("1000", 6), [PNGPriceInAVAXMin, AVAXPriceInUSDCMin])
-        // await avaxVault.connect(admin).reimburse(2, DAIAddr, ethers.utils.parseUnits("1000", 18), [LYDPriceInAVAXMin, AVAXPriceInDAIMin])
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 44697.578644351970332677
-        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString());
+        const JOEPriceInUSDTMin = ((await joeRouter.getAmountsOut(ethers.utils.parseEther("1"), [JOEAddr, USDTAddr]))[1]).mul(95).div(100)
+        const PNGPriceInUSDTMin = ((await pngRouter.getAmountsOut(ethers.utils.parseEther("1"), [PNGAddr, USDTAddr]))[1]).mul(95).div(100)
+        const LYDPriceInUSDTMin = ((await lydRouter.getAmountsOut(ethers.utils.parseEther("1"), [LYDAddr, USDTAddr]))[1]).mul(95).div(100)
+        // await avaxStableVault.connect(admin).reimburse(0, USDTAddr, ethers.utils.parseUnits("1000", 6), [JOEPriceInUSDTMin])
+        // await avaxStableVault.connect(admin).reimburse(1, USDCAddr, ethers.utils.parseUnits("1000", 6), [PNGPriceInUSDTMin])
+        // await avaxStableVault.connect(admin).reimburse(2, DAIAddr, ethers.utils.parseUnits("1000", 18), [LYDPriceInUSDTMin])
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 44697.578644351970332677
+        // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8362,820,816
 
         // Check farm vault pool
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20464.744092911234147069
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD())) // 4500 20464.05268839398514812
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD())) // 1000 4555.939291862540779607
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD())) // 4500
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD())) // 4500
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD())) // 1000
 
         // Test emergency withdraw
-        // await avaxVault.connect(admin).emergencyWithdraw()
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD()))
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD()))
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD()))
+        // await avaxStableVault.connect(admin).emergencyWithdraw()
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD()))
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD()))
 
-        // await avaxVault.connect(admin).reinvest(tokenPriceMin)
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 45737.700863078580395425
-        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4498,4498,1002
-        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 49411.658560794983399728
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.996923065394557798
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20499.739575482749036949
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD())) // 4500 20498.043471501565513769
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD())) // 1000 4569.196146681062913684
+        // await avaxStableVault.connect(admin).reinvest(tokenPriceMin)
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 45832.894172
+        // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8019,992,987
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 49298.464015599685582522
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 0.994070368317495344
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD())) // 8000 36438.355983802366765469
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD())) // 1000 4510.296983343005942896
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD())) // 1000 4487.086959454312874157
 
         // Withdraw
         console.log("-----withdraw-----")
 
-        tokenPriceMin = [AVAXPriceInUSDTMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
-        await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
-        await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9842.995039
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9859.888491
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9853.75948
+        tokenPriceMin = [0, JOEPriceInUSDTMin, PNGPriceInUSDTMin, LYDPriceInUSDTMin]
+        // tokenPriceMin: Fist element 0 because slippage swap between Stablecoins with Curve is set in contract
+        // await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client2).withdraw(avaxStableVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client3).withdraw(avaxStableVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9948.075488
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9986.128357
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9967.789996
 
-        // tokenPriceMin = [AVAXPriceInUSDCMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDCAddr, tokenPriceMin)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDCAddr, tokenPriceMin)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDCAddr, tokenPriceMin)
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 9844.080167
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 9861.726068
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9856.199273
+        // await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(3), USDCAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client2).withdraw(avaxStableVault.balanceOf(client2.address), USDCAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client3).withdraw(avaxStableVault.balanceOf(client3.address), USDCAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 9942.704721
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 9979.795487
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9961.470204
 
-        // tokenPriceMin = [AVAXPriceInDAIMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), DAIAddr, tokenPriceMin)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), DAIAddr, tokenPriceMin)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), DAIAddr, tokenPriceMin)
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 9841.539386186864417744
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 9854.417211070852915627
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 9840.180822409327116238
+        // await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(3), DAIAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client2).withdraw(avaxStableVault.balanceOf(client2.address), DAIAddr, tokenPriceMin)
+        // await avaxStableVault.connect(client3).withdraw(avaxStableVault.balanceOf(client3.address), DAIAddr, tokenPriceMin)
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 9938.153826203525206565
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 9970.938266430669888662
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 9952.62678215557253069
 
-        // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 19782.81963545362035058
-        // console.log(ethers.utils.formatEther(await avaxVault.getPricePerFullShare())) // 0.999132304820889916
-        // console.log((await deXAvaxStrategy.getCurrentCompositionPerc()).toString()); // 4525,4479,995
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.watermark())) // 17432.783199093938958873
-        // console.log(ethers.utils.formatEther(await deXAvaxStrategy.getAllPoolInUSD())) // 17420.262203324014417115
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 19799.413978305543528376
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 0.99997040294472442
+        // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8033,985,981
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 17451.695150255964265898
+        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 17450.71138650314424139
 
-        // console.log(ethers.utils.formatEther(await JOEAVAXVault.getAllPoolInUSD())) // 4500 20499.739575482749036949
-        // console.log(ethers.utils.formatEther(await PNGAVAXVault.getAllPoolInUSD())) // 4500 20498.043471501565513769
-        // console.log(ethers.utils.formatEther(await LYDAVAXVault.getAllPoolInUSD())) // 1000 4569.196146681062913684
+        // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD())) // 8000 14018.509400936527146488
+        // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD())) // 1000 1719.928442100795264078
+        // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD())) // 1000 1712.273543465821830824
 
         // Test withdraw within token keep in vault
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
-        // tx = await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(35), USDTAddr, tokenPriceMin)
-        // receipt = await tx.wait()
-        // console.log(receipt.gasUsed.toString())
-        // // 320574 891124 1150322 1269075
-        // // 320636 891799 1151599 1269295
-        // // 320536 891835 1151635 1269195
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxVault.address), 6))
-        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxVault.address), 18))
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
+        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
+        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
+        tx = await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(5), DAIAddr, tokenPriceMin)
+        receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
+        // 396530 967149 1226449 2295641
+        // 396559 967791 1227660 2295703
+        // 396459 967794 1227663 2295641
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
+        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
+        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
     })
 });

@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -499,6 +498,6 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return getAllPoolInUSD() * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
 }

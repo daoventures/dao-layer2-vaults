@@ -115,6 +115,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         USDC.safeApprove(address(curve), type(uint).max);
         DAI.safeApprove(address(joeRouter), type(uint).max);
         DAI.safeApprove(address(curve), type(uint).max);
+        USDT.safeApprove(address(strategy), type(uint).max);
     }
 
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
@@ -313,7 +314,9 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
         if (USDCAmt > USDCAmtKeepInVault + 1e6) {
             USDCAmt -= USDCAmtKeepInVault;
-            uint _USDTAmt = curve.exchange_underlying(getCurveId(address(USDC)), getCurveId(address(USDT)), USDCAmt, USDCAmt * 99 / 100);
+            uint _USDTAmt = curve.exchange_underlying(
+                getCurveId(address(USDC)), getCurveId(address(USDT)), USDCAmt, USDCAmt * 99 / 100
+            );
             stablecoinAmt += _USDTAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
@@ -321,7 +324,9 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
             DAIAmt -= DAIAmtKeepInVault;
-            uint _USDTAmt = curve.exchange_underlying(getCurveId(address(DAI)), getCurveId(address(USDT)), DAIAmt, DAIAmt * 99 / 100);
+            uint _USDTAmt = curve.exchange_underlying(
+                getCurveId(address(DAI)), getCurveId(address(USDT)), DAIAmt, (DAIAmt / 1e12) * 99 / 100
+            );
             stablecoinAmt += _USDTAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
@@ -333,12 +338,13 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @param amount Amount to reimburse (decimal follow token)
     function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin {
+        if (token != address(DAI)) amount *= 1e12;
+
         uint USDTAmt = strategy.reimburse(farmIndex, amount, tokenPriceMin[0]);
         if (token != address(USDT)) {
             curve.exchange_underlying(getCurveId(address(USDT)), getCurveId(address(token)), USDTAmt, USDTAmt * 99 / 100);
         }
 
-        if (token != address(DAI)) amount *= 1e12;
         strategy.adjustWatermark(amount, false);
 
         emit Reimburse(farmIndex, token, amount);
@@ -472,6 +478,6 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return getAllPoolInUSD() * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
 }

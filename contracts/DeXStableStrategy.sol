@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -107,9 +106,12 @@ contract DeXStableStrategy is Initializable {
 
         profitFeePerc = 2000;
 
-        USDT.safeApprove(address(joeRouter), type(uint).max);
+        USDC.safeApprove(address(joeRouter), type(uint).max);
+        USDC.safeApprove(address(curve), type(uint).max);
         USDT.safeApprove(address(pngRouter), type(uint).max);
-        USDT.safeApprove(address(lydRouter), type(uint).max);
+        USDT.safeApprove(address(curve), type(uint).max);
+        DAI.safeApprove(address(lydRouter), type(uint).max);
+        DAI.safeApprove(address(curve), type(uint).max);
         JOE.safeApprove(address(joeRouter), type(uint).max);
         PNG.safeApprove(address(pngRouter), type(uint).max);
         LYD.safeApprove(address(lydRouter), type(uint).max);
@@ -131,44 +133,52 @@ contract DeXStableStrategy is Initializable {
         uint PNGUSDTTargetPool = pool * 1000 / 10000;
         uint LYDDAITargetPool = pool * 1000 / 10000;
 
-        // Rebalancing invest
-        if (
-            JOEUSDCTargetPool > pools[0] &&
-            PNGUSDTTargetPool > pools[1] &&
-            LYDDAITargetPool > pools[2]
-        ) {
-            investJOEUSDC(JOEUSDCTargetPool - pools[0], tokenPriceMin[1]);
-            investPNGUSDT((PNGUSDTTargetPool - pools[1]), tokenPriceMin[2]);
-            investLYDDAI((LYDDAITargetPool - pools[2]), tokenPriceMin[3]);
-        } else {
-            uint furthest;
-            uint farmIndex;
-            uint diff;
+        // For this pool we don't rebalancing invest it first
+        // Because if very large amount invest in PNG-USDT or LYD-DAI pool,
+        // the transaction will failed because of the huge slippage,
+        // since liquidity in PNG-USDT and LYD-DAI still quite low
+        investJOEUSDC(USDTAmt * 8000 / 10000, tokenPriceMin[1]);
+        investPNGUSDT(USDTAmt * 1000 / 10000, tokenPriceMin[2]);
+        investLYDDAI(USDTAmt * 1000 / 10000, tokenPriceMin[3]);
 
-            if (JOEUSDCTargetPool > pools[0]) {
-                diff = JOEUSDCTargetPool - pools[0];
-                furthest = diff;
-                farmIndex = 0;
-            }
-            if (PNGUSDTTargetPool > pools[1]) {
-                diff = PNGUSDTTargetPool - pools[1];
-                if (diff > furthest) {
-                    furthest = diff;
-                    farmIndex = 1;
-                }
-            }
-            if (LYDDAITargetPool > pools[2]) {
-                diff = LYDDAITargetPool - pools[2];
-                if (diff > furthest) {
-                    furthest = diff;
-                    farmIndex = 2;
-                }
-            }
+        // // Rebalancing invest
+        // if (
+        //     JOEUSDCTargetPool > pools[0] &&
+        //     PNGUSDTTargetPool > pools[1] &&
+        //     LYDDAITargetPool > pools[2]
+        // ) {
+        //     investJOEUSDC(JOEUSDCTargetPool - pools[0], tokenPriceMin[1]);
+        //     investPNGUSDT(PNGUSDTTargetPool - pools[1], tokenPriceMin[2]);
+        //     investLYDDAI(LYDDAITargetPool - pools[2], tokenPriceMin[3]);
+        // } else {
+        //     uint furthest;
+        //     uint farmIndex;
+        //     uint diff;
 
-            if (farmIndex == 0) investJOEUSDC(USDTAmt, tokenPriceMin[1]);
-            else if (farmIndex == 1) investPNGUSDT(USDTAmt, tokenPriceMin[2]);
-            else investLYDDAI(USDTAmt, tokenPriceMin[3]);
-        }
+        //     if (JOEUSDCTargetPool > pools[0]) {
+        //         diff = JOEUSDCTargetPool - pools[0];
+        //         furthest = diff;
+        //         farmIndex = 0;
+        //     }
+        //     if (PNGUSDTTargetPool > pools[1]) {
+        //         diff = PNGUSDTTargetPool - pools[1];
+        //         if (diff > furthest) {
+        //             furthest = diff;
+        //             farmIndex = 1;
+        //         }
+        //     }
+        //     if (LYDDAITargetPool > pools[2]) {
+        //         diff = LYDDAITargetPool - pools[2];
+        //         if (diff > furthest) {
+        //             furthest = diff;
+        //             farmIndex = 2;
+        //         }
+        //     }
+
+        //     if (farmIndex == 0) investJOEUSDC(USDTAmt, tokenPriceMin[1]);
+        //     else if (farmIndex == 1) investPNGUSDT(USDTAmt, tokenPriceMin[2]);
+        //     else investLYDDAI(USDTAmt, tokenPriceMin[3]);
+        // }
 
         emit TargetComposition(JOEUSDCTargetPool, PNGUSDTTargetPool, LYDDAITargetPool);
         emit CurrentComposition(pools[0], pools[1], pools[2]);
@@ -183,7 +193,7 @@ contract DeXStableStrategy is Initializable {
             halfUSDC, halfUSDC * USDCPriceInJOE / 1e6, getPath(address(USDC), address(JOE)), address(this), block.timestamp
         )[1];
         (,,uint JOEUSDCAmt) = joeRouter.addLiquidity(
-            address(JOE), address(USDC), JOEAmt, USDCAmt, 0, 0, address(this), block.timestamp
+            address(JOE), address(USDC), JOEAmt, halfUSDC, 0, 0, address(this), block.timestamp
         );
         JOEUSDCVault.deposit(JOEUSDCAmt);
         emit InvestJOEUSDC(USDTAmt, JOEUSDCAmt);
@@ -203,7 +213,7 @@ contract DeXStableStrategy is Initializable {
 
     function investLYDDAI(uint USDTAmt, uint DAIPriceInLYD) private {
         uint DAIAmt = curve.exchange_underlying(
-            getCurveId(address(USDT)), getCurveId(address(DAI)), USDTAmt, USDTAmt * 99 / 100
+            getCurveId(address(USDT)), getCurveId(address(DAI)), USDTAmt, USDTAmt * 1e12 * 99 / 100
         );
         uint halfDAI = DAIAmt / 2;
         uint LYDAmt = lydRouter.swapExactTokensForTokens(
@@ -212,6 +222,10 @@ contract DeXStableStrategy is Initializable {
         (,,uint LYDDAIAmt) = lydRouter.addLiquidity(
             address(LYD), address(DAI), LYDAmt, halfDAI, 0, 0, address(this), block.timestamp
         );
+
+        // (uint amtLYD, uint amtDAI) = lydRouter.removeLiquidity(address(LYD), address(DAI), LYDDAIAmt, 0, 0, address(this), block.timestamp);
+        // amtDAI += lydRouter.swapExactTokensForTokens(amtLYD, 0, getPath(address(LYD), address(DAI)), address(this), block.timestamp)[1];
+
         LYDDAIVault.deposit(LYDDAIAmt);
         emit InvestLYDDAI(USDTAmt, LYDDAIAmt);
     }
@@ -255,14 +269,14 @@ contract DeXStableStrategy is Initializable {
 
     function withdrawLYDDAI(uint sharePerc, uint LYDPriceInDAI) private {
         uint LYDDAIAmt = LYDDAIVault.withdraw(LYDDAIVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint LYDAmt, uint DAIAmt) = joeRouter.removeLiquidity(
+        (uint LYDAmt, uint DAIAmt) = lydRouter.removeLiquidity(
             address(LYD), address(DAI), LYDDAIAmt, 0, 0, address(this), block.timestamp
         );
-        DAIAmt += joeRouter.swapExactTokensForTokens(
+        DAIAmt += lydRouter.swapExactTokensForTokens(
             LYDAmt, LYDAmt * LYDPriceInDAI / 1e18, getPath(address(LYD), address(DAI)), address(this), block.timestamp
         )[1];
         uint USDTAmt = curve.exchange_underlying(
-            getCurveId(address(DAI)), getCurveId(address(USDT)), DAIAmt, DAIAmt * 99 / 100
+            getCurveId(address(DAI)), getCurveId(address(USDT)), DAIAmt, (DAIAmt / 1e12) * 99 / 100
         );
         emit WithdrawLYDDAI(LYDDAIAmt, USDTAmt);
     }
