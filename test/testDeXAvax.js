@@ -112,7 +112,7 @@ describe("DAO Avalanche", function () {
         const dataAvaxVault = avaxVaultInterface.encodeFunctionData(
             "initialize",
             [
-                "DAO L2 AVAX", "daoAVAX",
+                "DAO L2 Avalanche DeX-AVAX", "daoAXA",
                 treasury.address, community.address, admin.address, deXAvaxStrategy.address
             ]
         )

@@ -67,10 +67,6 @@ contract DeXAvaxStrategy is Initializable {
     IDaoL1Vault public PNGAVAXVault;
     IDaoL1Vault public LYDAVAXVault;
 
-    uint constant JOEAVAXTargetPerc = 4500;
-    uint constant PNGAVAXTargetPerc = 4500;
-    uint constant LYDAVAXTargetPerc = 1000;
-
     address public vault;
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;

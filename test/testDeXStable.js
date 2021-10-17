@@ -20,7 +20,7 @@ const lydRouterAddr = "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27"
 const lydStakingContractAddr = "0xFb26525B14048B7BB1F3794F6129176195Db7766"
 
 describe("DAO Avalanche", function () {
-    it("Should work on DeXToken-AVAX strategy", async function () {
+    it("Should work on DeXToken-Stablecoin strategy", async function () {
         let tx, receipt, tokenPriceMin
         const [deployer, client, client2, client3, treasury, community, admin, multisig] = await ethers.getSigners()
 
@@ -112,7 +112,7 @@ describe("DAO Avalanche", function () {
         const dataAvaxStableVault = avaxStableVaultInterface.encodeFunctionData(
             "initialize",
             [
-                "DAO L2 AVAX", "daoAVAX",
+                "DAO L2 Avalanche DeX-Stable", "daoAXS",
                 treasury.address, community.address, admin.address, deXStableStrategy.address
             ]
         )
@@ -265,8 +265,9 @@ describe("DAO Avalanche", function () {
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString()) // 360696
         // console.log(ethers.utils.formatEther(await avaxStableVault.fees())) // 23.152950197600713014
-        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 45763.053666988003565072
-        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 45763.053666988003565072
+        console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 45763.053666988003565072
+        console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 45763.053666988003565072
+        // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 49592.611800790402852058
         // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 1.000001660559618456
 
         // Test reimburse
@@ -307,9 +308,9 @@ describe("DAO Avalanche", function () {
 
         tokenPriceMin = [0, JOEPriceInUSDTMin, PNGPriceInUSDTMin, LYDPriceInUSDTMin]
         // tokenPriceMin: Fist element 0 because slippage swap between Stablecoins with Curve is set in contract
-        // await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
-        // await avaxStableVault.connect(client2).withdraw(avaxStableVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
-        // await avaxStableVault.connect(client3).withdraw(avaxStableVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
+        await avaxStableVault.connect(client2).withdraw(avaxStableVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
+        await avaxStableVault.connect(client3).withdraw(avaxStableVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9948.075488
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9986.128357
         // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9967.789996
@@ -331,25 +332,25 @@ describe("DAO Avalanche", function () {
         // console.log(ethers.utils.formatEther(await avaxStableVault.getAllPoolInUSD())) // 19799.413978305543528376
         // console.log(ethers.utils.formatEther(await avaxStableVault.getPricePerFullShare())) // 0.99997040294472442
         // console.log((await deXStableStrategy.getCurrentCompositionPerc()).toString()); // 8033,985,981
-        // console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 17451.695150255964265898
-        // console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 17450.71138650314424139
+        console.log(ethers.utils.formatEther(await deXStableStrategy.watermark())) // 17451.695150255964265898
+        console.log(ethers.utils.formatEther(await deXStableStrategy.getAllPoolInUSD())) // 17450.71138650314424139
 
         // console.log(ethers.utils.formatEther(await JOEUSDCVault.getAllPoolInUSD())) // 8000 14018.509400936527146488
         // console.log(ethers.utils.formatEther(await PNGUSDTVault.getAllPoolInUSD())) // 1000 1719.928442100795264078
         // console.log(ethers.utils.formatEther(await LYDDAIVault.getAllPoolInUSD())) // 1000 1712.273543465821830824
 
         // Test withdraw within token keep in vault
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
-        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
-        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
-        tx = await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(5), DAIAddr, tokenPriceMin)
-        receipt = await tx.wait()
-        console.log(receipt.gasUsed.toString())
-        // 396530 967149 1226449 2295641
-        // 396559 967791 1227660 2295703
-        // 396459 967794 1227663 2295641
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
-        console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
-        console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
+        // tx = await avaxStableVault.connect(client).withdraw((await avaxStableVault.balanceOf(client.address)).div(5), DAIAddr, tokenPriceMin)
+        // receipt = await tx.wait()
+        // console.log(receipt.gasUsed.toString())
+        // // 396530 967149 1226449 2295641
+        // // 396559 967791 1227660 2295703
+        // // 396459 967794 1227663 2295641
+        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(avaxStableVault.address), 6))
+        // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(avaxStableVault.address), 18))
     })
 });

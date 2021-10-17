@@ -69,10 +69,6 @@ contract DeXStableStrategy is Initializable {
     IDaoL1Vault public PNGUSDTVault;
     IDaoL1Vault public LYDDAIVault;
 
-    uint constant JOEUSDCTargetPerc = 8000;
-    uint constant PNGUSDTTargetPerc = 1000;
-    uint constant LYDDAITargetPerc = 1000;
-
     address public vault;
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;
@@ -188,13 +184,16 @@ contract DeXStableStrategy is Initializable {
         uint USDCAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(USDC)), USDTAmt, USDTAmt * 99 / 100
         );
+
         uint halfUSDC = USDCAmt / 2;
         uint JOEAmt = joeRouter.swapExactTokensForTokens(
             halfUSDC, halfUSDC * USDCPriceInJOE / 1e6, getPath(address(USDC), address(JOE)), address(this), block.timestamp
         )[1];
+
         (,,uint JOEUSDCAmt) = joeRouter.addLiquidity(
             address(JOE), address(USDC), JOEAmt, halfUSDC, 0, 0, address(this), block.timestamp
         );
+
         JOEUSDCVault.deposit(JOEUSDCAmt);
         emit InvestJOEUSDC(USDTAmt, JOEUSDCAmt);
     }
@@ -204,9 +203,11 @@ contract DeXStableStrategy is Initializable {
         uint PNGAmt = pngRouter.swapExactTokensForTokens(
             halfUSDT, halfUSDT * USDTPriceInPNG / 1e6, getPath(address(USDT), address(PNG)), address(this), block.timestamp
         )[1];
+
         (,,uint PNGUSDTAmt) = pngRouter.addLiquidity(
             address(PNG), address(USDT), PNGAmt, halfUSDT, 0, 0, address(this), block.timestamp
         );
+
         PNGUSDTVault.deposit(PNGUSDTAmt);
         emit InvestPNGUSDT(USDTAmt, PNGUSDTAmt);
     }
@@ -215,17 +216,16 @@ contract DeXStableStrategy is Initializable {
         uint DAIAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(DAI)), USDTAmt, USDTAmt * 1e12 * 99 / 100
         );
+
         uint halfDAI = DAIAmt / 2;
         uint LYDAmt = lydRouter.swapExactTokensForTokens(
             halfDAI, halfDAI * DAIPriceInLYD / 1e18, getPath(address(DAI), address(LYD)), address(this), block.timestamp
         )[1];
+
         (,,uint LYDDAIAmt) = lydRouter.addLiquidity(
             address(LYD), address(DAI), LYDAmt, halfDAI, 0, 0, address(this), block.timestamp
         );
-
-        // (uint amtLYD, uint amtDAI) = lydRouter.removeLiquidity(address(LYD), address(DAI), LYDDAIAmt, 0, 0, address(this), block.timestamp);
-        // amtDAI += lydRouter.swapExactTokensForTokens(amtLYD, 0, getPath(address(LYD), address(DAI)), address(this), block.timestamp)[1];
-
+        
         LYDDAIVault.deposit(LYDDAIAmt);
         emit InvestLYDDAI(USDTAmt, LYDDAIAmt);
     }
