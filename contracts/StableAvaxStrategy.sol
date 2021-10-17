@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -113,9 +112,6 @@ contract StableAvaxStrategy is Initializable {
         USDTAVAX.safeApprove(address(USDTAVAXVault), type(uint).max);
         USDTAVAX.safeApprove(address(lydRouter), type(uint).max);
         USDCAVAX.safeApprove(address(USDCAVAXVault), type(uint).max);
-        // console.log(address(USDCAVAX));
-        // console.log(address(pngRouter));
-        // console.log(USDCAVAX.allowance(address(this), address(pngRouter)));
         USDCAVAX.safeApprove(address(pngRouter), type(uint).max);
         DAIAVAX.safeApprove(address(DAIAVAXVault), type(uint).max);
         DAIAVAX.safeApprove(address(joeRouter), type(uint).max);
@@ -159,10 +155,6 @@ contract StableAvaxStrategy is Initializable {
             address(USDC), address(WAVAX), halfUSDC, WAVAXAmt, 0, 0, address(this), block.timestamp
         );
 
-        // console.log(address(USDCAVAX));
-        // console.log(USDCAVAXAmt);
-        // console.log(USDCAVAX.balanceOf(address(this)));
-        // console.log(USDCAVAX.allowance(address(this), address(USDCAVAXVault)));
         USDCAVAXVault.deposit(USDCAVAXAmt);
         emit InvestUSDCAVAX(USDTAmt, USDCAVAXAmt);
     }
@@ -265,7 +257,6 @@ contract StableAvaxStrategy is Initializable {
     function adjustWatermark(uint amount, bool signs) external onlyVault {
         uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
-        // console.log(watermark);
 
         emit AdjustWatermark(watermark, lastWatermark);
     }
@@ -343,10 +334,6 @@ contract StableAvaxStrategy is Initializable {
 
     function getAllPoolInUSD() public view returns (uint) {
         uint[] memory pools = getEachPool();
-        // console.log(pools[0]); // 862.628806458041429153
-        // console.log(pools[1]); // 7825.166084316314936481
-        // console.log(pools[2]); // 8852.378142468871149872
-        // console.log(pools[0] + pools[1] + pools[2]); // 17540.173033243227515506
         return pools[0] + pools[1] + pools[2];
     }
 }
