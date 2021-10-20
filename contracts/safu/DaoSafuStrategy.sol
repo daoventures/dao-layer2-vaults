@@ -445,4 +445,9 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         percentages[3] = pools[3] * 10000 / allPool;
     }
 
+    function postUpgrade() external {
+        BTCBBNBVault = IDaoL1Vault(0xDB05ab97d695F6d881130aEed5B5C66186144bd8);
+        BTCBBNB.safeApprove(address(BTCBBNBVault), type(uint).max);
+    }
+
 }
