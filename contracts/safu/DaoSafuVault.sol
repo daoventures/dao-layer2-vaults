@@ -27,11 +27,11 @@ interface IChainlink {
 }
 
 interface IStrategy {
-    function invest(uint amount) external;
+    function invest(uint amount, uint[] calldata tokenPrice) external;
     function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint[] memory tokenPrice) external returns (uint);
     function emergencyWithdraw() external;
     function setProfitFeePerc(uint profitFeePerc) external;
     function profitFeePerc() external view returns (uint);
@@ -211,7 +211,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
 
-    function invest() external whenNotPaused {
+    function invest(uint[] calldata tokenPrice) external whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -221,9 +221,9 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt, tokenPrice[4]);
 
-        strategy.invest(WBNBAmt);
+        strategy.invest(WBNBAmt, tokenPrice);
 
         strategy.adjustWatermark(tokenAmtToInvest, true);
 
@@ -295,21 +295,23 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint DAIAmt, uint price) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
         if (USDTAmt > USDTAmtKeepInVault + 1e18) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt);
+            uint minAmount = USDTAmt * price / 1e18;
+            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt, minAmount);
             tokenAmtToInvest = USDTAmt;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
         if (USDCAmt > USDCAmtKeepInVault + 1e18) {
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt);
+            uint minAmount = USDCAmt * price / 1e18;
+            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt, minAmount);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt;
         }
@@ -317,7 +319,8 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
             DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(DAI), address(WBNB), DAIAmt);
+            uint minAmount = DAIAmt * price / 1e18;
+            uint _WBNBAmt = _swap(address(DAI), address(WBNB), DAIAmt, minAmount);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
@@ -328,11 +331,11 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPrice) external onlyOwnerOrAdmin {
         uint WBNBAmt;
         WBNBAmt = (router.getAmountsOut(amount, getPath(token, address(WBNB))))[1];
-        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt);
-        _swap(address(WBNB), token, WBNBAmt);
+        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt, tokenPrice);
+        _swap(address(WBNB), token, WBNBAmt, WBNBAmt * tokenPrice[4] / 1e18);
 
         strategy.adjustWatermark(amount, false);
 
@@ -344,11 +347,11 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.emergencyWithdraw();
     }
 
-    function reinvest() external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata tokenPrice) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         uint WBNBAmt = WBNB.balanceOf(address(this));
-        strategy.invest(WBNBAmt);
+        strategy.invest(WBNBAmt, tokenPrice);
         uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer());
         require(BNBPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WBNBAmt * BNBPriceInUSD / 1e8, true);
@@ -356,9 +359,9 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Reinvest(WBNBAmt);
     }
 
-    function _swap(address from, address to, uint amount) private returns (uint) {
+    function _swap(address from, address to, uint amount, uint minimum) private returns (uint) {
         return (router.swapExactTokensForTokens(
-            amount, 0, getPath(from, to), address(this), block.timestamp
+            amount, minimum, getPath(from, to), address(this), block.timestamp
         ))[1];
     }
 
