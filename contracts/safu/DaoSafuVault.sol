@@ -243,12 +243,14 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        if (totalSupply() != 0) pool -= totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
             uint _totalSupply = totalSupply();
+            
+            if (_totalSupply != 0) pool -= totalDepositAmt;
+
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
