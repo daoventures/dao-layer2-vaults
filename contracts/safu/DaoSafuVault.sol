@@ -45,7 +45,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     IERC20Upgradeable constant USDT = IERC20Upgradeable(0x55d398326f99059fF775485246999027B3197955);
     IERC20Upgradeable constant USDC = IERC20Upgradeable(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3);
+    IERC20Upgradeable constant BUSD = IERC20Upgradeable(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
     IERC20Upgradeable constant WBNB = IERC20Upgradeable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
 
     IRouter constant router = IRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
@@ -116,7 +116,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         USDT.safeApprove(address(router), type(uint).max);
         USDC.safeApprove(address(router), type(uint).max);
-        DAI.safeApprove(address(router), type(uint).max);
+        BUSD.safeApprove(address(router), type(uint).max);
         WBNB.safeApprove(address(router), type(uint).max);
         WBNB.safeApprove(address(strategy), type(uint).max);
     }
@@ -124,7 +124,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
         require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
-        require(token == DAI || token == USDC || token == USDT, "Invalid token");
+        require(token == BUSD || token == USDC || token == USDT, "Invalid token");
 
         address msgSender = _msgSender();
         token.safeTransferFrom(msgSender, address(this), amount);
@@ -153,7 +153,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
-        require(token == DAI || token == USDC || token == USDT, "Invalid token");
+        require(token == BUSD || token == USDC || token == USDT, "Invalid token");
         
         uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / totalSupply();
 
@@ -262,7 +262,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
 
-    function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
+    function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint BUSDAmt) {
         require(
             msg.sender == address(this) ||
             msg.sender == admin ||
@@ -271,7 +271,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         USDTAmt = USDT.balanceOf(address(this));
         USDCAmt = USDC.balanceOf(address(this));
-        DAIAmt = DAI.balanceOf(address(this));
+        BUSDAmt = BUSD.balanceOf(address(this));
 
         uint _fees = fees;
         if (_fees != 0) {
@@ -282,10 +282,10 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else if (USDCAmt > _fees) {
                 token = USDC;
                 USDCAmt = USDCAmt - _fees;
-            } else if (DAIAmt > _fees) {
-                token = DAI;
-                DAIAmt = DAIAmt - _fees;
-            } else return (USDTAmt, USDCAmt, DAIAmt);
+            } else if (BUSDAmt > _fees) {
+                token = BUSD;
+                BUSDAmt = BUSDAmt - _fees;
+            } else return (USDTAmt, USDCAmt, BUSDAmt);
 
             uint _fee = _fees * 2 / 5; // 40%
             token.safeTransfer(treasuryWallet, _fee); // 40%
@@ -322,7 +322,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
             DAIAmt = DAIAmt - DAIAmtKeepInVault;
             uint minAmount = DAIAmt * price / 1e18;
-            uint _WBNBAmt = _swap(address(DAI), address(WBNB), DAIAmt, minAmount);
+            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), DAIAmt, minAmount);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
@@ -458,13 +458,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (token == USDT) {
             token1 = address(USDC);
             token1AmtInVault = USDC.balanceOf(address(this));
-            token2 = address(DAI);
-            token2AmtInVault = DAI.balanceOf(address(this));
+            token2 = address(BUSD);
+            token2AmtInVault = BUSD.balanceOf(address(this));
         } else if (token == USDC) {
             token1 = address(USDT);
             token1AmtInVault = USDT.balanceOf(address(this));
-            token2 = address(DAI);
-            token2AmtInVault = DAI.balanceOf(address(this));
+            token2 = address(BUSD);
+            token2AmtInVault = BUSD.balanceOf(address(this));
         } else {
             token1 = address(USDT);
             token1AmtInVault = USDT.balanceOf(address(this));
@@ -489,7 +489,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(BNBPriceInUSD > 0, "ChainLink error");
         
         uint tokenKeepInVault = USDT.balanceOf(address(this)) + 
-            USDC.balanceOf(address(this)) + DAI.balanceOf(address(this));
+            USDC.balanceOf(address(this)) + BUSD.balanceOf(address(this));
 
         if (paused()) return WBNB.balanceOf(address(this)) * BNBPriceInUSD / 1e8 + tokenKeepInVault - fees;
         uint strategyPoolInUSD = strategy.getAllPool() * BNBPriceInUSD / 1e8;
