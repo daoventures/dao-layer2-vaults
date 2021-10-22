@@ -76,13 +76,6 @@ DAO Avalanche stable vault (implementation) contract address:
 
 DAO proxy admin contract address: 
 
-#### Mock Stablecoins
-
-DAO USDT token contract address: 
-
-DAO USDC token contract address: 
-
-DAO DAI token contract address: 
 
 ### Kovan
 
@@ -150,9 +143,9 @@ DAO Avalanche Stablecoin-Stablecoin vault (proxy) contract address: 0x89D6Fd8ba3
 
 #### Vault implementation
 
-DAO Avalanche vault (implementation) contract address: 0x6B28dbfa6703A836A1dB8409f7C977693ED218dE
+DAO Avalanche vault (implementation) contract address: 0x4336A448bed63c950733B11ADf444Adf4FF03ff3
 
-DAO Avalanche stable vault (implementation) contract address: 0xcfb54CE9bb41BA8256843cC0FB036fad608865bB
+DAO Avalanche stable vault (implementation) contract address: 0x9D7575d4288B5632a1cF5B6dFa4B37aa8Db3b1aF
 
 #### Proxy admin
 

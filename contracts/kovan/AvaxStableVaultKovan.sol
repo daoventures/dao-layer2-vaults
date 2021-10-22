@@ -43,9 +43,9 @@ contract AvaxStableVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgrade
         ReentrancyGuardUpgradeable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xc7198437980c041c805A1EDcbA50c1Ce5db95118);
-    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);
-    IERC20Upgradeable constant DAI = IERC20Upgradeable(0xd586E7F844cEa2F87f50152665BCbc2C279D8d70);
+    IERC20Upgradeable constant USDT = IERC20Upgradeable(0xE01A4D7de190f60F86b683661F67f79F134E0582);
+    IERC20Upgradeable constant USDC = IERC20Upgradeable(0xA6cFCa9EB181728082D35419B58Ba7eE4c9c8d38);
+    IERC20Upgradeable constant DAI = IERC20Upgradeable(0x3bc22AA42FF61fC2D01E87c2Fa4268D0334b1a4c);
 
     IRouter constant joeRouter = IRouter(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
     ICurve constant curve = ICurve(0x7f90122BF0700F9E7e1F688fe926940E8839F353); // av3pool
@@ -155,46 +155,49 @@ contract AvaxStableVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgrade
         uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
-        uint tokenAmtInVault = token.balanceOf(address(this));
-        if (token != DAI) tokenAmtInVault *= 1e12;
-        if (withdrawAmt < tokenAmtInVault) {
-            // Enough token in vault to withdraw
-            if (token != DAI) withdrawAmt /= 1e12;
-            token.safeTransfer(msg.sender, withdrawAmt);
-        } else {
-            // Not enough token in vault to withdraw, try if enough if swap from other token in vault
-            (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
-            if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
-                // Enough if swap from token1 in vault
-                uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
-                if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
-                curve.exchange_underlying(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
-                withdrawAmt = token.balanceOf(address(this));
-                token.safeTransfer(msg.sender, withdrawAmt);
-            } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
-                // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
-                uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
-                if (token1AmtInVault > 0) {
-                    if (token1 != address(DAI)) token1AmtInVault /= 1e12;
-                    curve.exchange_underlying(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
-                }
-                if (token2AmtInVault > 0) {
-                    uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
-                    if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
-                    if (token != DAI) minAmtOutToken2 /= 1e12;
-                    curve.exchange_underlying(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
-                }
-                withdrawAmt = token.balanceOf(address(this));
-                token.safeTransfer(msg.sender, withdrawAmt);
-            } else {
-                // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
-                if (!paused()) {
-                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
-                } else {
-                    // When paused there is always enough Stablecoins in vault
-                }
-            }
-        }
+        // uint tokenAmtInVault = token.balanceOf(address(this));
+        // if (token != DAI) tokenAmtInVault *= 1e12;
+        // if (withdrawAmt < tokenAmtInVault) {
+        //     // Enough token in vault to withdraw
+        //     if (token != DAI) withdrawAmt /= 1e12;
+        //     token.safeTransfer(msg.sender, withdrawAmt);
+        // } else {
+        //     // Not enough token in vault to withdraw, try if enough if swap from other token in vault
+        //     (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) = getOtherTokenAndBal(token);
+        //     if (withdrawAmt < tokenAmtInVault + token1AmtInVault) {
+        //         // Enough if swap from token1 in vault
+        //         uint amtSwapFromToken1 = withdrawAmt - tokenAmtInVault;
+        //         if (token1 != address(DAI)) amtSwapFromToken1 /= 1e12;
+        //         curve.exchange_underlying(getCurveId(token1), getCurveId(address(token)), amtSwapFromToken1, amtSwapFromToken1 * 99 / 100);
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else if (withdrawAmt < tokenAmtInVault + token1AmtInVault + token2AmtInVault) {
+        //         // Not enough if swap from token1 in vault but enough if swap from token1 + token2 in vault
+        //         uint amtSwapFromToken2 = withdrawAmt - tokenAmtInVault - token1AmtInVault;
+        //         if (token1AmtInVault > 0) {
+        //             if (token1 != address(DAI)) token1AmtInVault /= 1e12;
+        //             curve.exchange_underlying(getCurveId(token1), getCurveId(address(token)), token1AmtInVault, token1AmtInVault * 99 / 100);
+        //         }
+        //         if (token2AmtInVault > 0) {
+        //             uint minAmtOutToken2 = amtSwapFromToken2 * 99 / 100;
+        //             if (token2 != address(DAI)) amtSwapFromToken2 /= 1e12;
+        //             if (token != DAI) minAmtOutToken2 /= 1e12;
+        //             curve.exchange_underlying(getCurveId(token2), getCurveId(address(token)), amtSwapFromToken2, minAmtOutToken2);
+        //         }
+        //         withdrawAmt = token.balanceOf(address(this));
+        //         token.safeTransfer(msg.sender, withdrawAmt);
+        //     } else {
+        //         // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
+        //         if (!paused()) {
+        //             withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
+        //         } else {
+        //             // When paused there is always enough Stablecoins in vault
+        //         }
+        //     }
+        // }
+
+        if (token != DAI) withdrawAmt /= 1e12;
+        token.safeTransfer(msg.sender, withdrawAmt);
 
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
@@ -219,21 +222,22 @@ contract AvaxStableVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgrade
     }
 
     function invest(uint[] calldata tokenPriceMin) public whenNotPaused {
-        require(
-            msg.sender == admin ||
-            msg.sender == owner() ||
-            msg.sender == address(this), "Only authorized caller"
-        );
+        // require(
+        //     msg.sender == admin ||
+        //     msg.sender == owner() ||
+        //     msg.sender == address(this), "Only authorized caller"
+        // );
 
-        if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        // if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
+        // (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint stableCoinAmt, uint tokenAmtToInvest, uint pool) = swapTokenToUSDT(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(stableCoinAmt, tokenPriceMin);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        // (uint stableCoinAmt, uint tokenAmtToInvest, uint pool) = swapTokenToUSDT(USDTAmt, USDCAmt, DAIAmt);
+        // strategy.invest(stableCoinAmt, tokenPriceMin);
+        // strategy.adjustWatermark(tokenAmtToInvest, true);
+        uint pool = getAllPoolInUSD();
         distributeLPToken(pool);
 
-        emit Invest(USDTAmt);
+        // emit Invest(USDTAmt);
     }
 
     function collectProfitAndUpdateWatermark() public whenNotPaused {
@@ -472,9 +476,10 @@ contract AvaxStableVaultKovan is Initializable, ERC20Upgradeable, OwnableUpgrade
         uint tokenKeepInVault = USDT.balanceOf(address(this)) * 1e12 +
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
 
-        uint strategyPoolInUSD = strategy.getAllPoolInUSD();
+        // uint strategyPoolInUSD = strategy.getAllPoolInUSD();
         
-        return strategyPoolInUSD + tokenKeepInVault - fees;
+        // return strategyPoolInUSD + tokenKeepInVault - fees;
+        return tokenKeepInVault - fees;
     }
 
     /// @notice Can be use for calculate both user shares & APR    
