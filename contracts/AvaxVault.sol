@@ -230,8 +230,10 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
         (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, tokenPriceMin[0]);
-        strategy.invest(WAVAXAmt, tokenPriceMin);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        if (tokenAmtToInvest > 0) {
+            strategy.invest(WAVAXAmt, tokenPriceMin);
+            strategy.adjustWatermark(tokenAmtToInvest, true);
+        }
         distributeLPToken(pool);
 
         emit Invest(WAVAXAmt);
@@ -248,12 +250,12 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        if (totalSupply() != 0) pool -= totalDepositAmt;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
             uint _totalSupply = totalSupply();
+            if (totalSupply() != 0) pool -= totalDepositAmt;
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
