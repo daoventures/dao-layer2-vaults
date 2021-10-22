@@ -150,6 +150,16 @@ const setup = async () => {
     // await USDC.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
     // await USDT.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
 
+    let btcbbnbContract = await ethers.getContractAt("BscVault", btcbbnb) 
+    let btcbusdContract = await ethers.getContractAt("BscVault", btcbbusd)
+    let btcbethContract = await ethers.getContractAt("BscVault", btcbeth)
+    let cakebnbContract = await ethers.getContractAt("BscVault", cakebnb)
+
+    await btcbbnbContract.connect(deployer).setWhitelist(strategy.address, true)
+    await btcbusdContract.connect(deployer).setWhitelist(strategy.address, true)
+    await btcbethContract.connect(deployer).setWhitelist(strategy.address, true)
+    await cakebnbContract.connect(deployer).setWhitelist(strategy.address, true)
+
 
     return { vault, strategy, user1, user2, user3, adminSigner, deployer, DAI, USDC, USDT }
 }
@@ -176,13 +186,13 @@ describe("Citadel - USDC", async () => {
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
         await vault.connect(user1).deposit(user1Balance, USDC.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         await vault.connect(user2).deposit(user2Balance, USDC.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
 
         await vault.connect(user3).deposit(user3Balance, USDC.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("USER 1 LP Tokens", (await vault.balanceOf(user1.address)).toString())
 
         console.log("USER 2 LP Tokens", (await vault.balanceOf(user2.address)).toString())
@@ -207,23 +217,23 @@ describe("Citadel - USDC", async () => {
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
         // await vault.connect(user1).deposit(user1Balance, USDC.address)
-        // await vault.connect(adminSigner).invest()
+        // await vault.connect(adminSigner).invest([0,0,0,0,0])
         await vault.connect(user2).deposit(user2Balance, USDC.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         await vault.connect(user3).deposit(user3Balance, USDC.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
         await vault.connect(adminSigner).emergencyWithdraw()
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
         expect(vault.connect(user3).deposit(user3Balance, USDC.address)).to.be.revertedWith('Pausable: paused')
-        expect(vault.connect(adminSigner).invest()).to.be.revertedWith('Pausable: paused')
+        expect(vault.connect(adminSigner).invest([0,0,0,0,0])).to.be.revertedWith('Pausable: paused')
 
         await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), USDC.address, [0,0,0,0,0])
         console.log("User3 Withdrawn: ", ethers.utils.formatEther(await USDC.balanceOf(user3.address)))
         
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())
-        await vault.connect(adminSigner).reinvest()
+        await vault.connect(adminSigner).reinvest([0,0,0,0,0])
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())
 
 

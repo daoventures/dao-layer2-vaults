@@ -6,9 +6,9 @@ const IERC20_ABI = require("../../abis/IERC20_ABI.json")
 const { isCallTrace } = require("hardhat/internal/hardhat-network/stack-traces/message-trace")
 
 const unlockedAddress = "0x8894e0a0c962cb723c1976a4421c95949be2d4e3"
-const unlockedAddress2 = "0xf977814e90da44bfa03b6295a0616a897441acec"
+const unlockedAddress2 = "0x8894e0a0c962cb723c1976a4421c95949be2d4e3"
 
-const DAIAddress = "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3"
+const BUSDAddress = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"
 const USDCAddress = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
 const USDTAddress = "0x55d398326f99059fF775485246999027B3197955"
 
@@ -95,7 +95,7 @@ const deploy = async (btcbbnb, btcbbusd, btcbeth, cakebnb) => {
 const setup = async () => {
     const [deployer, user1, user2, user3, topup] = await ethers.getSigners()
 
-    const DAI = new ethers.Contract(DAIAddress, IERC20_ABI, deployer)
+    const BUSD = new ethers.Contract(BUSDAddress, IERC20_ABI, deployer)
     const USDC = new ethers.Contract(USDCAddress, IERC20_ABI, deployer)
     const USDT = new ethers.Contract(USDTAddress, IERC20_ABI, deployer)
 
@@ -130,34 +130,43 @@ const setup = async () => {
     const unlockedUser2 = await ethers.getSigner(unlockedAddress2)
     const adminSigner = await ethers.getSigner(addresses.admin)
 
-    await DAI.connect(unlockedUser).transfer(user1.address, ethers.utils.parseUnits("10", "18"))
+    await BUSD.connect(unlockedUser).transfer(user1.address, ethers.utils.parseUnits("10", "18"))
 
     // await USDC.connect(unlockedUser).transfer(user1.address, ethers.utils.parseUnits("3", "18"))
     // await USDT.connect(unlockedUser).transfer(user1.address, ethers.utils.parseUnits("3", "18"))
 
-    await DAI.connect(unlockedUser).transfer(user2.address, ethers.utils.parseUnits("1000", "18"))
-    await DAI.connect(unlockedUser).transfer(user3.address, ethers.utils.parseUnits("1000", "18"))
+    await BUSD.connect(unlockedUser).transfer(user2.address, ethers.utils.parseUnits("25000", "18"))
+    await BUSD.connect(unlockedUser).transfer(user3.address, ethers.utils.parseUnits("15000", "18"))
 
     // await USDC.connect(unlockedUser).transfer(user2.address, ethers.utils.parseUnits("3", "18"))
     // await USDT.connect(unlockedUser).transfer(user2.address, ethers.utils.parseUnits("3", "18"))
 
-    await DAI.connect(user1).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
+    await BUSD.connect(user1).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
     // await USDC.connect(user1).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
     // await USDT.connect(user1).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
 
-    await DAI.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
-    await DAI.connect(user3).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
+    await BUSD.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
+    await BUSD.connect(user3).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
     // await USDC.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
     // await USDT.connect(user2).approve(vault.address, ethers.utils.parseUnits("1000000000", 18))
 
+    let btcbbnbContract = await ethers.getContractAt("BscVault", btcbbnb) 
+    let btcbusdContract = await ethers.getContractAt("BscVault", btcbbusd)
+    let btcbethContract = await ethers.getContractAt("BscVault", btcbeth)
+    let cakebnbContract = await ethers.getContractAt("BscVault", cakebnb)
 
-    return { vault, strategy, user1, user2, user3, adminSigner, deployer, DAI, USDC, USDT }
+    await btcbbnbContract.connect(deployer).setWhitelist(strategy.address, true)
+    await btcbusdContract.connect(deployer).setWhitelist(strategy.address, true)
+    await btcbethContract.connect(deployer).setWhitelist(strategy.address, true)
+    await cakebnbContract.connect(deployer).setWhitelist(strategy.address, true)
+
+    return { vault, strategy, user1, user2, user3, adminSigner, deployer, BUSD, USDC, USDT }
 }
 
-describe("Citadel - DAI", async () => {
+describe("Citadel - BUSD", async () => {
 
     it("Should work", async () => {
-        const { vault, strategy, USDT, DAI, adminSigner, deployer, user1, user2, user3 } = await setup()
+        const { vault, strategy, USDT, BUSD, adminSigner, deployer, user1, user2, user3 } = await setup()
 
         //check initial values
         expect(await vault.communityWallet()).to.be.equal(addresses.communityWallet)
@@ -167,62 +176,62 @@ describe("Citadel - DAI", async () => {
 
 
         //check normal flow
-        let user1Balance = await DAI.balanceOf(user1.address)
-        let user2Balance = await DAI.balanceOf(user2.address)
-        let user3Balance = await DAI.balanceOf(user3.address)
+        let user1Balance = await BUSD.balanceOf(user1.address)
+        let user2Balance = await BUSD.balanceOf(user2.address)
+        let user3Balance = await BUSD.balanceOf(user3.address)
         console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
         console.log("User2 Deposited: ", ethers.utils.formatEther(user2Balance))
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
-        await vault.connect(user1).deposit(user1Balance, DAI.address)
-        await vault.connect(adminSigner).invest()
-        await vault.connect(user2).deposit(user2Balance, DAI.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(user1).deposit(user1Balance, BUSD.address)
+        // await vault.connect(adminSigner).invest([0,0,0,0,0])
+        await vault.connect(user2).deposit(user2Balance, BUSD.address)
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
 
-        await vault.connect(user3).deposit(user3Balance, DAI.address)
-        await vault.connect(adminSigner).invest()
+        await vault.connect(user3).deposit(user3Balance, BUSD.address)
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("USER 1 LP Tokens", (await vault.balanceOf(user1.address)).toString())
 
         console.log("USER 2 LP Tokens", (await vault.balanceOf(user2.address)).toString())
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
 
 
-        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), DAI.address, [0,0,0,0,0])
-        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), DAI.address, [0,0,0,0,0])
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0])
+        await vault.connect(user1).withdraw(await vault.balanceOf(user1.address), BUSD.address, [0,0,0,0,0])
+        await vault.connect(user2).withdraw(await vault.balanceOf(user2.address), BUSD.address, [0,0,0,0,0])
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), BUSD.address, [0,0,0,0,0])
 
-        console.log("User1 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user1.address)))
-        console.log("User2 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user2.address)))
-        console.log("User3 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user3.address)))
+        console.log("User1 Withdrawn: ", ethers.utils.formatEther(await BUSD.balanceOf(user1.address)))
+        console.log("User2 Withdrawn: ", ethers.utils.formatEther(await BUSD.balanceOf(user2.address)))
+        console.log("User3 Withdrawn: ", ethers.utils.formatEther(await BUSD.balanceOf(user3.address)))
 
         //EMERGENCY WITHDRAW
         console.log("=======EMERGENCY WITHDRAW=====")
-        // user1Balance = await DAI.balanceOf(user1.address)
-        user2Balance = await DAI.balanceOf(user2.address)
-        user3Balance = await DAI.balanceOf(user3.address)
+        // user1Balance = await BUSD.balanceOf(user1.address)
+        user2Balance = await BUSD.balanceOf(user2.address)
+        user3Balance = await BUSD.balanceOf(user3.address)
         // console.log("User1 Deposited: ", ethers.utils.formatEther(user1Balance))
         console.log("User2 Deposited: ", ethers.utils.formatEther(user2Balance))
         console.log("User3 Deposited: ", ethers.utils.formatEther(user3Balance))
 
-        // await vault.connect(user1).deposit(user1Balance, DAI.address)
-        // await vault.connect(adminSigner).invest()
-        await vault.connect(user2).deposit(user2Balance, DAI.address)
-        await vault.connect(adminSigner).invest()
-        await vault.connect(user3).deposit(user3Balance, DAI.address)
-        await vault.connect(adminSigner).invest()
+        // await vault.connect(user1).deposit(user1Balance, BUSD.address)
+        // await vault.connect(adminSigner).invest([0,0,0,0,0])
+        await vault.connect(user2).deposit(user2Balance, BUSD.address)
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
+        await vault.connect(user3).deposit(user3Balance, BUSD.address)
+        await vault.connect(adminSigner).invest([0,0,0,0,0])
         console.log("USER 3 LP Tokens", (await vault.balanceOf(user3.address)).toString())
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
         await vault.connect(adminSigner).emergencyWithdraw()
         console.log("value in pool ", (await vault.getAllPoolInUSD()).toString())
-        expect(vault.connect(user3).deposit(user3Balance, DAI.address)).to.be.revertedWith('Pausable: paused')
-        expect(vault.connect(adminSigner).invest()).to.be.revertedWith('Pausable: paused')
+        expect(vault.connect(user3).deposit(user3Balance, BUSD.address)).to.be.revertedWith('Pausable: paused')
+        expect(vault.connect(adminSigner).invest([0,0,0,0,0])).to.be.revertedWith('Pausable: paused')
 
-        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), DAI.address, [0,0,0,0,0])
-        console.log("User3 Withdrawn: ", ethers.utils.formatEther(await DAI.balanceOf(user3.address)))
+        await vault.connect(user3).withdraw(await vault.balanceOf(user3.address), BUSD.address, [0,0,0,0,0])
+        console.log("User3 Withdrawn: ", ethers.utils.formatEther(await BUSD.balanceOf(user3.address)))
         
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())
-        await vault.connect(adminSigner).reinvest()
+        await vault.connect(adminSigner).reinvest([0,0,0,0,0])
         console.log("value in pool -reinvest ", (await vault.getAllPoolInUSD()).toString())
 
 
