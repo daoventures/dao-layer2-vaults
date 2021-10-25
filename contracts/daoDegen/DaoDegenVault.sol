@@ -238,7 +238,8 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        if (totalSupply() != 0) pool -= totalDepositAmt;
+        pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
+        
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
