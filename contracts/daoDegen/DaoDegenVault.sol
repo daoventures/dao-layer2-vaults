@@ -45,7 +45,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     IERC20Upgradeable constant USDT = IERC20Upgradeable(0x55d398326f99059fF775485246999027B3197955);
     IERC20Upgradeable constant USDC = IERC20Upgradeable(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
-    IERC20Upgradeable constant BUSD = IERC20Upgradeable(0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3);
+    IERC20Upgradeable constant BUSD = IERC20Upgradeable(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
     IERC20Upgradeable constant WBNB = IERC20Upgradeable(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
 
     IRouter constant router = IRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
