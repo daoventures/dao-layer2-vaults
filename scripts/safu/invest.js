@@ -64,7 +64,7 @@ const comparePrices = (coingeckoPrice, routerPrice) => {
     }
 }
 
-const invest = async () => {
+const main = async () => {
     const [deployer] = await ethers.getSigners()
 
     let { eth, btc, cake, bnb } = await getPrice()
@@ -91,5 +91,9 @@ const invest = async () => {
 
     await vault.invest(minAmount)
 }
-
-invest().then()
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
