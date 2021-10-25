@@ -27,11 +27,11 @@ interface IChainlink {
 }
 
 interface IStrategy {
-    function invest(uint amount) external;
+    function invest(uint amount, uint[] calldata tokenPrices) external;
     function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint[] calldata tokenPrices) external returns (uint);
     function emergencyWithdraw() external;
     function setProfitFeePerc(uint profitFeePerc) external;
     function profitFeePerc() external view returns (uint);
@@ -206,7 +206,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return _amount * _price / 1e18;
     }
 
-    function invest() external whenNotPaused {
+    function invest(uint[] calldata tokenPrices) external whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -216,9 +216,9 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint BUSDAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, tokenPrices[6]);
 
-        strategy.invest(WBNBAmt);
+        strategy.invest(WBNBAmt, tokenPrices);
 
         strategy.adjustWatermark(tokenAmtToInvest, true);
 
@@ -239,7 +239,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function distributeLPToken(uint pool) private {
         pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
-        
+
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -291,21 +291,21 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint BUSDAmt) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint BUSDAmt, uint _price) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
         if (USDTAmt > USDTAmtKeepInVault + 1e18) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt);
+            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt, USDTAmt * _price / 1e18);
             tokenAmtToInvest = USDTAmt;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
         if (USDCAmt > USDCAmtKeepInVault + 1e18) {
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt);
+            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt, USDCAmt * _price / 1e18);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt;
         }
@@ -313,7 +313,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint BUSDAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (BUSDAmt > BUSDAmtKeepInVault + 1e18) {
             BUSDAmt = BUSDAmt - BUSDAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), BUSDAmt);
+            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), BUSDAmt, BUSDAmt * _price / 1e18);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + BUSDAmt;
         }
@@ -324,11 +324,11 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPrices, uint _price) external onlyOwnerOrAdmin {
         uint WBNBAmt;
         WBNBAmt = (router.getAmountsOut(amount, getPath(token, address(WBNB))))[1];
-        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt);
-        _swap(address(WBNB), token, WBNBAmt);
+        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt, tokenPrices);
+        _swap(address(WBNB), token, WBNBAmt, WBNBAmt * _price / 1e18);
 
         strategy.adjustWatermark(amount, false);
 
@@ -340,11 +340,11 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.emergencyWithdraw();
     }
 
-    function reinvest() external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata tokenPrices) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         uint WBNBAmt = WBNB.balanceOf(address(this));
-        strategy.invest(WBNBAmt);
+        strategy.invest(WBNBAmt, tokenPrices);
         uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer());
         require(BNBPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WBNBAmt * BNBPriceInUSD / 1e8, true);
@@ -352,9 +352,9 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Reinvest(WBNBAmt);
     }
 
-    function _swap(address from, address to, uint amount) private returns (uint) {
+    function _swap(address from, address to, uint amount, uint _minAmount) private returns (uint) {
         return (router.swapExactTokensForTokens(
-            amount, 0, getPath(from, to), address(this), block.timestamp
+            amount, _minAmount, getPath(from, to), address(this), block.timestamp
         ))[1];
     }
 

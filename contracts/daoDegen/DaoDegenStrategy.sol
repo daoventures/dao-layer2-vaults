@@ -139,7 +139,7 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     }
 
-    function invest(uint WBNBAmt) external onlyVault {
+    function invest(uint WBNBAmt, uint[] calldata tokenPrices) external onlyVault {
         WBNB.safeTransferFrom(vault, address(this), WBNBAmt);
         WBNBAmt = WBNB.balanceOf(address(this));
         
@@ -157,10 +157,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
             BNBBELTTargetPool > pools[2] &&
             CHESSUSDCTargetPool > pools[3]
         ) {
-            _investBUSDALPACA(BUSDALPACATargetPool - pools[0]);
-            _investBNBXVS((BNBXVSTargetPool - pools[1]));
-            _investBNBBELT((BNBBELTTargetPool - pools[2]));
-            _investCHESSUSDC((CHESSUSDCTargetPool - pools[3]));
+            _investBUSDALPACA(BUSDALPACATargetPool - pools[0], tokenPrices[0], tokenPrices[1]);
+            _investBNBXVS((BNBXVSTargetPool - pools[1]), tokenPrices[2]);
+            _investBNBBELT((BNBBELTTargetPool - pools[2]),tokenPrices[3]);
+            _investCHESSUSDC((CHESSUSDCTargetPool - pools[3]),tokenPrices[4], tokenPrices[5]);
         } else {
             uint furthest;
             uint farmIndex;
@@ -193,10 +193,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
                 }
             }
 
-            if (farmIndex == 0) _investBUSDALPACA(WBNBAmt);
-            else if (farmIndex == 1) _investBNBXVS(WBNBAmt);
-            else if (farmIndex == 2) _investBNBBELT(WBNBAmt);
-            else _investCHESSUSDC(WBNBAmt);
+            if (farmIndex == 0) _investBUSDALPACA(WBNBAmt,  tokenPrices[0],  tokenPrices[1]);
+            else if (farmIndex == 1) _investBNBXVS(WBNBAmt,  tokenPrices[2]);
+            else if (farmIndex == 2) _investBNBBELT(WBNBAmt,  tokenPrices[3]);
+            else _investCHESSUSDC(WBNBAmt,  tokenPrices[4], tokenPrices[5]);
         }
 
         emit TargetComposition(BUSDALPACATargetPool, BNBXVSTargetPool, BNBBELTTargetPool, CHESSUSDCTargetPool);
@@ -204,11 +204,11 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     }
 
 
-    function _investBUSDALPACA(uint _wbnbAmt) private {
+    function _investBUSDALPACA(uint _wbnbAmt, uint _priceInBUSD, uint _priceInALPACA) private {
         uint _amt = _wbnbAmt/2;
 
-        _swap(address(WBNB), address(BUSD), _amt, 0);
-        _swap(address(WBNB), address(ALPACA), _amt, 0);
+        _swap(address(WBNB), address(BUSD), _amt, _amt * _priceInBUSD / 1e18);
+        _swap(address(WBNB), address(ALPACA), _amt, _amt * _priceInALPACA / 1e18);
 
         uint _busdAmt = BUSD.balanceOf(address(this));
         uint _alpacaAmt = ALPACA.balanceOf(address(this));
@@ -220,9 +220,9 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit InvestBUSDALPACA(_wbnbAmt, lpTokens);
     }
 
-    function _investBNBXVS(uint _wbnbAmt) private {
+    function _investBNBXVS(uint _wbnbAmt, uint _priceInXVS) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(XVS), _amt, 0);
+        _swap(address(WBNB), address(XVS), _amt, _amt * _priceInXVS / 1e18);
 
         uint _XVSBAmt = XVS.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(XVS), _amt, _XVSBAmt);
@@ -232,9 +232,9 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit InvestBNBXVS(_wbnbAmt, lpTokens);
     }
 
-    function _investBNBBELT(uint _wbnbAmt) private {
+    function _investBNBBELT(uint _wbnbAmt, uint _priceInBELT) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(BELT), _amt, 0);
+        _swap(address(WBNB), address(BELT), _amt, _amt * _priceInBELT / 1e18);
 
         uint _BELTAmt = BELT.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(BELT), _amt, _BELTAmt);
@@ -244,11 +244,11 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit InvestBNBBELT(_wbnbAmt, lpTokens);
     }
 
-    function _investCHESSUSDC(uint _wbnbAmt) private {
+    function _investCHESSUSDC(uint _wbnbAmt, uint _priceInCHESS, uint _priceInUSDC) private {
         uint _amt = _wbnbAmt / 2 ;
 
-        _swap(address(WBNB), address(CHESS), _amt, 0);
-        _swap(address(WBNB), address(USDC), _amt, 0);
+        _swap(address(WBNB), address(CHESS), _amt, _amt * _priceInCHESS / 1e18);
+        _swap(address(WBNB), address(USDC), _amt, _amt * _priceInUSDC / 1e18);
 
         uint _CHESSAmt = CHESS.balanceOf(address(this));
         uint _USDCAmt = USDC.balanceOf(address(this));
@@ -369,11 +369,11 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
-    function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint WBNBAmt) {
-        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool(), 0, 0); 
-        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool(),0);
-        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool(),0);
-        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool(), 0, 0);
+    function reimburse(uint farmIndex, uint amount, uint[] calldata tokenPrices) external onlyVault returns (uint WBNBAmt) {
+        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool(), tokenPrices[0], tokenPrices[1]); 
+        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool(),tokenPrices[0]);
+        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool(),tokenPrices[0]);
+        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool(), tokenPrices[0], tokenPrices[1]);
         WBNBAmt = WBNB.balanceOf(address(this));
         WBNB.safeTransfer(vault, WBNBAmt);
         emit Reimburse(WBNBAmt);
