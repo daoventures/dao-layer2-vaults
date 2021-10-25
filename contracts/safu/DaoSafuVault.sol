@@ -112,7 +112,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         networkFeePerc = [100, 75, 50];
         customNetworkFeePerc = 25;
 
-        percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
+        percKeepInVault = [300, 300, 300]; // USDT, USDC, BUSD
 
         USDT.safeApprove(address(router), type(uint).max);
         USDC.safeApprove(address(router), type(uint).max);
@@ -219,9 +219,9 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         );
 
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
-        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        (uint USDTAmt, uint USDCAmt, uint BUSDAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, DAIAmt, tokenPrice[4]);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, tokenPrice[4]);
 
         strategy.invest(WBNBAmt, tokenPrice);
 
@@ -243,14 +243,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
+        pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
+
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
             uint _totalSupply = totalSupply();
-            
-            if (_totalSupply != 0) pool -= totalDepositAmt;
-
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
@@ -297,7 +296,7 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint DAIAmt, uint price) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint BUSDAmt, uint price) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
@@ -318,13 +317,13 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt;
         }
 
-        uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
-        if (DAIAmt > DAIAmtKeepInVault + 1e18) {
-            DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint minAmount = DAIAmt * price / 1e18;
-            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), DAIAmt, minAmount);
+        uint BUSDAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
+        if (BUSDAmt > BUSDAmtKeepInVault + 1e18) {
+            BUSDAmt = BUSDAmt - BUSDAmtKeepInVault;
+            uint minAmount = BUSDAmt * price / 1e18;
+            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), BUSDAmt, minAmount);
             WBNBAmt = WBNBAmt + _WBNBAmt;
-            tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
+            tokenAmtToInvest = tokenAmtToInvest + BUSDAmt;
         }
     }
 
