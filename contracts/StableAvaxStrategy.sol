@@ -117,20 +117,20 @@ contract StableAvaxStrategy is Initializable {
         DAIAVAX.safeApprove(address(joeRouter), type(uint).max);
     }
 
-    function invest(uint USDTAmt, uint[] calldata tokenPriceMin) external onlyVault {
+    function invest(uint USDTAmt, uint[] calldata amountsOutMin) external onlyVault {
         USDT.safeTransferFrom(vault, address(this), USDTAmt);
 
         // Stablecoins-AVAX farm don't need rebalance invest
-        investUSDTAVAX(USDTAmt * 500 / 10000, tokenPriceMin[1]);
-        investUSDCAVAX(USDTAmt * 4500 / 10000, tokenPriceMin[2]);
-        investDAIAVAX(USDTAmt * 5000 / 10000, tokenPriceMin[3]);
+        investUSDTAVAX(USDTAmt * 500 / 10000, amountsOutMin[3]);
+        investUSDCAVAX(USDTAmt * 4500 / 10000, amountsOutMin[4]);
+        investDAIAVAX(USDTAmt * 5000 / 10000, amountsOutMin[5]);
     }
 
-    function investUSDTAVAX(uint USDTAmt, uint USDTPriceInAVAX) private {
+    function investUSDTAVAX(uint USDTAmt, uint amountOutMin) private {
         uint halfUSDT = USDTAmt / 2;
 
         uint WAVAXAmt = lydRouter.swapExactTokensForTokens(
-            halfUSDT, halfUSDT * USDTPriceInAVAX / 1e6, getPath(address(USDT), address(WAVAX)), address(this), block.timestamp
+            halfUSDT, amountOutMin, getPath(address(USDT), address(WAVAX)), address(this), block.timestamp
         )[1];
 
         (,,uint USDTAVAXAmt) = lydRouter.addLiquidity(
@@ -138,17 +138,18 @@ contract StableAvaxStrategy is Initializable {
         );
 
         USDTAVAXVault.deposit(USDTAVAXAmt);
+
         emit InvestUSDTAVAX(USDTAmt, USDTAVAXAmt);
     }
 
-    function investUSDCAVAX(uint USDTAmt, uint USDCPriceInAVAX) private {
+    function investUSDCAVAX(uint USDTAmt, uint amountOutMin) private {
         uint USDCAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(USDC)), USDTAmt, USDTAmt * 99 / 100
         );
         uint halfUSDC = USDCAmt / 2;
 
         uint WAVAXAmt = pngRouter.swapExactTokensForTokens(
-            halfUSDC, halfUSDC * USDCPriceInAVAX / 1e6, getPath(address(USDC), address(WAVAX)), address(this), block.timestamp
+            halfUSDC, amountOutMin, getPath(address(USDC), address(WAVAX)), address(this), block.timestamp
         )[1];
 
         (,,uint USDCAVAXAmt) = pngRouter.addLiquidity(
@@ -156,17 +157,18 @@ contract StableAvaxStrategy is Initializable {
         );
 
         USDCAVAXVault.deposit(USDCAVAXAmt);
+
         emit InvestUSDCAVAX(USDTAmt, USDCAVAXAmt);
     }
 
-    function investDAIAVAX(uint USDTAmt, uint DAIPriceInAVAX) private {
+    function investDAIAVAX(uint USDTAmt, uint amountOutMin) private {
         uint DAIAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(DAI)), USDTAmt, (USDTAmt * 1e12) * 99 / 100
         );
         uint halfDAI = DAIAmt / 2;
 
         uint WAVAXAmt = joeRouter.swapExactTokensForTokens(
-            halfDAI, halfDAI * DAIPriceInAVAX / 1e18, getPath(address(DAI), address(WAVAX)), address(this), block.timestamp
+            halfDAI, amountOutMin, getPath(address(DAI), address(WAVAX)), address(this), block.timestamp
         )[1];
 
         (,,uint DAIAVAXAmt) = joeRouter.addLiquidity(
@@ -174,24 +176,26 @@ contract StableAvaxStrategy is Initializable {
         );
 
         DAIAVAXVault.deposit(DAIAVAXAmt);
+
         emit InvestDAIAVAX(USDTAmt, DAIAVAXAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint USDTAmt) {
+    function withdraw(uint amount, uint[] calldata amountsOutMin) external onlyVault returns (uint USDTAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
 
         uint USDTAmtBefore = USDT.balanceOf(address(this));
-        withdrawUSDTAVAX(sharePerc, tokenPrice[1]);
-        withdrawUSDCAVAX(sharePerc, tokenPrice[2]);
-        withdrawDAIAVAX(sharePerc, tokenPrice[3]);
+        withdrawUSDTAVAX(sharePerc, amountsOutMin[1]);
+        withdrawUSDCAVAX(sharePerc, amountsOutMin[2]);
+        withdrawDAIAVAX(sharePerc, amountsOutMin[3]);
         USDTAmt = USDT.balanceOf(address(this)) - USDTAmtBefore;
         
         USDT.safeTransfer(vault, USDTAmt);
+
         emit Withdraw(amount, USDTAmt);
     }
 
-    function withdrawUSDTAVAX(uint sharePerc, uint AVAXPriceInUSDT) private {
+    function withdrawUSDTAVAX(uint sharePerc, uint amountOutMin) private {
         uint USDTAVAXAmt = USDTAVAXVault.withdraw(USDTAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
 
         (uint WAVAXAmt, uint USDTAmt) = lydRouter.removeLiquidity(
@@ -199,13 +203,13 @@ contract StableAvaxStrategy is Initializable {
         );
 
         USDTAmt += lydRouter.swapExactTokensForTokens(
-            WAVAXAmt, WAVAXAmt * AVAXPriceInUSDT / 1e18, getPath(address(WAVAX), address(USDT)), address(this), block.timestamp
+            WAVAXAmt, amountOutMin, getPath(address(WAVAX), address(USDT)), address(this), block.timestamp
         )[1];
 
         emit WithdrawUSDTAVAX(USDTAVAXAmt, USDTAmt);
     }
 
-    function withdrawUSDCAVAX(uint sharePerc, uint AVAXPriceInUSDC) private {
+    function withdrawUSDCAVAX(uint sharePerc, uint amountOutMin) private {
         uint USDCAVAXAmt = USDCAVAXVault.withdraw(USDCAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
 
         (uint USDCAmt, uint WAVAXAmt) = pngRouter.removeLiquidity(
@@ -213,7 +217,7 @@ contract StableAvaxStrategy is Initializable {
         );
 
         USDCAmt += pngRouter.swapExactTokensForTokens(
-            WAVAXAmt, WAVAXAmt * AVAXPriceInUSDC / 1e18, getPath(address(WAVAX), address(USDC)), address(this), block.timestamp
+            WAVAXAmt, amountOutMin, getPath(address(WAVAX), address(USDC)), address(this), block.timestamp
         )[1];
 
         uint USDTAmt = curve.exchange_underlying(
@@ -223,7 +227,7 @@ contract StableAvaxStrategy is Initializable {
         emit WithdrawUSDCAVAX(USDCAVAXAmt, USDTAmt);
     }
 
-    function withdrawDAIAVAX(uint sharePerc, uint AVAXPriceInDAI) private {
+    function withdrawDAIAVAX(uint sharePerc, uint amountOutMin) private {
         uint DAIAVAXAmt = DAIAVAXVault.withdraw(DAIAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
 
         (uint DAIAmt, uint WAVAXAmt) = joeRouter.removeLiquidity(
@@ -231,7 +235,7 @@ contract StableAvaxStrategy is Initializable {
         );
 
         DAIAmt += joeRouter.swapExactTokensForTokens(
-            WAVAXAmt, WAVAXAmt * AVAXPriceInDAI / 1e18, getPath(address(WAVAX), address(DAI)), address(this), block.timestamp
+            WAVAXAmt, amountOutMin, getPath(address(WAVAX), address(DAI)), address(this), block.timestamp
         )[1];
 
         uint USDTAmt = curve.exchange_underlying(

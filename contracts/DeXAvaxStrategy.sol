@@ -115,7 +115,7 @@ contract DeXAvaxStrategy is Initializable {
         LYDAVAX.safeApprove(address(lydRouter), type(uint).max);
     }
 
-    function invest(uint WAVAXAmt, uint[] calldata tokenPriceMin) external onlyVault {
+    function invest(uint WAVAXAmt, uint[] calldata amountsOutMin) external onlyVault {
         WAVAX.safeTransferFrom(vault, address(this), WAVAXAmt);
 
         uint[] memory pools = getEachPool();
@@ -130,9 +130,9 @@ contract DeXAvaxStrategy is Initializable {
             PNGAVAXTargetPool > pools[1] &&
             LYDAVAXTargetPool > pools[2]
         ) {
-            investJOEAVAX(JOEAVAXTargetPool - pools[0], tokenPriceMin[1]);
-            investPNGAVAX(PNGAVAXTargetPool - pools[1], tokenPriceMin[2]);
-            investLYDAVAX(LYDAVAXTargetPool - pools[2], tokenPriceMin[3]);
+            investJOEAVAX(JOEAVAXTargetPool - pools[0], amountsOutMin[3]);
+            investPNGAVAX(PNGAVAXTargetPool - pools[1], amountsOutMin[4]);
+            investLYDAVAX(LYDAVAXTargetPool - pools[2], amountsOutMin[5]);
         } else {
             uint furthest;
             uint farmIndex;
@@ -158,87 +158,117 @@ contract DeXAvaxStrategy is Initializable {
                 }
             }
 
-            if (farmIndex == 0) investJOEAVAX(WAVAXAmt, tokenPriceMin[1]);
-            else if (farmIndex == 1) investPNGAVAX(WAVAXAmt, tokenPriceMin[2]);
-            else investLYDAVAX(WAVAXAmt, tokenPriceMin[3]);
+            if (farmIndex == 0) investJOEAVAX(WAVAXAmt, amountsOutMin[3]);
+            else if (farmIndex == 1) investPNGAVAX(WAVAXAmt, amountsOutMin[4]);
+            else investLYDAVAX(WAVAXAmt, amountsOutMin[5]);
         }
 
         emit TargetComposition(JOEAVAXTargetPool, PNGAVAXTargetPool, LYDAVAXTargetPool);
         emit CurrentComposition(pools[0], pools[1], pools[2]);
     }
 
-    function investJOEAVAX(uint WAVAXAmt, uint AVAXPriceInJOE) private {
+    function investJOEAVAX(uint WAVAXAmt, uint amountOutMin) private {
         uint halfWAVAX = WAVAXAmt / 2;
+
         uint JOEAmt = joeRouter.swapExactTokensForTokens(
-            halfWAVAX, halfWAVAX * AVAXPriceInJOE / 1e18, getPath(address(WAVAX), address(JOE)), address(this), block.timestamp
+            halfWAVAX, amountOutMin, getPath(address(WAVAX), address(JOE)), address(this), block.timestamp
         )[1];
+
         (,,uint JOEAVAXAmt) = joeRouter.addLiquidity(
             address(JOE), address(WAVAX), JOEAmt, halfWAVAX, 0, 0, address(this), block.timestamp
         );
+
         JOEAVAXVault.deposit(JOEAVAXAmt);
+
         emit InvestJOEAVAX(WAVAXAmt, JOEAVAXAmt);
     }
 
-    function investPNGAVAX(uint WAVAXAmt, uint AVAXPriceInPNG) private {
+    function investPNGAVAX(uint WAVAXAmt, uint amountOutMin) private {
         uint halfWAVAX = WAVAXAmt / 2;
+
         uint PNGAmt = pngRouter.swapExactTokensForTokens(
-            halfWAVAX, halfWAVAX * AVAXPriceInPNG / 1e18, getPath(address(WAVAX), address(PNG)), address(this), block.timestamp
+            halfWAVAX, amountOutMin, getPath(address(WAVAX), address(PNG)), address(this), block.timestamp
         )[1];
+
         (,,uint PNGAVAXAmt) = pngRouter.addLiquidity(
             address(PNG), address(WAVAX), PNGAmt, halfWAVAX, 0, 0, address(this), block.timestamp
         );
+
         PNGAVAXVault.deposit(PNGAVAXAmt);
+
         emit InvestPNGAVAX(WAVAXAmt, PNGAVAXAmt);
     }
 
-    function investLYDAVAX(uint WAVAXAmt, uint AVAXPriceInLYD) private {
+    function investLYDAVAX(uint WAVAXAmt, uint amountOutMin) private {
         uint halfWAVAX = WAVAXAmt / 2;
+
         uint LYDAmt = lydRouter.swapExactTokensForTokens(
-            halfWAVAX, halfWAVAX * AVAXPriceInLYD / 1e18, getPath(address(WAVAX), address(LYD)), address(this), block.timestamp
+            halfWAVAX, amountOutMin, getPath(address(WAVAX), address(LYD)), address(this), block.timestamp
         )[1];
+
         (,,uint LYDAVAXAmt) = lydRouter.addLiquidity(
             address(LYD), address(WAVAX), LYDAmt, halfWAVAX, 0, 0, address(this), block.timestamp
         );
+
         LYDAVAXVault.deposit(LYDAVAXAmt);
+
         emit InvestLYDAVAX(WAVAXAmt, LYDAVAXAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint WAVAXAmt) {
+    function withdraw(uint amount, uint[] calldata amountsOutMin) external onlyVault returns (uint WAVAXAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
+
         uint WAVAXAmtBefore = WAVAX.balanceOf(address(this));
-        withdrawJOEAVAX(sharePerc, tokenPrice[1]);
-        withdrawPNGAVAX(sharePerc, tokenPrice[2]);
-        withdrawLYDAVAX(sharePerc, tokenPrice[3]);
+        withdrawJOEAVAX(sharePerc, amountsOutMin[1]);
+        withdrawPNGAVAX(sharePerc, amountsOutMin[2]);
+        withdrawLYDAVAX(sharePerc, amountsOutMin[3]);
         WAVAXAmt = WAVAX.balanceOf(address(this)) - WAVAXAmtBefore;
+
         WAVAX.safeTransfer(vault, WAVAXAmt);
+
         emit Withdraw(amount, WAVAXAmt);
     }
 
-    function withdrawJOEAVAX(uint sharePerc, uint JOEPriceInAVAX) private {
+    function withdrawJOEAVAX(uint sharePerc, uint amountOutMin) private {
         uint JOEAVAXAmt = JOEAVAXVault.withdraw(JOEAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint JOEAmt, uint WAVAXAmt) = joeRouter.removeLiquidity(address(JOE), address(WAVAX), JOEAVAXAmt, 0, 0, address(this), block.timestamp);
+
+        (uint JOEAmt, uint WAVAXAmt) = joeRouter.removeLiquidity(
+            address(JOE), address(WAVAX), JOEAVAXAmt, 0, 0, address(this), block.timestamp
+        );
+
         uint _WAVAXAmt = joeRouter.swapExactTokensForTokens(
-            JOEAmt, JOEAmt * JOEPriceInAVAX / 1e18, getPath(address(JOE), address(WAVAX)), address(this), block.timestamp
+            JOEAmt, amountOutMin, getPath(address(JOE), address(WAVAX)), address(this), block.timestamp
         )[1];
+
         emit WithdrawJOEAVAX(JOEAVAXAmt, WAVAXAmt + _WAVAXAmt);
     }
 
-    function withdrawPNGAVAX(uint sharePerc, uint PNGPriceInAVAX) private {
+    function withdrawPNGAVAX(uint sharePerc, uint amountOutMin) private {
         uint PNGAVAXAmt = PNGAVAXVault.withdraw(PNGAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint PNGAmt, uint WAVAXAmt) = pngRouter.removeLiquidity(address(PNG), address(WAVAX), PNGAVAXAmt, 0, 0, address(this), block.timestamp);
+
+        (uint PNGAmt, uint WAVAXAmt) = pngRouter.removeLiquidity(
+            address(PNG), address(WAVAX), PNGAVAXAmt, 0, 0, address(this), block.timestamp
+        );
+
         uint _WAVAXAmt = pngRouter.swapExactTokensForTokens(
-            PNGAmt, PNGAmt * PNGPriceInAVAX / 1e18, getPath(address(PNG), address(WAVAX)), address(this), block.timestamp
+            PNGAmt, amountOutMin, getPath(address(PNG), address(WAVAX)), address(this), block.timestamp
         )[1];
+
         emit WithdrawPNGAVAX(PNGAVAXAmt, WAVAXAmt + _WAVAXAmt);
     }
 
-    function withdrawLYDAVAX(uint sharePerc, uint LYDPriceInAVAX) private {
+    function withdrawLYDAVAX(uint sharePerc, uint amountOutMin) private {
         uint LYDAVAXAmt = LYDAVAXVault.withdraw(LYDAVAXVault.balanceOf(address(this)) * sharePerc / 1e18);
-        (uint LYDAmt, uint WAVAXAmt) = lydRouter.removeLiquidity(address(LYD), address(WAVAX), LYDAVAXAmt, 0, 0, address(this), block.timestamp);
+
+        (uint LYDAmt, uint WAVAXAmt) = lydRouter.removeLiquidity(
+            address(LYD), address(WAVAX), LYDAVAXAmt, 0, 0, address(this), block.timestamp
+        );
+
         uint _WAVAXAmt = lydRouter.swapExactTokensForTokens(
-            LYDAmt, LYDAmt * LYDPriceInAVAX / 1e18, getPath(address(LYD), address(WAVAX)), address(this), block.timestamp
+            LYDAmt, amountOutMin, getPath(address(LYD), address(WAVAX)), address(this), block.timestamp
         )[1];
+
         emit WithdrawLYDAVAX(LYDAVAXAmt, WAVAXAmt + _WAVAXAmt);
     }
 
@@ -250,6 +280,7 @@ contract DeXAvaxStrategy is Initializable {
             fee = profit * profitFeePerc / 10000;
             watermark = currentWatermark;
         }
+
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
 
@@ -257,16 +288,19 @@ contract DeXAvaxStrategy is Initializable {
     function adjustWatermark(uint amount, bool signs) external onlyVault {
         uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
+
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
     /// @param amount Amount to reimburse to vault contract in AVAX
-    function reimburse(uint farmIndex, uint amount, uint tokenPriceMin) external onlyVault returns (uint WAVAXAmt) {
-        if (farmIndex == 0) withdrawJOEAVAX(amount * 1e18 / getJOEAVAXPool(), tokenPriceMin);
-        else if (farmIndex == 1) withdrawPNGAVAX(amount * 1e18 / getPNGAVAXPool(), tokenPriceMin);
-        else if (farmIndex == 2) withdrawLYDAVAX(amount * 1e18 / getLYDAVAXPool(), tokenPriceMin);
+    function reimburse(uint farmIndex, uint amount, uint amountOutMin) external onlyVault returns (uint WAVAXAmt) {
+        if (farmIndex == 0) withdrawJOEAVAX(amount * 1e18 / getJOEAVAXPool(), amountOutMin);
+        else if (farmIndex == 1) withdrawPNGAVAX(amount * 1e18 / getPNGAVAXPool(), amountOutMin);
+        else if (farmIndex == 2) withdrawLYDAVAX(amount * 1e18 / getLYDAVAXPool(), amountOutMin);
+
         WAVAXAmt = WAVAX.balanceOf(address(this));
         WAVAX.safeTransfer(vault, WAVAXAmt);
+
         emit Reimburse(WAVAXAmt);
     }
 
@@ -275,9 +309,11 @@ contract DeXAvaxStrategy is Initializable {
         withdrawJOEAVAX(1e18, 0);
         withdrawPNGAVAX(1e18, 0);
         withdrawLYDAVAX(1e18, 0);
+
         uint WAVAXAmt = WAVAX.balanceOf(address(this));
         WAVAX.safeTransfer(vault, WAVAXAmt);
         watermark = 0;
+        
         emit EmergencyWithdraw(WAVAXAmt);
     }
 

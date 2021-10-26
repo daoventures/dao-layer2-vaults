@@ -57,15 +57,13 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     uint[] public percKeepInVault;
     uint public fees;
 
-    uint[] public networkFeeTier2;
-    uint public customNetworkFeeTier;
+    uint[] public networkFeeTier;
     uint[] public networkFeePerc;
-    uint public customNetworkFeePerc;
 
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint totalDepositAmt; // Total pending amount to invest
+    uint public totalPendingDepositAmt; // Total pending amount to invest
 
     address public treasuryWallet;
     address public communityWallet;
@@ -78,15 +76,15 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event TransferredOutFees(uint fees, address token);
     event Reimburse(uint farmIndex, address token, uint amount);
     event Reinvest(uint amount);
-    event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
+    event SetNetworkFeeTier(uint[] oldNetworkFeeTier, uint[] newNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
-    event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint oldProfitFeePerc, uint profitFeePerc);
     event SetPercKeepInVault(uint[] oldPercKeepInVault, uint[] newPercKeepInVault);
-    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
-    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
-    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetAddresses(
+        address oldTreasuryWallet, address newTreasuryWallet,
+        address oldCommunityWallet, address newCommunityWallet,
+        address oldAdmin, address newAdmin
+    );
     
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -107,10 +105,8 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         communityWallet = _communityWallet;
         admin = _admin;
 
-        networkFeeTier2 = [50000*1e18+1, 100000*1e18];
-        customNetworkFeeTier = 1000000*1e18;
-        networkFeePerc = [100, 75, 50];
-        customNetworkFeePerc = 25;
+        networkFeeTier = [50000*1e18+1, 100000*1e18, 1000000*1e18];
+        networkFeePerc = [100, 75, 50, 25];
 
         percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
@@ -134,10 +130,10 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint amtDeposit = amount;
 
         uint _networkFeePerc;
-        if (amount < networkFeeTier2[0]) _networkFeePerc = networkFeePerc[0]; // Tier 1
-        else if (amount <= networkFeeTier2[1]) _networkFeePerc = networkFeePerc[1]; // Tier 2
-        else if (amount < customNetworkFeeTier) _networkFeePerc = networkFeePerc[2]; // Tier 3
-        else _networkFeePerc = customNetworkFeePerc; // Custom Tier
+        if (amount < networkFeeTier[0]) _networkFeePerc = networkFeePerc[0]; // Tier 1
+        else if (amount <= networkFeeTier[1]) _networkFeePerc = networkFeePerc[1]; // Tier 2
+        else if (amount < networkFeeTier[2]) _networkFeePerc = networkFeePerc[2]; // Tier 3
+        else _networkFeePerc = networkFeePerc[3]; // Custom Tier
         uint fee = amount * _networkFeePerc / 10000;
         fees += fee;
         amount -= fee;
@@ -146,18 +142,18 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             addresses.push(msg.sender);
             depositAmt[msg.sender] = amount;
         } else depositAmt[msg.sender] += amount;
-        totalDepositAmt += amount;
+        totalPendingDepositAmt += amount;
 
         emit Deposit(msg.sender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata amountsOutMin) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
         require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalPendingDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -194,7 +190,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
-                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
+                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, amountsOutMin);
                 } else {
                     // When paused there is always enough Stablecoins in vault
                 }
@@ -205,21 +201,20 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function withdrawFromStrategy(
-        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata tokenPrice
+        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata amountsOutMin
     ) private returns (uint) {
-        strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        strategy.withdraw(withdrawAmt - tokenAmtInVault, amountsOutMin);
         strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
         if (token != DAI) tokenAmtInVault /= 1e12;
         uint WAVAXAmt = WAVAX.balanceOf(address(this));
-        uint amountOutMin = WAVAXAmt * tokenPrice[0] / 1e18;
         withdrawAmt = (joeRouter.swapExactTokensForTokens(
-            WAVAXAmt, amountOutMin, getPath(address(WAVAX), address(token)), address(this), block.timestamp
+            WAVAXAmt, amountsOutMin[0], getPath(address(WAVAX), address(token)), address(this), block.timestamp
         )[1]) + tokenAmtInVault;
         token.safeTransfer(msg.sender, withdrawAmt);
         return withdrawAmt;
     }
 
-    function invest(uint[] calldata tokenPriceMin) public whenNotPaused {
+    function invest(uint[] calldata amountsOutMin) public whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -229,9 +224,9 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, tokenPriceMin[0]);
+        (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, amountsOutMin);
         if (tokenAmtToInvest > 0) {
-            strategy.invest(WAVAXAmt, tokenPriceMin);
+            strategy.invest(WAVAXAmt, amountsOutMin);
             strategy.adjustWatermark(tokenAmtToInvest, true);
         }
         distributeLPToken(pool);
@@ -250,12 +245,12 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
+        pool = totalSupply() != 0 ? pool - totalPendingDepositAmt : 0;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
             uint _totalSupply = totalSupply();
-            if (totalSupply() != 0) pool -= totalDepositAmt;
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
@@ -263,7 +258,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             emit DistributeLPToken(depositAcc, share);
         }
         delete addresses;
-        totalDepositAmt = 0;
+        totalPendingDepositAmt = 0;
     }
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
@@ -303,31 +298,31 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function swapTokenToWAVAX(
-        uint USDTAmt, uint USDCAmt, uint DAIAmt, uint tokenPriceInAVAXMin
+        uint USDTAmt, uint USDCAmt, uint DAIAmt, uint[] calldata amountsOutMin
     ) private returns (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
-            USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WAVAXAmt = swap(address(USDT), address(WAVAX), USDTAmt, tokenPriceInAVAXMin);
+            USDTAmt -= USDTAmtKeepInVault;
+            WAVAXAmt = swap(address(USDT), address(WAVAX), USDTAmt, amountsOutMin[0]);
             tokenAmtToInvest = USDTAmt * 1e12;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
         if (USDCAmt > USDCAmtKeepInVault + 1e6) {
-            USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WAVAXAmt = swap(address(USDC), address(WAVAX), USDCAmt, tokenPriceInAVAXMin);
-            WAVAXAmt = WAVAXAmt + _WAVAXAmt;
+            USDCAmt -= USDCAmtKeepInVault;
+            uint _WAVAXAmt = swap(address(USDC), address(WAVAX), USDCAmt, amountsOutMin[1]);
+            WAVAXAmt += _WAVAXAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
 
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
-            DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint _WAVAXAmt = swap(address(DAI), address(WAVAX), DAIAmt, tokenPriceInAVAXMin);
-            WAVAXAmt = WAVAXAmt + _WAVAXAmt;
+            DAIAmt -= DAIAmtKeepInVault;
+            uint _WAVAXAmt = swap(address(DAI), address(WAVAX), DAIAmt, amountsOutMin[2]);
+            WAVAXAmt += _WAVAXAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
     }
@@ -337,11 +332,11 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata amountsOutMin) external onlyOwnerOrAdmin {
         uint WAVAXAmt;
         WAVAXAmt = joeRouter.getAmountsOut(amount, getPath(token, address(WAVAX)))[1];
-        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt, tokenPriceMin[0]);
-        swap(address(WAVAX), token, WAVAXAmt, tokenPriceMin[1]);
+        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt, amountsOutMin[0]);
+        swap(address(WAVAX), token, WAVAXAmt, amountsOutMin[1]);
 
         if (token != address(DAI)) amount *= 1e12;
         strategy.adjustWatermark(amount, false);
@@ -359,97 +354,80 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         swap(address(WAVAX), address(DAI), portionWAVAXAmt, 0);
     }
 
-    function reinvest(uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata amountsOutMin) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
-        (uint WAVAXAmt, uint tokenAmtToInvest,) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, tokenPriceMin[0]);
-        strategy.invest(WAVAXAmt, tokenPriceMin);
+        (uint WAVAXAmt, uint tokenAmtToInvest,) = swapTokenToWAVAX(USDTAmt, USDCAmt, DAIAmt, amountsOutMin);
+        strategy.invest(WAVAXAmt, amountsOutMin);
         strategy.adjustWatermark(tokenAmtToInvest, true);
 
         emit Reinvest(WAVAXAmt);
     }
+    
+    function releaseLPToken() external onlyOwner {
+        require(paused(), "Not paused");
+        
+        distributeLPToken(getAllPoolInUSD());
+    }
 
-    function swap(address from, address to, uint amount, uint tokenPriceMin) private returns (uint) {
-        uint amountDecimal = from != address(USDT) || from != address(USDC) ? 1e18 : 1e6;
+    function swap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
         return joeRouter.swapExactTokensForTokens(
-            amount, amount * tokenPriceMin / amountDecimal, getPath(from, to), address(this), block.timestamp
+            amount, amountOutMin, getPath(from, to), address(this), block.timestamp
         )[1];
     }
 
-    function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
-        require(_networkFeeTier2[0] != 0, "Minimun amount cannot be 0");
-        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must > minimun amount");
-        /**
-         * Network fee has three tier, but it is sufficient to have minimun and maximun amount of tier 2
-         * Tier 1: deposit amount < minimun amount of tier 2
-         * Tier 2: minimun amount of tier 2 <= deposit amount <= maximun amount of tier 2
-         * Tier 3: amount > maximun amount of tier 2
-         */
-        uint[] memory oldNetworkFeeTier2 = networkFeeTier2;
-        networkFeeTier2 = _networkFeeTier2;
-        emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
-    }
+    function setNetworkFeeTier(uint[] calldata _networkFeeTier) external onlyOwner {
+        require(_networkFeeTier[0] != 0, "Minimun amount cannot be 0");
+        require(_networkFeeTier[1] > _networkFeeTier[0], "Maximun amount must > minimun amount");
+        require(_networkFeeTier[2] > networkFeeTier[1], "Must > tier 2");
 
-    function setCustomNetworkFeeTier(uint _customNetworkFeeTier) external onlyOwner {
-        require(_customNetworkFeeTier > networkFeeTier2[1], "Must > tier 2");
-        uint oldCustomNetworkFeeTier = customNetworkFeeTier;
-        customNetworkFeeTier = _customNetworkFeeTier;
-        emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
+        uint[] memory oldNetworkFeeTier = networkFeeTier;
+        networkFeeTier = _networkFeeTier;
+        emit SetNetworkFeeTier(oldNetworkFeeTier, _networkFeeTier);
     }
 
     function setNetworkFeePerc(uint[] calldata _networkFeePerc) external onlyOwner {
-        require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001,
-            "Not allow > 30%");
-        /**
-         * _networkFeePerc contains an array of 3 elements, representing network fee of tier 1, tier 2 and tier 3
-         * For example networkFeePerc is [100, 75, 50],
-         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (Denominator = 10000)
-         */
+        require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001, "Not allow > 30%");
+        require(_networkFeePerc[3] < networkFeePerc[2], "Not allow > tier 2");
+
         uint[] memory oldNetworkFeePerc = networkFeePerc;
         networkFeePerc = _networkFeePerc;
-        emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
-    }
 
-    function setCustomNetworkFeePerc(uint _customNetworkFeePerc) external onlyOwner {
-        require(_customNetworkFeePerc < networkFeePerc[2], "Not allow > tier 2");
-        uint oldCustomNetworkFeePerc = customNetworkFeePerc;
-        customNetworkFeePerc = _customNetworkFeePerc;
-        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _customNetworkFeePerc);
+        emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
     }
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+
         uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
+
         emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setPercKeepInVault(uint[] calldata _percKeepInVault) external onlyOwner {
         uint[] memory oldPercKeepInVault = percKeepInVault;
         percKeepInVault = _percKeepInVault;
+
         emit SetPercKeepInVault(oldPercKeepInVault, _percKeepInVault);
     }
 
-    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+    function setAddresses(address _treasuryWallet, address _communityWallet, address _admin) external onlyOwner {
         address oldTreasuryWallet = treasuryWallet;
-        treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
-    }
-
-    function setCommunityWallet(address _communityWallet) external onlyOwner {
         address oldCommunityWallet = communityWallet;
-        communityWallet = _communityWallet;
-        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
-    }
-
-    function setAdmin(address _admin) external onlyOwner {
         address oldAdmin = admin;
+
+        treasuryWallet = _treasuryWallet;
+        communityWallet = _communityWallet;
         admin = _admin;
-        emit SetAdminWallet(oldAdmin, _admin);
+
+        emit SetAddresses(oldTreasuryWallet, _treasuryWallet, oldCommunityWallet, _communityWallet, oldAdmin, _admin);
     }
 
-    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (
+        address token1, uint token1AmtInVault, address token2, uint token2AmtInVault
+    ) {
         if (token == USDT) {
             token1 = address(USDC);
             token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
@@ -500,6 +478,6 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalPendingDepositAmt) * 1e18 / totalSupply();
     }
 }

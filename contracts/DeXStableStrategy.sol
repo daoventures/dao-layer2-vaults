@@ -120,7 +120,7 @@ contract DeXStableStrategy is Initializable {
         LYDDAI.safeApprove(address(lydRouter), type(uint).max);
     }
 
-    function invest(uint USDTAmt, uint[] calldata tokenPriceMin) external onlyVault {
+    function invest(uint USDTAmt, uint[] calldata amountsOutMin) external onlyVault {
         USDT.safeTransferFrom(vault, address(this), USDTAmt);
 
         uint[] memory pools = getEachPool();
@@ -130,12 +130,10 @@ contract DeXStableStrategy is Initializable {
         uint LYDDAITargetPool = pool * 1000 / 10000;
 
         // For this pool we don't rebalancing invest it first
-        // Because if very large amount invest in PNG-USDT or LYD-DAI pool,
-        // the transaction will failed because of the huge slippage,
         // since liquidity in PNG-USDT and LYD-DAI still quite low
-        investJOEUSDC(USDTAmt * 8000 / 10000, tokenPriceMin[1]);
-        investPNGUSDT(USDTAmt * 1000 / 10000, tokenPriceMin[2]);
-        investLYDDAI(USDTAmt * 1000 / 10000, tokenPriceMin[3]);
+        investJOEUSDC(USDTAmt * 8000 / 10000, amountsOutMin[3]);
+        investPNGUSDT(USDTAmt * 1000 / 10000, amountsOutMin[4]);
+        investLYDDAI(USDTAmt * 1000 / 10000, amountsOutMin[5]);
 
         // // Rebalancing invest
         // if (
@@ -143,9 +141,9 @@ contract DeXStableStrategy is Initializable {
         //     PNGUSDTTargetPool > pools[1] &&
         //     LYDDAITargetPool > pools[2]
         // ) {
-        //     investJOEUSDC(JOEUSDCTargetPool - pools[0], tokenPriceMin[1]);
-        //     investPNGUSDT(PNGUSDTTargetPool - pools[1], tokenPriceMin[2]);
-        //     investLYDDAI(LYDDAITargetPool - pools[2], tokenPriceMin[3]);
+        //     investJOEUSDC(JOEUSDCTargetPool - pools[0], amountsOutMin[3]);
+        //     investPNGUSDT(PNGUSDTTargetPool - pools[1], amountsOutMin[4]);
+        //     investLYDDAI(LYDDAITargetPool - pools[2], amountsOutMin[5]);
         // } else {
         //     uint furthest;
         //     uint farmIndex;
@@ -171,23 +169,23 @@ contract DeXStableStrategy is Initializable {
         //         }
         //     }
 
-        //     if (farmIndex == 0) investJOEUSDC(USDTAmt, tokenPriceMin[1]);
-        //     else if (farmIndex == 1) investPNGUSDT(USDTAmt, tokenPriceMin[2]);
-        //     else investLYDDAI(USDTAmt, tokenPriceMin[3]);
+        //     if (farmIndex == 0) investJOEUSDC(USDTAmt, amountsOutMin[3]);
+        //     else if (farmIndex == 1) investPNGUSDT(USDTAmt, amountsOutMin[4]);
+        //     else investLYDDAI(USDTAmt, amountsOutMin[5]);
         // }
 
         emit TargetComposition(JOEUSDCTargetPool, PNGUSDTTargetPool, LYDDAITargetPool);
         emit CurrentComposition(pools[0], pools[1], pools[2]);
     }
 
-    function investJOEUSDC(uint USDTAmt, uint USDCPriceInJOE) private {
+    function investJOEUSDC(uint USDTAmt, uint amountOutMin) private {
         uint USDCAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(USDC)), USDTAmt, USDTAmt * 99 / 100
         );
 
         uint halfUSDC = USDCAmt / 2;
         uint JOEAmt = joeRouter.swapExactTokensForTokens(
-            halfUSDC, halfUSDC * USDCPriceInJOE / 1e6, getPath(address(USDC), address(JOE)), address(this), block.timestamp
+            halfUSDC, amountOutMin, getPath(address(USDC), address(JOE)), address(this), block.timestamp
         )[1];
 
         (,,uint JOEUSDCAmt) = joeRouter.addLiquidity(
@@ -195,13 +193,14 @@ contract DeXStableStrategy is Initializable {
         );
 
         JOEUSDCVault.deposit(JOEUSDCAmt);
+
         emit InvestJOEUSDC(USDTAmt, JOEUSDCAmt);
     }
 
-    function investPNGUSDT(uint USDTAmt, uint USDTPriceInPNG) private {
+    function investPNGUSDT(uint USDTAmt, uint amountOutMin) private {
         uint halfUSDT = USDTAmt / 2;
         uint PNGAmt = pngRouter.swapExactTokensForTokens(
-            halfUSDT, halfUSDT * USDTPriceInPNG / 1e6, getPath(address(USDT), address(PNG)), address(this), block.timestamp
+            halfUSDT, amountOutMin, getPath(address(USDT), address(PNG)), address(this), block.timestamp
         )[1];
 
         (,,uint PNGUSDTAmt) = pngRouter.addLiquidity(
@@ -209,17 +208,18 @@ contract DeXStableStrategy is Initializable {
         );
 
         PNGUSDTVault.deposit(PNGUSDTAmt);
+
         emit InvestPNGUSDT(USDTAmt, PNGUSDTAmt);
     }
 
-    function investLYDDAI(uint USDTAmt, uint DAIPriceInLYD) private {
+    function investLYDDAI(uint USDTAmt, uint amountOutMin) private {
         uint DAIAmt = curve.exchange_underlying(
             getCurveId(address(USDT)), getCurveId(address(DAI)), USDTAmt, USDTAmt * 1e12 * 99 / 100
         );
 
         uint halfDAI = DAIAmt / 2;
         uint LYDAmt = lydRouter.swapExactTokensForTokens(
-            halfDAI, halfDAI * DAIPriceInLYD / 1e18, getPath(address(DAI), address(LYD)), address(this), block.timestamp
+            halfDAI, amountOutMin, getPath(address(DAI), address(LYD)), address(this), block.timestamp
         )[1];
 
         (,,uint LYDDAIAmt) = lydRouter.addLiquidity(
@@ -227,57 +227,72 @@ contract DeXStableStrategy is Initializable {
         );
         
         LYDDAIVault.deposit(LYDDAIAmt);
+
         emit InvestLYDDAI(USDTAmt, LYDDAIAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint USDTAmt) {
+    function withdraw(uint amount, uint[] calldata amountsOutMin) external onlyVault returns (uint USDTAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
+
         uint USDTAmtBefore = USDT.balanceOf(address(this));
-        withdrawJOEUSDC(sharePerc, tokenPrice[1]);
-        withdrawPNGUSDT(sharePerc, tokenPrice[2]);
-        withdrawLYDDAI(sharePerc, tokenPrice[3]);
+        withdrawJOEUSDC(sharePerc, amountsOutMin[1]);
+        withdrawPNGUSDT(sharePerc, amountsOutMin[2]);
+        withdrawLYDDAI(sharePerc, amountsOutMin[3]);
         USDTAmt = USDT.balanceOf(address(this)) - USDTAmtBefore;
+
         USDT.safeTransfer(vault, USDTAmt);
+
         emit Withdraw(amount, USDTAmt);
     }
 
-    function withdrawJOEUSDC(uint sharePerc, uint JOEPriceInUSDC) private {
+    function withdrawJOEUSDC(uint sharePerc, uint amountOutMin) private {
         uint JOEUSDCAmt = JOEUSDCVault.withdraw(JOEUSDCVault.balanceOf(address(this)) * sharePerc / 1e18);
+
         (uint JOEAmt, uint USDCAmt) = joeRouter.removeLiquidity(
             address(JOE), address(USDC), JOEUSDCAmt, 0, 0, address(this), block.timestamp
         );
+
         USDCAmt += joeRouter.swapExactTokensForTokens(
-            JOEAmt, JOEAmt * JOEPriceInUSDC / 1e18, getPath(address(JOE), address(USDC)), address(this), block.timestamp
+            JOEAmt, amountOutMin, getPath(address(JOE), address(USDC)), address(this), block.timestamp
         )[1];
+        
         uint USDTAmt = curve.exchange_underlying(
             getCurveId(address(USDC)), getCurveId(address(USDT)), USDCAmt, USDCAmt * 99 / 100
         );
+
         emit WithdrawJOEUSDC(JOEUSDCAmt, USDTAmt);
     }
 
-    function withdrawPNGUSDT(uint sharePerc, uint PNGPriceInUSDT) private {
+    function withdrawPNGUSDT(uint sharePerc, uint amountOutMin) private {
         uint PNGUSDTAmt = PNGUSDTVault.withdraw(PNGUSDTVault.balanceOf(address(this)) * sharePerc / 1e18);
+
         (uint PNGAmt, uint USDTAmt) = pngRouter.removeLiquidity(
             address(PNG), address(USDT), PNGUSDTAmt, 0, 0, address(this), block.timestamp
         );
+
         USDTAmt += pngRouter.swapExactTokensForTokens(
-            PNGAmt, PNGAmt * PNGPriceInUSDT / 1e18, getPath(address(PNG), address(USDT)), address(this), block.timestamp
+            PNGAmt, amountOutMin, getPath(address(PNG), address(USDT)), address(this), block.timestamp
         )[1];
+
         emit WithdrawPNGUSDT(PNGUSDTAmt, USDTAmt);
     }
 
-    function withdrawLYDDAI(uint sharePerc, uint LYDPriceInDAI) private {
+    function withdrawLYDDAI(uint sharePerc, uint amountOutMin) private {
         uint LYDDAIAmt = LYDDAIVault.withdraw(LYDDAIVault.balanceOf(address(this)) * sharePerc / 1e18);
+
         (uint LYDAmt, uint DAIAmt) = lydRouter.removeLiquidity(
             address(LYD), address(DAI), LYDDAIAmt, 0, 0, address(this), block.timestamp
         );
+
         DAIAmt += lydRouter.swapExactTokensForTokens(
-            LYDAmt, LYDAmt * LYDPriceInDAI / 1e18, getPath(address(LYD), address(DAI)), address(this), block.timestamp
+            LYDAmt, amountOutMin, getPath(address(LYD), address(DAI)), address(this), block.timestamp
         )[1];
+
         uint USDTAmt = curve.exchange_underlying(
             getCurveId(address(DAI)), getCurveId(address(USDT)), DAIAmt, (DAIAmt / 1e12) * 99 / 100
         );
+
         emit WithdrawLYDDAI(LYDDAIAmt, USDTAmt);
     }
 
@@ -289,6 +304,7 @@ contract DeXStableStrategy is Initializable {
             fee = profit * profitFeePerc / 10000;
             watermark = currentWatermark;
         }
+
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
 
@@ -296,16 +312,19 @@ contract DeXStableStrategy is Initializable {
     function adjustWatermark(uint amount, bool signs) external onlyVault {
         uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
+
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
     /// @param amount Amount to reimburse to vault contract in USDT
-    function reimburse(uint farmIndex, uint amount, uint tokenPriceMin) external onlyVault returns (uint USDTAmt) {
-        if (farmIndex == 0) withdrawJOEUSDC(amount * 1e18 / getJOEUSDCPool(), tokenPriceMin);
-        else if (farmIndex == 1) withdrawPNGUSDT(amount * 1e18 / getPNGUSDTPool(), tokenPriceMin);
-        else if (farmIndex == 2) withdrawLYDDAI(amount * 1e18 / getLYDDAIPool(), tokenPriceMin);
+    function reimburse(uint farmIndex, uint amount, uint amountOutMin) external onlyVault returns (uint USDTAmt) {
+        if (farmIndex == 0) withdrawJOEUSDC(amount * 1e18 / getJOEUSDCPool(), amountOutMin);
+        else if (farmIndex == 1) withdrawPNGUSDT(amount * 1e18 / getPNGUSDTPool(), amountOutMin);
+        else if (farmIndex == 2) withdrawLYDDAI(amount * 1e18 / getLYDDAIPool(), amountOutMin);
+
         USDTAmt = USDT.balanceOf(address(this));
         USDT.safeTransfer(vault, USDTAmt);
+
         emit Reimburse(USDTAmt);
     }
 
@@ -314,9 +333,11 @@ contract DeXStableStrategy is Initializable {
         withdrawJOEUSDC(1e18, 0);
         withdrawPNGUSDT(1e18, 0);
         withdrawLYDDAI(1e18, 0);
+
         uint USDTAmt = USDT.balanceOf(address(this));
         USDT.safeTransfer(vault, USDTAmt);
         watermark = 0;
+
         emit EmergencyWithdraw(USDTAmt);
     }
 

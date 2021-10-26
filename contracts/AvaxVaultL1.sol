@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -246,10 +245,20 @@ contract AvaxVaultL1 is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradea
 
     function emergencyWithdraw() external onlyOwnerOrAdmin {
         _pause();
-        (uint lpTokenAmtInFarm,) = masterChef.userInfo(poolId, address(this));
-        if (lpTokenAmtInFarm > 0) {
-            masterChef.withdraw(poolId, lpTokenAmtInFarm);
+
+        uint lpTokenAmtInFarm;
+        if (isPng) {
+            lpTokenAmtInFarm = stakingReward.earned(address(this));
+            if (lpTokenAmtInFarm > 0) {
+                stakingReward.getReward();
+            }
+        } else {
+            (lpTokenAmtInFarm,) = masterChef.userInfo(poolId, address(this));
+            if (lpTokenAmtInFarm > 0) {
+                masterChef.withdraw(poolId, lpTokenAmtInFarm);
+            }
         }
+
         emit EmergencyWithdraw(lpTokenAmtInFarm);
     }
 

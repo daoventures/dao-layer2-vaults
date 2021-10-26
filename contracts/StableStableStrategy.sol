@@ -110,7 +110,7 @@ contract StableStableStrategy is Initializable {
         USDCDAI.safeApprove(address(joeRouter), type(uint).max);
     }
 
-    function invest(uint USDTAmt, uint[] calldata tokenPriceMin) external onlyVault {
+    function invest(uint USDTAmt, uint[] calldata amountsOutMin) external onlyVault {
         USDT.safeTransferFrom(vault, address(this), USDTAmt);
 
         // Full Stablecoins farm don't need rebalance invest
@@ -119,7 +119,7 @@ contract StableStableStrategy is Initializable {
         investUSDTDAI(portionUSDTAmt);
         investUSDCDAI(portionUSDTAmt);
 
-        tokenPriceMin[0]; // To remove unused variable warning
+        amountsOutMin[0]; // To remove unused variable warning
     }
 
     function investUSDTUSDC(uint USDTAmt) private {
@@ -168,7 +168,7 @@ contract StableStableStrategy is Initializable {
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount, uint[] calldata tokenPriceMin) external onlyVault returns (uint USDTAmt) {
+    function withdraw(uint amount, uint[] calldata amountsOutMin) external onlyVault returns (uint USDTAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
 
         uint USDTAmtBefore = USDT.balanceOf(address(this));
@@ -179,7 +179,7 @@ contract StableStableStrategy is Initializable {
 
         USDT.safeTransfer(vault, USDTAmt);
 
-        tokenPriceMin[0]; // To remove unused variable warning
+        amountsOutMin[0]; // To remove unused variable warning
         emit Withdraw(amount, USDTAmt);
     }
 
@@ -236,6 +236,7 @@ contract StableStableStrategy is Initializable {
             fee = profit * profitFeePerc / 10000;
             watermark = currentWatermark;
         }
+
         emit CollectProfitAndUpdateWatermark(currentWatermark, lastWatermark, fee);
     }
 
@@ -243,11 +244,12 @@ contract StableStableStrategy is Initializable {
     function adjustWatermark(uint amount, bool signs) external onlyVault {
         uint lastWatermark = watermark;
         watermark = signs == true ? watermark + amount : watermark - amount;
+
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
     /// @param amount Amount to reimburse to vault contract in USDT
-    function reimburse(uint farmIndex, uint amount, uint tokenPriceMin) external onlyVault returns (uint USDTAmt) {
+    function reimburse(uint farmIndex, uint amount, uint amountsOutMin) external onlyVault returns (uint USDTAmt) {
         if (farmIndex == 0) withdrawUSDTUSDC(amount * 1e18 / getUSDTUSDCPool());
         else if (farmIndex == 1) withdrawUSDTDAI(amount * 1e18 / getUSDTDAIPool());
         else if (farmIndex == 2) withdrawUSDCDAI(amount * 1e18 / getUSDCDAIPool());
@@ -255,7 +257,8 @@ contract StableStableStrategy is Initializable {
         USDTAmt = USDT.balanceOf(address(this));
         USDT.safeTransfer(vault, USDTAmt);
 
-        tokenPriceMin; // To remove unused variable warning
+        amountsOutMin; // To remove unused variable warning
+
         emit Reimburse(USDTAmt);
     }
 

@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -27,11 +26,11 @@ interface ICurve {
 }
 
 interface IStrategy {
-    function invest(uint amount, uint[] calldata tokenPriceMin) external;
-    function withdraw(uint sharePerc, uint[] calldata tokenPriceMin) external;
+    function invest(uint amount, uint[] calldata amountsOutMin) external;
+    function withdraw(uint sharePerc, uint[] calldata amountsOutMin) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc, uint tokenPriceMin) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint amountsOutMin) external returns (uint);
     function emergencyWithdraw() external;
     function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
@@ -40,7 +39,8 @@ interface IStrategy {
 }
 
 contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
-        ReentrancyGuardUpgradeable, PausableUpgradeable {
+        ReentrancyGuardUpgradeable, PausableUpgradeable
+{
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable constant USDT = IERC20Upgradeable(0xc7198437980c041c805A1EDcbA50c1Ce5db95118);
@@ -53,15 +53,13 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     uint[] public percKeepInVault;
     uint public fees;
 
-    uint[] public networkFeeTier2;
-    uint public customNetworkFeeTier;
+    uint[] public networkFeeTier;
     uint[] public networkFeePerc;
-    uint public customNetworkFeePerc;
 
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint totalDepositAmt; // Total pending amount to invest
+    uint public totalDepositAmt; // Total pending amount to invest
 
     address public treasuryWallet;
     address public communityWallet;
@@ -74,15 +72,15 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event TransferredOutFees(uint fees, address token);
     event Reimburse(uint farmIndex, address token, uint amount);
     event Reinvest(uint amount);
-    event SetNetworkFeeTier2(uint[] oldNetworkFeeTier2, uint[] newNetworkFeeTier2);
-    event SetCustomNetworkFeeTier(uint oldCustomNetworkFeeTier, uint newCustomNetworkFeeTier);
+    event SetNetworkFeeTier(uint[] oldNetworkFeeTier, uint[] newNetworkFeeTier);
     event SetNetworkFeePerc(uint[] oldNetworkFeePerc, uint[] newNetworkFeePerc);
-    event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint oldProfitFeePerc, uint profitFeePerc);
     event SetPercKeepInVault(uint[] oldPercKeepInVault, uint[] newPercKeepInVault);
-    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
-    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
-    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetAddresses(
+        address oldTreasuryWallet, address newTreasuryWallet,
+        address oldCommunityWallet, address newCommunityWallet,
+        address oldAdmin, address newAdmin
+    );
     
     modifier onlyOwnerOrAdmin {
         require(msg.sender == owner() || msg.sender == address(admin), "Only owner or admin");
@@ -103,10 +101,8 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         communityWallet = _communityWallet;
         admin = _admin;
 
-        networkFeeTier2 = [50000*1e18+1, 100000*1e18];
-        customNetworkFeeTier = 1000000*1e18;
-        networkFeePerc = [100, 75, 50];
-        customNetworkFeePerc = 25;
+        networkFeeTier = [50000*1e18+1, 100000*1e18, 1000000*1e18];
+        networkFeePerc = [100, 75, 50, 25];
 
         percKeepInVault = [300, 300, 300]; // USDT, USDC, DAI
 
@@ -129,10 +125,10 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint amtDeposit = amount;
 
         uint _networkFeePerc;
-        if (amount < networkFeeTier2[0]) _networkFeePerc = networkFeePerc[0]; // Tier 1
-        else if (amount <= networkFeeTier2[1]) _networkFeePerc = networkFeePerc[1]; // Tier 2
-        else if (amount < customNetworkFeeTier) _networkFeePerc = networkFeePerc[2]; // Tier 3
-        else _networkFeePerc = customNetworkFeePerc; // Custom Tier
+        if (amount < networkFeeTier[0]) _networkFeePerc = networkFeePerc[0]; // Tier 1
+        else if (amount <= networkFeeTier[1]) _networkFeePerc = networkFeePerc[1]; // Tier 2
+        else if (amount < networkFeeTier[2]) _networkFeePerc = networkFeePerc[2]; // Tier 3
+        else _networkFeePerc = networkFeePerc[3]; // Custom Tier
         uint fee = amount * _networkFeePerc / 10000;
         fees += fee;
         amount -= fee;
@@ -218,7 +214,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return withdrawAmt;
     }
 
-    function invest(uint[] calldata tokenPriceMin) public whenNotPaused {
+    function invest(uint[] calldata amountsOutMin) public whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -230,7 +226,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         (uint stableCoinAmt, uint tokenAmtToInvest, uint pool) = swapTokenToUSDT(USDTAmt, USDCAmt, DAIAmt);
         if (tokenAmtToInvest > 0) {
-            strategy.invest(stableCoinAmt, tokenPriceMin);
+            strategy.invest(stableCoinAmt, amountsOutMin);
             strategy.adjustWatermark(tokenAmtToInvest, true);
         }
         distributeLPToken(pool);
@@ -249,12 +245,12 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
+        pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
             uint _totalSupply = totalSupply();
-            if (totalSupply() != 0) pool -= totalDepositAmt;
             uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
             _mint(depositAcc, share);
             pool = pool + _depositAmt;
@@ -340,10 +336,10 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata amountsOutMin) external onlyOwnerOrAdmin {
         if (token != address(DAI)) amount *= 1e12;
 
-        uint USDTAmt = strategy.reimburse(farmIndex, amount, tokenPriceMin[0]);
+        uint USDTAmt = strategy.reimburse(farmIndex, amount, amountsOutMin[0]);
         if (token != address(USDT)) {
             curve.exchange_underlying(getCurveId(address(USDT)), getCurveId(address(token)), USDTAmt, USDTAmt * 99 / 100);
         }
@@ -355,93 +351,78 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function emergencyWithdraw() external onlyOwnerOrAdmin whenNotPaused {
         _pause();
+
         strategy.emergencyWithdraw();
     }
 
-    function reinvest(uint[] calldata tokenPriceMin) external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata amountsOutMin) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
         (uint stablecoinAmt, uint tokenAmtToInvest,) = swapTokenToUSDT(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(stablecoinAmt, tokenPriceMin);
+        strategy.invest(stablecoinAmt, amountsOutMin);
         strategy.adjustWatermark(tokenAmtToInvest, true);
 
         emit Reinvest(stablecoinAmt);
     }
-
-    function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
-        require(_networkFeeTier2[0] != 0, "Minimun amount cannot be 0");
-        require(_networkFeeTier2[1] > _networkFeeTier2[0], "Maximun amount must > minimun amount");
-        /**
-         * Network fee has three tier, but it is sufficient to have minimun and maximun amount of tier 2
-         * Tier 1: deposit amount < minimun amount of tier 2
-         * Tier 2: minimun amount of tier 2 <= deposit amount <= maximun amount of tier 2
-         * Tier 3: amount > maximun amount of tier 2
-         */
-        uint[] memory oldNetworkFeeTier2 = networkFeeTier2;
-        networkFeeTier2 = _networkFeeTier2;
-        emit SetNetworkFeeTier2(oldNetworkFeeTier2, _networkFeeTier2);
+    
+    function releaseLPToken() external onlyOwner {
+        require(paused(), "Not paused");
+        
+        distributeLPToken(getAllPoolInUSD());
     }
 
-    function setCustomNetworkFeeTier(uint _customNetworkFeeTier) external onlyOwner {
-        require(_customNetworkFeeTier > networkFeeTier2[1], "Must > tier 2");
-        uint oldCustomNetworkFeeTier = customNetworkFeeTier;
-        customNetworkFeeTier = _customNetworkFeeTier;
-        emit SetCustomNetworkFeeTier(oldCustomNetworkFeeTier, _customNetworkFeeTier);
+    function setNetworkFeeTier(uint[] calldata _networkFeeTier) external onlyOwner {
+        require(_networkFeeTier[0] != 0, "Minimun amount cannot be 0");
+        require(_networkFeeTier[1] > _networkFeeTier[0], "Maximun amount must > minimun amount");
+        require(_networkFeeTier[2] > networkFeeTier[1], "Must > tier 2");
+
+        uint[] memory oldNetworkFeeTier = networkFeeTier;
+        networkFeeTier = _networkFeeTier;
+        emit SetNetworkFeeTier(oldNetworkFeeTier, _networkFeeTier);
     }
 
     function setNetworkFeePerc(uint[] calldata _networkFeePerc) external onlyOwner {
-        require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001,
-            "Not allow > 30%");
-        /**
-         * _networkFeePerc contains an array of 3 elements, representing network fee of tier 1, tier 2 and tier 3
-         * For example networkFeePerc is [100, 75, 50],
-         * which mean network fee for Tier 1 = 1%, Tier 2 = 0.75% and Tier 3 = 0.5% (Denominator = 10000)
-         */
+        require(_networkFeePerc[0] < 3001 && _networkFeePerc[1] < 3001 && _networkFeePerc[2] < 3001, "Not allow > 30%");
+        require(_networkFeePerc[3] < networkFeePerc[2], "Not allow > tier 2");
+
         uint[] memory oldNetworkFeePerc = networkFeePerc;
         networkFeePerc = _networkFeePerc;
-        emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
-    }
 
-    function setCustomNetworkFeePerc(uint _customNetworkFeePerc) external onlyOwner {
-        require(_customNetworkFeePerc < networkFeePerc[2], "Not allow > tier 2");
-        uint oldCustomNetworkFeePerc = customNetworkFeePerc;
-        customNetworkFeePerc = _customNetworkFeePerc;
-        emit SetCustomNetworkFeePerc(oldCustomNetworkFeePerc, _customNetworkFeePerc);
+        emit SetNetworkFeePerc(oldNetworkFeePerc, _networkFeePerc);
     }
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+
         uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
+
         emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setPercKeepInVault(uint[] calldata _percKeepInVault) external onlyOwner {
         uint[] memory oldPercKeepInVault = percKeepInVault;
         percKeepInVault = _percKeepInVault;
+
         emit SetPercKeepInVault(oldPercKeepInVault, _percKeepInVault);
     }
 
-    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
+    function setAddresses(address _treasuryWallet, address _communityWallet, address _admin) external onlyOwner {
         address oldTreasuryWallet = treasuryWallet;
-        treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
-    }
-
-    function setCommunityWallet(address _communityWallet) external onlyOwner {
         address oldCommunityWallet = communityWallet;
-        communityWallet = _communityWallet;
-        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
-    }
-
-    function setAdmin(address _admin) external onlyOwner {
         address oldAdmin = admin;
+
+        treasuryWallet = _treasuryWallet;
+        communityWallet = _communityWallet;
         admin = _admin;
-        emit SetAdminWallet(oldAdmin, _admin);
+
+        emit SetAddresses(oldTreasuryWallet, _treasuryWallet, oldCommunityWallet, _communityWallet, oldAdmin, _admin);
     }
 
-    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (
+        address token1, uint token1AmtInVault, address token2, uint token2AmtInVault
+    ) {
         if (token == USDT) {
             token1 = address(USDC);
             token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
