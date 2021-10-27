@@ -1,6 +1,7 @@
 const { ethers, network, artifacts } = require("hardhat");
 const IERC20_ABI = require("../abis/IERC20_ABI.json")
 const router_ABI = require("../abis/router_ABI.json")
+const middleware = require("../middleware/withdraw.js")
 
 const USDTAddr = "0xc7198437980c041c805A1EDcbA50c1Ce5db95118"
 const USDCAddr = "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"
@@ -21,7 +22,7 @@ const lydStakingContractAddr = "0xFb26525B14048B7BB1F3794F6129176195Db7766"
 
 describe("DAO Avalanche", function () {
     it("Should work on DeXToken-AVAX strategy", async function () {
-        let tx, receipt, tokenPriceMin
+        let tx, receipt, amountsOutMin
         const [deployer, client, client2, client3, treasury, community, admin, multisig] = await ethers.getSigners()
 
         // const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
@@ -177,8 +178,8 @@ describe("DAO Avalanche", function () {
         const AVAXPriceInLYD = (await lydRouter.getAmountsOut(ethers.utils.parseUnits("1", 18), [WAVAXAddr, LYDAddr]))[1]
         const AVAXPriceInLYDMin = AVAXPriceInLYD.mul(95).div(100)
 
-        tokenPriceMin = [USDCPriceInAVAXMin, AVAXPriceInJOEMin, AVAXPriceInPNGMin, AVAXPriceInLYDMin]
-        tx = await avaxVault.connect(admin).invest(tokenPriceMin)
+        amountsOutMin = [0, 0, 0, 0, 0, 0]
+        tx = await avaxVault.connect(admin).invest(amountsOutMin)
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString()) // 1549948
         // console.log(ethers.utils.formatEther(await avaxVault.getAllPoolInUSD())) // 29604.064510890979812288
@@ -213,7 +214,7 @@ describe("DAO Avalanche", function () {
         await USDCContract.connect(client3).approve(avaxVault.address, ethers.constants.MaxUint256)
         await avaxVault.connect(client2).deposit(ethers.utils.parseUnits("10000", 6), USDTAddr)
         await avaxVault.connect(client3).deposit(ethers.utils.parseUnits("10000", 6), USDCAddr)
-        tx = await avaxVault.connect(admin).invest(tokenPriceMin)
+        tx = await avaxVault.connect(admin).invest(amountsOutMin)
         // receipt = await tx.wait()
         // console.log(receipt.gasUsed.toString()) // 1227257
         // console.log(ethers.utils.formatEther(await avaxVault.balanceOf(client2.address))) // 9932.082126487391421081
@@ -309,26 +310,30 @@ describe("DAO Avalanche", function () {
         // Withdraw
         console.log("-----withdraw-----")
 
-        tokenPriceMin = [AVAXPriceInUSDTMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDTAddr, tokenPriceMin)
-        await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDTAddr, tokenPriceMin)
-        await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDTAddr, tokenPriceMin)
+        amountsOutMin = middleware.getAmountsOutMinDeXAvax(
+            avaxVault.address, deXAvaxStrategy.address, (await avaxVault.balanceOf(client.address)).div(3), USDTAddr, deployer
+        )
+        await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDTAddr, amountsOutMin)
+        amountsOutMin = middleware.getAmountsOutMinDeXAvax(avaxVault.address, deXAvaxStrategy.address, avaxVault.balanceOf(client2.address), USDTAddr, deployer)
+        await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDTAddr, amountsOutMin)
+        amountsOutMin = middleware.getAmountsOutMinDeXAvax(avaxVault.address, deXAvaxStrategy.address, avaxVault.balanceOf(client3.address), USDTAddr, deployer)
+        await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDTAddr, amountsOutMin)
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9842.995039
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9859.888491
         console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9853.75948
 
         // tokenPriceMin = [AVAXPriceInUSDCMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDCAddr, tokenPriceMin)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDCAddr, tokenPriceMin)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDCAddr, tokenPriceMin)
+        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), USDCAddr, amountsOutMin)
+        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), USDCAddr, amountsOutMin)
+        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), USDCAddr, amountsOutMin)
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client.address), 6)) // 9844.080167
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client2.address), 6)) // 9861.726068
         // console.log(ethers.utils.formatUnits(await USDCContract.balanceOf(client3.address), 6)) // 9856.199273
 
         // tokenPriceMin = [AVAXPriceInDAIMin, JOEPriceInAVAXMin, PNGPriceInAVAXMin, LYDPriceInAVAXMin]
-        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), DAIAddr, tokenPriceMin)
-        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), DAIAddr, tokenPriceMin)
-        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), DAIAddr, tokenPriceMin)
+        // await avaxVault.connect(client).withdraw((await avaxVault.balanceOf(client.address)).div(3), DAIAddr, amountsOutMin)
+        // await avaxVault.connect(client2).withdraw(avaxVault.balanceOf(client2.address), DAIAddr, amountsOutMin)
+        // await avaxVault.connect(client3).withdraw(avaxVault.balanceOf(client3.address), DAIAddr, amountsOutMin)
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client.address), 18)) // 9841.539386186864417744
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client2.address), 18)) // 9854.417211070852915627
         // console.log(ethers.utils.formatUnits(await DAIContract.balanceOf(client3.address), 18)) // 9840.180822409327116238
