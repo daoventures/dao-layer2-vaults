@@ -6,41 +6,41 @@
 
 #### L1
 
-DAO L1 Avalanche vault (implementation) contract address: 
+DAO L1 Avalanche vault (implementation) contract address: 0x5C947855aF7Ae03a33B96ae24aB2976dbb27098c
 
-DAO L1 Avalanche factory contract address: 
+DAO L1 Avalanche factory contract address: 0x04DDc3281f71DC70879E312BbF759d54f514f07f
 
-DAO L1 JOE-AVAX vault (proxy) contract address: 
+DAO L1 JOE-AVAX vault (proxy) contract address: 0xFe67a4BAe72963BE1181B211180d8e617B5a8dee
 
-DAO L1 PNG-AVAX vault (proxy) contract address: 
+DAO L1 PNG-AVAX vault (proxy) contract address: 0x7eEcFB07b7677aa0e1798a4426b338dA23f9De34
 
-DAO L1 LYD-AVAX vault (proxy) contract address: 
+DAO L1 LYD-AVAX vault (proxy) contract address: 0xffEaB42879038920A31911f3E93295bF703082ed
 
-DAO L1 JOE-USDC vault (proxy) contract address: 
+DAO L1 JOE-USDC vault (proxy) contract address: 0xC4029ad66AAe4DCF3F8A8C67F4000EAFE49E6d10
 
-DAO L1 PNG-USDT vault (proxy) contract address: 
+DAO L1 PNG-USDT vault (proxy) contract address: 0x3d78fDb997995f0bF7C5d881a758C45F1B706b80
 
-DAO L1 LYD-DAI vault (proxy) contract address: 
+DAO L1 LYD-DAI vault (proxy) contract address: 0x469b5620675a9988c24cDd57B1E7136E162D6a53
 
-DAO L1 USDT-AVAX vault (proxy) contract address: 
+DAO L1 USDT-AVAX vault (proxy) contract address: 0x82AFf9e3f08e34D61737b035c5890d57803B3958
 
-DAO L1 USDC-AVAX vault (proxy) contract address: 
+DAO L1 USDC-AVAX vault (proxy) contract address: 0xaE5A9C1645a2fB8dBF909e660688eB469DDE1A37
 
-DAO L1 DAI-AVAX vault (proxy) contract address: 
+DAO L1 DAI-AVAX vault (proxy) contract address: 0x308555fb3083A300A03dEfFfa311D2eAF2CD56C8
 
-DAO L1 USDT-USDC vault (proxy) contract address: 
+DAO L1 USDT-USDC vault (proxy) contract address: 0x6fa8512d7950cAF167a534E45E39A12DA67F150C
 
-DAO L1 USDT-DAI vault (proxy) contract address: 
+DAO L1 USDT-DAI vault (proxy) contract address: 0xA2ca6C09e9269fD88FCB19a2841c5F7F73a71916
 
-DAO L1 USDC-DAI vault (proxy) contract address: 
+DAO L1 USDC-DAI vault (proxy) contract address: 0xcc71BE249986072AE6EbA7A67ed89FE7091d130B
 
 #### DeXToken-AVAX
 
-DAO Avalanche DeXToken-AVAX strategy (implementation) contract address: 
+DAO Avalanche DeXToken-AVAX strategy (implementation) contract address: 0x2D4b72F950b500f086E1c16322522Fb21B46a082
 
-DAO Avalanche DeXToken-AVAX strategy (proxy) contract address: 
+DAO Avalanche DeXToken-AVAX strategy (proxy) contract address: 0xDE5d4923e7Db1242a26693aA04Fa0C0FCf7D11f4
 
-DAO Avalanche DeXToken-AVAX vault (proxy) contract address: 
+DAO Avalanche DeXToken-AVAX vault (proxy) contract address: 0xa4DCbe792f51E13Fc0E6961BBEc436a881e73194
 
 #### DeXToken-Stablecoin
 
@@ -68,13 +68,13 @@ DAO Avalanche Stablecoin-Stablecoin vault (proxy) contract address:
 
 #### Vault implementation
 
-DAO Avalanche vault (implementation) contract address: 
+DAO Avalanche vault (implementation) contract address: 0x577cE34Cb42d915d2DcA430223634026D429C33D
 
-DAO Avalanche stable vault (implementation) contract address: 
+DAO Avalanche stable vault (implementation) contract address: 0x7746547D0337d19462e0F3ed126774BA08dD31cE
 
 #### Proxy admin
 
-DAO proxy admin contract address: 
+DAO proxy admin contract address: 0xd02C2Ff6ef80f1d096Bc060454054B607d26763E
 
 
 ### Kovan

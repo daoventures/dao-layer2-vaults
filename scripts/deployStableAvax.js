@@ -1,15 +1,15 @@
 const { ethers } = require("hardhat")
 
-const USDTAVAXVaultAddr = "0xC7B70E07d64d575A3a7Cf8ea302d4A4652B8Bdd7"
-const USDCAVAXVaultAddr = "0x6e3659ee054F1b3CE0c36D2c22D17728d317C742"
-const DAIAVAXVaultAddr = "0xB9e0ab8C7690Eb9EcBF011c778FE2872c01A6339"
+const USDTAVAXVaultAddr = "0x82AFf9e3f08e34D61737b035c5890d57803B3958"
+const USDCAVAXVaultAddr = "0xaE5A9C1645a2fB8dBF909e660688eB469DDE1A37"
+const DAIAVAXVaultAddr = "0x308555fb3083A300A03dEfFfa311D2eAF2CD56C8"
 
 const treasuryAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 const communityAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 
-const proxyAdminAddr = "0x29fBe3298569722Cfe26a122223Da1C0EC92829f"
-const avaxStableVaultImplAddr = "0x6B28dbfa6703A836A1dB8409f7C977693ED218dE"
+const proxyAdminAddr = "0xd02C2Ff6ef80f1d096Bc060454054B607d26763E"
+const avaxStableVaultImplAddr = "0x7746547D0337d19462e0F3ed126774BA08dD31cE"
 
 const main = async () => {
     const [deployer] = await ethers.getSigners()

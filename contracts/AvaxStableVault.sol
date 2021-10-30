@@ -59,7 +59,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint public totalDepositAmt; // Total pending amount to invest
+    uint public totalPendingDepositAmt; // Total pending amount to invest
 
     address public treasuryWallet;
     address public communityWallet;
@@ -137,7 +137,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             addresses.push(msg.sender);
             depositAmt[msg.sender] = amount;
         } else depositAmt[msg.sender] += amount;
-        totalDepositAmt += amount;
+        totalPendingDepositAmt += amount;
 
         emit Deposit(msg.sender, amtDeposit, address(token));
     }
@@ -148,7 +148,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD() - totalDepositAmt) * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD() - totalPendingDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -245,7 +245,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
+        pool = totalSupply() != 0 ? pool - totalPendingDepositAmt : 0;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -258,7 +258,7 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             emit DistributeLPToken(depositAcc, share);
         }
         delete addresses;
-        totalDepositAmt = 0;
+        totalPendingDepositAmt = 0;
     }
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
@@ -462,6 +462,6 @@ contract AvaxStableVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
+        return (getAllPoolInUSD() - totalPendingDepositAmt) * 1e18 / totalSupply();
     }
 }

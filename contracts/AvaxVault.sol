@@ -210,6 +210,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         withdrawAmt = (joeRouter.swapExactTokensForTokens(
             WAVAXAmt, amountsOutMin[0], getPath(address(WAVAX), address(token)), address(this), block.timestamp
         )[1]) + tokenAmtInVault;
+        
         token.safeTransfer(msg.sender, withdrawAmt);
         return withdrawAmt;
     }

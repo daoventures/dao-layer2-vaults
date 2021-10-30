@@ -43,7 +43,7 @@ interface IMasterChef {
     function withdraw(uint pid, uint amount) external;
     function userInfo(uint pid, address account) external view returns (uint amount, uint rewardDebt);
     function poolInfo(uint pid) external view returns (address lpToken, uint allocPoint, uint lastRewardBlock, uint accJOEPerShare);
-    function pendingTokens(uint pid, address account) external view returns (uint);
+    function pendingTokens(uint pid, address account) external view returns (uint, address, string memory, uint);
     function pendingLyd(uint pid, address account) external view returns (uint);
 }
 
@@ -207,7 +207,8 @@ contract AvaxVaultL1 is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradea
         if (isPng) stakingReward.getReward();
         else masterChef.withdraw(poolId, 0);
 
-        uint WAVAXAmt = (router.swapExactTokensForTokens(
+        uint WAVAXAmt = WAVAX.balanceOf(address(this));
+        WAVAXAmt += (router.swapExactTokensForTokens(
             rewardToken.balanceOf(address(this)), 0,
             getPath(address(rewardToken), address(WAVAX)), address(this), block.timestamp
         ))[1];
@@ -343,22 +344,25 @@ contract AvaxVaultL1 is Initializable, ERC20Upgradeable, ReentrancyGuardUpgradea
         return getLpTokenPriceInAVAX() * AVAXPriceInUSD / 1e8;
     }
 
-    /// @return Pending rewards in rewardToken
+    /// @return (Pending rewards in rewardToken, pending bonus in bonusToken(usually WAVAX))
     /// @dev Rewards also been claimed while deposit or withdraw through masterChef contract
-    function getPendingRewards() external view returns (uint) {
+    function getPendingRewards() external view returns (uint, uint) {
         uint pendingRewards;
+        uint pendingBonus;
         if (isPng) {
             // Pangolin stakingReward contract
             pendingRewards = stakingReward.earned(address(this));
         } else if (address(rewardToken) == 0x4C9B4E1AC6F24CdE3660D5E4Ef1eBF77C710C084) {
             // Lydia masterChef use different function for pendingTokens
             pendingRewards = masterChef.pendingLyd(poolId, address(this));
+            pendingRewards += rewardToken.balanceOf(address(this));
         } else {
             // Trader Joe masterChef
-            pendingRewards = masterChef.pendingTokens(poolId, address(this));
+            (pendingRewards,,, pendingBonus) = masterChef.pendingTokens(poolId, address(this));
+            pendingRewards += rewardToken.balanceOf(address(this));
         }
 
-        return pendingRewards + rewardToken.balanceOf(address(this));
+        return (pendingRewards, pendingBonus);
     }
 
     function getAllPool() public view returns (uint) {
