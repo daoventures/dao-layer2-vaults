@@ -212,7 +212,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint BUSDAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, minAmounts[0]);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, minAmounts);
 
         strategy.invest(WBNBAmt, minAmounts);
 
@@ -287,21 +287,21 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint BUSDAmt, uint _price) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWBNB(uint USDTAmt, uint USDCAmt, uint BUSDAmt, uint[] calldata minAmounts) private returns (uint WBNBAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool);
         if (USDTAmt > USDTAmtKeepInVault + 1e18) {
             USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt, USDTAmt * _price / 1e18);
+            WBNBAmt = _swap(address(USDT), address(WBNB), USDTAmt, minAmounts[0]);
             tokenAmtToInvest = USDTAmt;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool);
         if (USDCAmt > USDCAmtKeepInVault + 1e18) {
             USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt, USDCAmt * _price / 1e18);
+            uint _WBNBAmt = _swap(address(USDC), address(WBNB), USDCAmt, minAmounts[1]);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt;
         }
@@ -309,7 +309,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint BUSDAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (BUSDAmt > BUSDAmtKeepInVault + 1e18) {
             BUSDAmt = BUSDAmt - BUSDAmtKeepInVault;
-            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), BUSDAmt, BUSDAmt * _price / 1e18);
+            uint _WBNBAmt = _swap(address(BUSD), address(WBNB), BUSDAmt, minAmounts[2]);
             WBNBAmt = WBNBAmt + _WBNBAmt;
             tokenAmtToInvest = tokenAmtToInvest + BUSDAmt;
         }

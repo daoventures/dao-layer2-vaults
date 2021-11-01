@@ -157,10 +157,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
             BNBBELTTargetPool > pools[2] &&
             CHESSUSDCTargetPool > pools[3]
         ) {
-            _investBUSDALPACA(BUSDALPACATargetPool - pools[0], minAmounts[1], minAmounts[2]);
-            _investBNBXVS((BNBXVSTargetPool - pools[1]), minAmounts[3]);
-            _investBNBBELT((BNBBELTTargetPool - pools[2]),minAmounts[4]);
-            _investCHESSUSDC((CHESSUSDCTargetPool - pools[3]),minAmounts[5], minAmounts[6]);
+            _investBUSDALPACA(BUSDALPACATargetPool - pools[0], minAmounts[3], minAmounts[4]);
+            _investBNBXVS((BNBXVSTargetPool - pools[1]), minAmounts[5]);
+            _investBNBBELT((BNBBELTTargetPool - pools[2]),minAmounts[6]);
+            _investCHESSUSDC((CHESSUSDCTargetPool - pools[3]),minAmounts[7], minAmounts[8]);
         } else {
             uint furthest;
             uint farmIndex;
@@ -193,10 +193,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
                 }
             }
 
-            if (farmIndex == 0) _investBUSDALPACA(WBNBAmt,  minAmounts[1],  minAmounts[2]);
-            else if (farmIndex == 1) _investBNBXVS(WBNBAmt,  minAmounts[3]);
-            else if (farmIndex == 2) _investBNBBELT(WBNBAmt,  minAmounts[4]);
-            else _investCHESSUSDC(WBNBAmt,  minAmounts[5], minAmounts[6]);
+            if (farmIndex == 0) _investBUSDALPACA(WBNBAmt,  minAmounts[3],  minAmounts[4]);
+            else if (farmIndex == 1) _investBNBXVS(WBNBAmt,  minAmounts[5]);
+            else if (farmIndex == 2) _investBNBBELT(WBNBAmt,  minAmounts[6]);
+            else _investCHESSUSDC(WBNBAmt,  minAmounts[7], minAmounts[8]);
         }
 
         emit TargetComposition(BUSDALPACATargetPool, BNBXVSTargetPool, BNBBELTTargetPool, CHESSUSDCTargetPool);
@@ -364,10 +364,10 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
 
     /// @param amount Amount to reimburse to vault contract in ETH
     function reimburse(uint farmIndex, uint amount, uint[] calldata minAmount) external onlyVault returns (uint WBNBAmt) {
-        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool(), minAmount[1], minAmount[2]); 
-        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool(),minAmount[3]);
-        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool(),minAmount[4]);
-        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool(), minAmount[5], minAmount[6]);
+        if (farmIndex == 0) _withdrawBUSDALPACA(amount * 1e18 / getBUSDALPACAPool(), minAmount[3], minAmount[4]); 
+        else if (farmIndex == 1) _withdrawBNBXVS(amount * 1e18 / getBNBXVSPool(),minAmount[5]);
+        else if (farmIndex == 2) _withdrawBNBBELT(amount * 1e18 / getBNBBELTPool(),minAmount[6]);
+        else if (farmIndex == 3) _withdrawCHESSUSDC(amount * 1e18 / getCHESSUSDCPool(), minAmount[7], minAmount[8]);
         WBNBAmt = WBNB.balanceOf(address(this));
         WBNB.safeTransfer(vault, WBNBAmt);
         emit Reimburse(WBNBAmt);
