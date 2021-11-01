@@ -149,7 +149,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata minAmount) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0, "Shares must > 0");
         require(share <= balanceOf(msg.sender), "Not enough share to withdraw");
@@ -184,16 +184,16 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             }else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
-                    strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+                    strategy.withdraw(withdrawAmt - tokenAmtInVault, minAmount);
                     strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[6]), getPath(address(WBNB), address(token)), address(this), block.timestamp
+                        WBNB.balanceOf(address(this)), minAmount[0], getPath(address(WBNB), address(token)), address(this), block.timestamp
                     )[1]) + tokenAmtInVault;
                     
                     token.safeTransfer(msg.sender, withdrawAmt);
                 } else {
                     withdrawAmt = (router.swapExactTokensForTokens(
-                        WBNB.balanceOf(address(this)) * share / totalSupply(), getMinimumAmount(WBNB.balanceOf(address(this)), tokenPrice[6]), getPath(address(WBNB), address(token)), msg.sender, block.timestamp
+                        WBNB.balanceOf(address(this)) * share / totalSupply(), minAmount[0], getPath(address(WBNB), address(token)), msg.sender, block.timestamp
                     ))[1];
                 }
             }
@@ -202,11 +202,7 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit Withdraw(msg.sender, withdrawAmt, address(token), share);
     }
 
-    function getMinimumAmount(uint _amount, uint _price) private pure returns (uint) {
-        return _amount * _price / 1e18;
-    }
-
-    function invest(uint[] calldata tokenPrices) external whenNotPaused {
+    function invest(uint[] calldata minAmounts) external whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -216,9 +212,9 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint BUSDAmt) = transferOutFees();
 
-        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, tokenPrices[6]);
+        (uint WBNBAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWBNB(USDTAmt, USDCAmt, BUSDAmt, minAmounts[0]);
 
-        strategy.invest(WBNBAmt, tokenPrices);
+        strategy.invest(WBNBAmt, minAmounts);
 
         strategy.adjustWatermark(tokenAmtToInvest, true);
 
@@ -324,10 +320,10 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata tokenPrices, uint _price) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata minAmounts, uint _price) external onlyOwnerOrAdmin {
         uint WBNBAmt;
         WBNBAmt = (router.getAmountsOut(amount, getPath(token, address(WBNB))))[1];
-        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt, tokenPrices);
+        WBNBAmt = strategy.reimburse(farmIndex, WBNBAmt, minAmounts);
         _swap(address(WBNB), token, WBNBAmt, WBNBAmt * _price / 1e18);
 
         strategy.adjustWatermark(amount, false);
@@ -340,11 +336,11 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         strategy.emergencyWithdraw();
     }
 
-    function reinvest(uint[] calldata tokenPrices) external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata minAmounts) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
         uint WBNBAmt = WBNB.balanceOf(address(this));
-        strategy.invest(WBNBAmt, tokenPrices);
+        strategy.invest(WBNBAmt, minAmounts);
         uint BNBPriceInUSD = uint(IChainlink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE).latestAnswer());
         require(BNBPriceInUSD > 0, "ChainLink error");
         strategy.adjustWatermark(WBNBAmt * BNBPriceInUSD / 1e8, true);
