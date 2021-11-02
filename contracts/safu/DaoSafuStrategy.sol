@@ -134,7 +134,7 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
 
     }
 
-    function invest(uint WBNBAmt, uint[] calldata tokenPrice) external onlyVault {
+    function invest(uint WBNBAmt, uint[] calldata minAmounts) external onlyVault {
         WBNB.safeTransferFrom(vault, address(this), WBNBAmt);
         WBNBAmt = WBNB.balanceOf(address(this));
         
@@ -152,10 +152,10 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
             CAKEBNBTargetPool > pools[2] &&
             BTCBBUSDTargetPool > pools[3]
         ) {
-            _investBTCBETH(BTCBETHTargetPool - pools[0], tokenPrice[0], tokenPrice[1]);
-            _investBTCBBNB((BTCBBNBTargetPool - pools[1]), tokenPrice[0]);
-            _investCAKEBNB((CAKEBNBTargetPool - pools[2]), tokenPrice[2]);
-            _investBTCBBUSD((BTCBBUSDTargetPool - pools[3]), tokenPrice[0], tokenPrice[3]);
+            _investBTCBETH(BTCBETHTargetPool - pools[0], minAmounts[3], minAmounts[4]);
+            _investBTCBBNB((BTCBBNBTargetPool - pools[1]), minAmounts[5]);
+            _investCAKEBNB((CAKEBNBTargetPool - pools[2]), minAmounts[6]);
+            _investBTCBBUSD((BTCBBUSDTargetPool - pools[3]), minAmounts[7], minAmounts[8]);
         } else {
             uint furthest;
             uint farmIndex;
@@ -188,10 +188,10 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
                 }
             }
 
-            if (farmIndex == 0) _investBTCBETH(WBNBAmt, tokenPrice[0], tokenPrice[1]);
-            else if (farmIndex == 1) _investBTCBBNB(WBNBAmt, tokenPrice[0]);
-            else if (farmIndex == 2) _investCAKEBNB(WBNBAmt, tokenPrice[2]);
-            else _investBTCBBUSD(WBNBAmt, tokenPrice[0], tokenPrice[3]);
+            if (farmIndex == 0) _investBTCBETH(WBNBAmt, minAmounts[3], minAmounts[4]);
+            else if (farmIndex == 1) _investBTCBBNB(WBNBAmt, minAmounts[5]);
+            else if (farmIndex == 2) _investCAKEBNB(WBNBAmt, minAmounts[6]);
+            else _investBTCBBUSD(WBNBAmt, minAmounts[7], minAmounts[8]);
         }
 
         emit TargetComposition(BTCBETHTargetPool, BTCBBNBTargetPool, CAKEBNBTargetPool, BTCBBUSDTargetPool);
@@ -199,11 +199,11 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
     }
 
 
-    function _investBTCBETH(uint _wbnbAmt, uint BTCBPrice, uint WETHprice) private {
+    function _investBTCBETH(uint _wbnbAmt, uint BTCBMin, uint WETHMin) private {
         uint _amt = _wbnbAmt/2;
 
-        _swap(address(WBNB), address(WETH), _amt, _amt * WETHprice / 1e18);
-        _swap(address(WBNB), address(BTCB), _amt, _amt * BTCBPrice / 1e18);
+        _swap(address(WBNB), address(WETH), _amt, WETHMin);
+        _swap(address(WBNB), address(BTCB), _amt, BTCBMin);
 
         uint _wethAmt = WETH.balanceOf(address(this));
         uint _BTCBAmt = BTCB.balanceOf(address(this));
@@ -215,9 +215,9 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         emit InvestBTCBETH(_wbnbAmt, lpTokens);
     }
 
-    function _investBTCBBNB(uint _wbnbAmt, uint BTCBPrice) private {
+    function _investBTCBBNB(uint _wbnbAmt, uint BTCBMin) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(BTCB), _amt, _amt * BTCBPrice / 1e18);
+        _swap(address(WBNB), address(BTCB), _amt, BTCBMin);
 
         uint _BTCBAmt = BTCB.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(BTCB), _amt, _BTCBAmt);
@@ -227,9 +227,9 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         emit InvestBTCBBNB(_wbnbAmt, lpTokens);
     }
 
-    function _investCAKEBNB(uint _wbnbAmt, uint cakePrice) private {
+    function _investCAKEBNB(uint _wbnbAmt, uint cakeMin) private {
         uint _amt = _wbnbAmt / 2 ;
-        _swap(address(WBNB), address(CAKE), _amt, _amt * cakePrice / 1e18);
+        _swap(address(WBNB), address(CAKE), _amt, cakeMin);
 
         uint _CAKEAmt = CAKE.balanceOf(address(this));
         uint lpTokens = _addLiquidity(address(WBNB), address(CAKE), _amt, _CAKEAmt);
@@ -239,11 +239,11 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         emit InvestCAKEBNB(_wbnbAmt, lpTokens);
     }
 
-    function _investBTCBBUSD(uint _wbnbAmt, uint BTCBPrice, uint BUSDPrice) private {
+    function _investBTCBBUSD(uint _wbnbAmt, uint BTCBMin, uint BUSDMin) private {
         uint _amt = _wbnbAmt / 2 ;
 
-        _swap(address(WBNB), address(BTCB), _amt, _amt * BTCBPrice / 1e18);
-        _swap(address(WBNB), address(BUSD), _amt, _amt * BUSDPrice / 1e18);
+        _swap(address(WBNB), address(BTCB), _amt, BTCBMin);
+        _swap(address(WBNB), address(BUSD), _amt, BUSDMin);
 
         uint _BTCBAmt = BTCB.balanceOf(address(this));
         uint _BUSDAmt = BUSD.balanceOf(address(this));
@@ -255,14 +255,14 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
         emit InvestBTCBBUSD(_wbnbAmt, lpTokens);
     }
 
-    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint WBNBAmt) {
+    function withdraw(uint amount, uint[] calldata amountOutMin) external onlyVault returns (uint WBNBAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD();
         
         uint WBNBAmtBefore = WBNB.balanceOf(address(this));
-        _withdrawBTCBETH(sharePerc, tokenPrice[0], tokenPrice[1]); //(, btcPriceInBNB, ETHPriceInBNB)
-        _withdrawBTCBBNB(sharePerc, tokenPrice[0]); //(, btcPriceInBNB)
-        _withdrawCAKEBNB(sharePerc, tokenPrice[2]); //(, cakePriceInBNB)
-        _withdrawBTCBBUSD(sharePerc, tokenPrice[0], tokenPrice[3]); //(,btcPriceInBNB, busdPriceInBNB)
+        _withdrawBTCBETH(sharePerc, amountOutMin[1], amountOutMin[2]); //(, btcPriceInBNB, ETHPriceInBNB)
+        _withdrawBTCBBNB(sharePerc, amountOutMin[3]); //(, btcPriceInBNB)
+        _withdrawCAKEBNB(sharePerc, amountOutMin[4]); //(, cakePriceInBNB)
+        _withdrawBTCBBUSD(sharePerc, amountOutMin[5], amountOutMin[6]); //(,btcPriceInBNB, busdPriceInBNB)
         WBNBAmt = WBNB.balanceOf(address(this)) - WBNBAmtBefore;
         WBNB.safeTransfer(vault, WBNBAmt);
 
@@ -270,58 +270,52 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
     }
 
     
-    function _withdrawBTCBETH(uint _sharePerc, uint btcPriceInBnb, uint ethPriceInBNB) private {
+    function _withdrawBTCBETH(uint _sharePerc, uint minBNB_btcb, uint minBNB_eth) private {
         BTCBWETHVault.withdraw(BTCBWETHVault.balanceOf(address(this)) * _sharePerc / 1e18 );
     
         uint _amt = BTCBWETH.balanceOf(address(this));
 
         (uint _amtBTCB, uint _amtWETH) = _removeLiquidity(address(BTCB), address(WETH), _amt);
 
-        uint minBNB = _amtBTCB * btcPriceInBnb / 1e18;
-        uint _wBNBAmt = _swap(address(BTCB), address(WBNB), _amtBTCB, minBNB);
+        uint _wBNBAmt = _swap(address(BTCB), address(WBNB), _amtBTCB, minBNB_btcb);
 
-        minBNB = _amtWETH * ethPriceInBNB / 1e18;
-        _wBNBAmt += _swap(address(WETH), address(WBNB), _amtWETH, minBNB);
+        _wBNBAmt += _swap(address(WETH), address(WBNB), _amtWETH, minBNB_eth);
 
         emit WithdrawBTCBETH(_amt, _wBNBAmt);
     }
 
 
-    function _withdrawBTCBBNB(uint _sharePerc, uint btcPriceInBnb) private {
+    function _withdrawBTCBBNB(uint _sharePerc, uint minBNB_btc) private {
         BTCBBNBVault.withdraw(BTCBBNBVault.balanceOf(address(this)) * _sharePerc / 1e18 );
         uint _amt = BTCBBNB.balanceOf(address(this));
 
         (uint _amtBTCB, uint _amtBNB) = _removeLiquidity(address(BTCB), address(WBNB), _amt);
 
-        uint minAmount = _amtBTCB * btcPriceInBnb / 1e18;
-        _amtBNB += _swap(address(BTCB), address(WBNB), _amtBTCB, minAmount);
+        _amtBNB += _swap(address(BTCB), address(WBNB), _amtBTCB, minBNB_btc);
 
         emit WithdrawBTCBBNB(_amt, _amtBNB);
     }
 
-    function _withdrawCAKEBNB(uint _sharePerc, uint cakePriceInBNB) private {
+    function _withdrawCAKEBNB(uint _sharePerc, uint minBNB_cake) private {
         CAKEBNBVault.withdraw(CAKEBNBVault.balanceOf(address(this)) * _sharePerc / 1e18 );
         uint _amt = CAKEBNB.balanceOf(address(this));
         (uint _amtCake, uint _amtBNB) = _removeLiquidity(address(CAKE), address(WBNB), _amt);
 
-        uint minAmount = _amtCake * cakePriceInBNB / 1e18;
-        _amtBNB += _swap(address(CAKE), address(WBNB), _amtCake, minAmount);
+        _amtBNB += _swap(address(CAKE), address(WBNB), _amtCake, minBNB_cake);
 
         emit WithdrawCAKEBNB(_amt, _amtBNB);
     }
 
     // function _withdrawBTCBBUSD(uint _amount, uint _allPool) private {
-    function _withdrawBTCBBUSD(uint _sharePerc, uint btcPriceInBNB, uint busdPriceInBNB) private {
+    function _withdrawBTCBBUSD(uint _sharePerc, uint minBNB_btcb, uint minBNB_busd) private {
         BTCBBUSDVault.withdraw(BTCBBUSDVault.balanceOf(address(this)) * _sharePerc / 1e18);
         uint _amt = BTCBBUSD.balanceOf(address(this));
 
         (uint _amtBTCB, uint _amtBUSD) = _removeLiquidity(address(BTCB), address(BUSD), _amt);
 
-        uint minAmount = _amtBTCB * btcPriceInBNB /1e18;
-        uint _wBNBAmt = _swap(address(BTCB), address(WBNB), _amtBTCB, minAmount);
+        uint _wBNBAmt = _swap(address(BTCB), address(WBNB), _amtBTCB, minBNB_btcb);
 
-        minAmount = _amtBUSD * busdPriceInBNB / 1e18;
-        _wBNBAmt += _swap(address(BUSD), address(WBNB), _amtBUSD, minAmount);
+        _wBNBAmt += _swap(address(BUSD), address(WBNB), _amtBUSD, minBNB_busd);
 
         emit WithdrawBTCBBUSD(_amt, _wBNBAmt);
     }
@@ -365,11 +359,11 @@ contract DaoSafuStrategy is Initializable, OwnableUpgradeable {
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
-    function reimburse(uint farmIndex, uint amount, uint[] memory tokenPrice) external onlyVault returns (uint WBNBAmt) {
-        if (farmIndex == 0) _withdrawBTCBETH(amount * 1e18 / getBTCBETHPool(), tokenPrice[0], tokenPrice[1]); 
-        else if (farmIndex == 1) _withdrawBTCBBNB(amount * 1e18 / getBTCBBNBPool(), tokenPrice[0]);
-        else if (farmIndex == 2) _withdrawCAKEBNB(amount * 1e18 / getCAKEBNBPool(), tokenPrice[2]);
-        else if (farmIndex == 3) _withdrawBTCBBUSD(amount * 1e18 / getBTCBBUSDPool(), tokenPrice[0], tokenPrice[3]);
+    function reimburse(uint farmIndex, uint amount, uint[] memory minAmounts) external onlyVault returns (uint WBNBAmt) {
+        if (farmIndex == 0) _withdrawBTCBETH(amount * 1e18 / getBTCBETHPool(), minAmounts[3], minAmounts[4]); 
+        else if (farmIndex == 1) _withdrawBTCBBNB(amount * 1e18 / getBTCBBNBPool(), minAmounts[5]);
+        else if (farmIndex == 2) _withdrawCAKEBNB(amount * 1e18 / getCAKEBNBPool(), minAmounts[6]);
+        else if (farmIndex == 3) _withdrawBTCBBUSD(amount * 1e18 / getBTCBBUSDPool(), minAmounts[7], minAmounts[8]);
         WBNBAmt = WBNB.balanceOf(address(this));
         WBNB.safeTransfer(vault, WBNBAmt);
         emit Reimburse(WBNBAmt);
