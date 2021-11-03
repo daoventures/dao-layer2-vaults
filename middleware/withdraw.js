@@ -26,13 +26,13 @@ const BNBXVSAddr = "0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2"
 const BNBBELTAddr = "0xF3Bc6FC080ffCC30d93dF48BFA2aA14b869554bb"
 const CHESSUSDCAddr = "0x1472976E0B97F5B2fC93f1FFF14e2b5C4447b64F"
 
-const BUSDALPACAVaultAddr = ""
-const BNBXVSVaultAddr = ""
-const BNBBELTVaultAddr = ""
-const CHESSUSDCVaultAddr = ""
+const BUSDALPACAVaultAddr = "0x8666bc8b5e4b5c2eb6d2b438de392edd3a1f8547"
+const BNBXVSVaultAddr = "0x5633112d760953c4b418e25f46d4b2abb3fb1b48"
+const BNBBELTVaultAddr = "0x03dadc2ca6afea0522c21973b24d409aba4f3ace"
+const CHESSUSDCVaultAddr = "0xae4566aa6271f066a085af605691629bfb8182f9"
 
-const VaultAddr = ""
-const strategyAddr = ""
+const VaultAddr = "0x5E5d75c2d1eEC055e8c824c6C4763b59d5c7f065"
+const strategyAddr = "0xeaa8c430d17c894134acfa0561853f37363ce887"
 
 const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
     if (!ethers.BigNumber.isBigNumber(shareToWithdraw)) shareToWithdraw = new ethers.BigNumber.from(shareToWithdraw)
@@ -43,7 +43,7 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
 
     const amtWithdrawInUSD = (
         (await vault.getAllPoolInUSD())
-            .sub(await vault.totalPendingDepositAmt()))
+            .sub(await vault.totalDepositAmt()))
             .mul(shareToWithdraw)
             .div(await vault.totalSupply()
     )
@@ -61,8 +61,8 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
         const oneEther = ethers.utils.parseEther("1")
 
         let stablecoinAmtInVault
-        if (stablecoinAddr == USDTAddr) stablecoinAmtInVault = USDTAmtInVault
-        else if (stablecoinAddr == USDCAddr) stablecoinAmtInVault = USDCAmtInVault
+        if (stableCoinAddr == USDTAddr) stablecoinAmtInVault = USDTAmtInVault
+        else if (stableCoinAddr == USDCAddr) stablecoinAmtInVault = USDCAmtInVault
         else stablecoinAmtInVault = BUSDAmtInVault
         const amtToWithdrawFromStrategy = amtWithdrawInUSD.sub(stablecoinAmtInVault)
         const strategyAllPoolInUSD = await strategy.getAllPoolInUSD()
@@ -72,13 +72,17 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
         const WBNBAmtBefore = await WBNBContract.balanceOf(strategyAddr)
         let totalWithdrawWBNB = WBNBAmtBefore
         let WBNBAmt, _WBNBAmt
+        let ALPACAReserve, BUSDReserve, WBNBReserve, XVSReserve, BELTReserve, CHESSReserve, USDCReserve
+        let BUSDAmt, 
 
         const BUSDALPACAVault = new ethers.Contract(BUSDALPACAVaultAddr, BUSDALPACA_l1_ABI, provider)
         const BUSDALPACAVaultAmt = (await BUSDALPACAVault.balanceOf(strategyAddr)).mul(sharePerc).div(oneEther)
         const BUSDALPACAAmt = (await BUSDALPACAVault.getAllPool()).mul(BUSDALPACAVaultAmt).div(await BUSDALPACAVault.totalSupply())
         const BUSDALPACA = new ethers.Contract(BUSDALPACAAddr, pair_ABI, provider)
-        const [ALPACAReserve, BUSDReserve] = await BUSDALPACA.getReserves()
-        const BUSDAmt = BUSDReserve.mul(BUSDALPACAAmt).div(await BUSDALPACA.totalSupply())
+        let reserves = await BUSDALPACA.getReserves()
+        ALPACAReserve = reserves._reserve0 
+        BUSDReserve = reserves._reserve1  
+        BUSDAmt = BUSDReserve.mul(BUSDALPACAAmt).div(await BUSDALPACA.totalSupply())
         const ALPACAAmt = ALPACAReserve.mul(BUSDALPACAAmt).div(await BUSDALPACA.totalSupply())
         _WBNBAmt = (await pnckRouter.getAmountsOut(BUSDAmt, [BUSDAddr, WBNBAddr]))[1]
         const _WBNBAmtMinBUSD = _WBNBAmt.mul(995).div(1000)
@@ -91,7 +95,9 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
         const BNBXVSVaultAmt = (await BNBXVSVault.balanceOf(strategyAddr)).mul(sharePerc).div(oneEther)
         const BNBXVSAmt = (await BNBXVSVault.getAllPool()).mul(BNBXVSVaultAmt).div(await BNBXVSVault.totalSupply())
         const BNBXVS = new ethers.Contract(BNBXVSAddr, pair_ABI, provider)
-        const [WBNBReserve, XVSReserve] = await BNBXVS.getReserves() //TODO CHECK ORDER
+        reserves = await BNBXVS.getReserves() //TODO CHECK ORDER
+        WBNBReserve = reserves._reserve0 
+        XVSReserve = reserves._reserve1  
         const XVSAmt = XVSReserve.mul(BNBXVSAmt).div(await BNBXVS.totalSupply())
         WBNBAmt = WBNBReserve.mul(BNBXVSAmt).div(await BNBXVS.totalSupply())
         totalWithdrawWBNB = totalWithdrawWBNB.add(_WBNBAmt)
@@ -103,7 +109,9 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
         const BNBBELTVaultAmt = (await BNBBELTVault.balanceOf(strategyAddr)).mul(sharePerc).div(oneEther)
         const BNBBELTAmt = (await BNBBELTVault.getAllPool()).mul(BNBBELTVaultAmt).div(await BNBBELTVault.totalSupply())
         const BNBBELT = new ethers.Contract(BNBBELTAddr, pair_ABI, provider)
-        const [WBNBReserve, BELTReserve] = await BNBBELT.getReserves() //TODO CHECK ORDER
+        reserves = await BNBBELT.getReserves() //TODO CHECK ORDER
+        WBNBReserve = reserves._reserve0 
+        BELTReserve = reserves._reserve1  
         const BELTAmt = BELTReserve.mul(BNBBELTAmt).div(await BNBBELT.totalSupply())
         WBNBAmt = WBNBReserve.mul(BNBBELTAmt).div(await BNBBELT.totalSupply())
         totalWithdrawWBNB = totalWithdrawWBNB.add(WBNBAmt)
@@ -115,7 +123,9 @@ const getAmountsOutMin = async(shareToWithdraw, stableCoinAddr, provider) => {
         const CHESSUSDCVaultAmt = (await CHESSUSDCVault.balanceOf(strategyAddr)).mul(sharePerc).div(oneEther)
         const CHESSUSDCAmt = (await CHESSUSDCVault.getAllPool()).mul(CHESSUSDCVaultAmt).div(await CHESSUSDCVault.totalSupply())
         const CHESSUSDC = new ethers.Contract(CHESSUSDCAddr, pair_ABI, provider)
-        const [CHESSReserve, USDCReserve] = await CHESSUSDC.getReserves()//TODO CHECK ORDER
+        reserves = await CHESSUSDC.getReserves()//TODO CHECK ORDER
+        CHESSReserve = reserves._reserve0 
+        USDCReserve = reserves._reserve1  
         const CHESSAmt = CHESSReserve.mul(CHESSUSDCAmt).div(await CHESSUSDC.totalSupply())
         const USDCAmt = USDCReserve.mul(CHESSUSDCAmt).div(await CHESSUSDC.totalSupply())
         _WBNBAmt = (await pnckRouter.getAmountsOut(CHESSAmt, [CHESSAddr, WBNBAddr]))[1]
