@@ -11,7 +11,7 @@ const main = async () => {
 
     const AvaxStableVaultFac = await ethers.getContractFactory("AvaxStableVault", deployer)
     // const AvaxStableVaultFac = await ethers.getContractFactory("AvaxStableVaultKovan", deployer)
-    const avaxStableVaultImpl = await AvaxVaultFac.deploy()
+    const avaxStableVaultImpl = await AvaxStableVaultFac.deploy()
     await avaxStableVaultImpl.deployTransaction.wait()
     console.log("DAO Avalanche stable vault (implementation) contract address:", avaxStableVaultImpl.address)
 }

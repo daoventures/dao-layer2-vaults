@@ -18,13 +18,13 @@ DAO L1 LYD-AVAX vault (proxy) contract address: 0xffEaB42879038920A31911f3E93295
 
 DAO L1 JOE-USDC vault (proxy) contract address: 0xC4029ad66AAe4DCF3F8A8C67F4000EAFE49E6d10
 
-DAO L1 PNG-USDT vault (proxy) contract address: 0x3d78fDb997995f0bF7C5d881a758C45F1B706b80
+DAO L1 PNG-USDT vault (proxy) contract address: 0x12bD78eF81bd767B9014aD4Ec61a6F209DDB659F
 
 DAO L1 LYD-DAI vault (proxy) contract address: 0x469b5620675a9988c24cDd57B1E7136E162D6a53
 
 DAO L1 USDT-AVAX vault (proxy) contract address: 0x82AFf9e3f08e34D61737b035c5890d57803B3958
 
-DAO L1 USDC-AVAX vault (proxy) contract address: 0xaE5A9C1645a2fB8dBF909e660688eB469DDE1A37
+DAO L1 USDC-AVAX vault (proxy) contract address: 0x5378B730711D1f57F888e4828b130E591c4Ea97b
 
 DAO L1 DAI-AVAX vault (proxy) contract address: 0x308555fb3083A300A03dEfFfa311D2eAF2CD56C8
 
@@ -44,33 +44,33 @@ DAO Avalanche DeXToken-AVAX vault (proxy) contract address: 0xa4DCbe792f51E13Fc0
 
 #### DeXToken-Stablecoin
 
-DAO Avalanche DeXToken-Stablecoin strategy (implementation) contract address: 
+DAO Avalanche DeXToken-Stablecoin strategy (implementation) contract address: 0x005A85EA9A8b758FAf3e91e6D6BdfAB3E81BCf63
 
-DAO Avalanche DeXToken-Stablecoin strategy (proxy) contract address: 
+DAO Avalanche DeXToken-Stablecoin strategy (proxy) contract address: 0xB309805d4dE558042b537D7Cc35e06ae5601E3af
 
-DAO Avalanche DeXToken-Stablecoin vault (proxy) contract address: 
+DAO Avalanche DeXToken-Stablecoin vault (proxy) contract address: 0x6fD8c0c6caFB7B99c47BbE332cAE42b32017CD58
 
 #### Stablecoin-AVAX
 
-DAO Avalanche Stablecoin-AVAX strategy (implementation) contract address: 
+DAO Avalanche Stablecoin-AVAX strategy (implementation) contract address: 0xbd9Ab4919CD70249417F8b4500Eb2837cA5a2446
 
-DAO Avalanche Stablecoin-AVAX strategy (proxy) contract address: 
+DAO Avalanche Stablecoin-AVAX strategy (proxy) contract address: 0x1BA17991Cd6cAf9133B8aae25Cddd0E58F63fac3
 
-DAO Avalanche Stablecoin-AVAX vault (proxy) contract address: 
+DAO Avalanche Stablecoin-AVAX vault (proxy) contract address: 0x8b8d29166729b31b482df6055EaDdcB944d4A1D8
 
 #### Stablecoin-Stablecoin
 
-DAO Avalanche Stablecoin-Stablecoin strategy (implementation) contract address: 
+DAO Avalanche Stablecoin-Stablecoin strategy (implementation) contract address: 0x32dd517088128Ea00e132963640b3E123B5fE4B3
 
-DAO Avalanche Stablecoin-Stablecoin strategy (proxy) contract address: 
+DAO Avalanche Stablecoin-Stablecoin strategy (proxy) contract address: 0x8b5B615556F34cf50112b15445dB1A54BD671cCa
 
-DAO Avalanche Stablecoin-Stablecoin vault (proxy) contract address: 
+DAO Avalanche Stablecoin-Stablecoin vault (proxy) contract address: 0xA236FA927DC61d9566fAf62b29d287405c5e49fc
 
 #### Vault implementation
 
 DAO Avalanche vault (implementation) contract address: 0x577cE34Cb42d915d2DcA430223634026D429C33D
 
-DAO Avalanche stable vault (implementation) contract address: 0x7746547D0337d19462e0F3ed126774BA08dD31cE
+DAO Avalanche stable vault (implementation) contract address: 0x10F69c2e8e15229492A987aDe4fB203D05845eAb
 
 #### Proxy admin
 

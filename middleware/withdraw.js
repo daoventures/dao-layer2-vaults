@@ -57,7 +57,7 @@ const stableAvaxStrategyAddr = ""
 const getAmountsOutMinDeXAvax = async (shareToWithdraw, stablecoinAddr, provider) => {
     // provider = new ethers.providers.Web3Provider(provider) // uncomment this to change Web3 provider to Ethers provider
     if (!ethers.BigNumber.isBigNumber(shareToWithdraw)) shareToWithdraw = new ethers.BigNumber.from(shareToWithdraw)
-        
+
     const dexAvaxVault = new ethers.Contract(deXAvaxVaultAddr, avaxVaultABI, provider)
     const dexAvaxStrategy = new ethers.Contract(deXAvaxStrategyAddr, deXAvaxStrategyABI, provider)
 

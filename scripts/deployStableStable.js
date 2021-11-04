@@ -9,10 +9,16 @@ const communityAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 
 const proxyAdminAddr = "0xd02C2Ff6ef80f1d096Bc060454054B607d26763E"
-const avaxStableVaultImplAddr = "0x7746547D0337d19462e0F3ed126774BA08dD31cE"
+const avaxStableVaultImplAddr = "0x10F69c2e8e15229492A987aDe4fB203D05845eAb"
 
 const main = async () => {
     const [deployer] = await ethers.getSigners()
+
+    // const deployerAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+    // await network.provider.request({method: "hardhat_impersonateAccount", params: [deployerAddr]})
+    // const deployer = await ethers.getSigner(deployerAddr)
+    // const [me] = await ethers.getSigners()
+    // await me.sendTransaction({to: deployerAddr, value: ethers.utils.parseEther("1")})
 
     // Deploy Stablecoin-Stablecoin strategy
     const StableStableStrategyFac = await ethers.getContractFactory("StableStableStrategy", deployer)
@@ -37,8 +43,8 @@ const main = async () => {
     const stableStableStrategy = await ethers.getContractAt("StableStableStrategy", stableStableStrategyProxy.address, deployer)
 
     // Deploy Stablecoin-Stablecoin vault
-    // const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVault")
-    const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVaultKovan")
+    const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVault")
+    // const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVaultKovan")
     const avaxStableVaultInterface = new ethers.utils.Interface(avaxStableVaultArtifact.abi)
     const dataAvaxStableVault = avaxStableVaultInterface.encodeFunctionData(
         "initialize",

@@ -19,119 +19,118 @@ const pngStakingContractAddr = "0x7216d1e173c1f1Ed990239d5c77d74714a837Cd5"
 const lydRouterAddr = "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27"
 const lydStakingContractAddr = "0xFb26525B14048B7BB1F3794F6129176195Db7766"
 
-const curveAddr = "0x7f90122BF0700F9E7e1F688fe926940E8839F353"
-
 describe("DAO Avalanche", function () {
     it("Should work on DeXToken-Stablecoin strategy", async function () {
         let tx, receipt, tokenPriceMin
-        const [deployer, client, client2, client3, treasury, community, admin, multisig] = await ethers.getSigners()
+        // const [deployer, client, client2, client3, treasury, community, admin, multisig] = await ethers.getSigners()
+        const [deployer, client, client2, client3, treasury, community, multisig] = await ethers.getSigners()
 
-        // const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
-        // await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
-        // const admin = await ethers.getSigner(adminAddr)
-        // await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
+        const adminAddr = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
+        await network.provider.request({method: "hardhat_impersonateAccount", params: [adminAddr]})
+        const admin = await ethers.getSigner(adminAddr)
+        await deployer.sendTransaction({to: adminAddr, value: ethers.utils.parseEther("10")})
 
         // Deploy AvaxVaultL1
-        const avaxVaultL1Fac = await ethers.getContractFactory("AvaxVaultL1", deployer)
-        const avaxVaultL1 = await avaxVaultL1Fac.deploy()
-        const avaxVaultL1Artifact = await artifacts.readArtifact("AvaxVaultL1")
-        const avaxVaultL1Interface = new ethers.utils.Interface(avaxVaultL1Artifact.abi)
+        // const avaxVaultL1Fac = await ethers.getContractFactory("AvaxVaultL1", deployer)
+        // const avaxVaultL1 = await avaxVaultL1Fac.deploy()
+        // const avaxVaultL1Artifact = await artifacts.readArtifact("AvaxVaultL1")
+        // const avaxVaultL1Interface = new ethers.utils.Interface(avaxVaultL1Artifact.abi)
 
-        const avaxVaultL1FactoryFac = await ethers.getContractFactory("AvaxVaultL1Factory", deployer)
-        const avaxVaultL1Factory = await avaxVaultL1FactoryFac.deploy(avaxVaultL1.address)
-        await avaxVaultL1Factory.transferOwnership(multisig.address)
+        // const avaxVaultL1FactoryFac = await ethers.getContractFactory("AvaxVaultL1Factory", deployer)
+        // const avaxVaultL1Factory = await avaxVaultL1FactoryFac.deploy(avaxVaultL1.address)
+        // await avaxVaultL1Factory.transferOwnership(multisig.address)
         
         // Deploy JOE-USDC
-        const dataJOEUSDC = avaxVaultL1Interface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Joe JOE-USDC", "daoJoeUSDC",
-                joeRouterAddr, joeStakingContractAddr, JOEAddr, 58, false,
-                treasury.address, community.address, admin.address,
-            ]
-        )
-        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataJOEUSDC)
-        await tx.wait()
-        const JOEUSDCVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
-        // const JOEUSDCVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        // const dataJOEUSDC = avaxVaultL1Interface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Joe JOE-USDC", "daoJoeUSDC",
+        //         joeRouterAddr, joeStakingContractAddr, JOEAddr, 58, false,
+        //         treasury.address, community.address, admin.address,
+        //     ]
+        // )
+        // tx = await avaxVaultL1Factory.connect(multisig).createVault(dataJOEUSDC)
+        // await tx.wait()
+        // const JOEUSDCVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        const JOEUSDCVaultAddr = "0xC4029ad66AAe4DCF3F8A8C67F4000EAFE49E6d10"
         const JOEUSDCVault = await ethers.getContractAt("AvaxVaultL1", JOEUSDCVaultAddr, deployer)
 
         // Deploy PNG-USDT
-        const dataPNGUSDT = avaxVaultL1Interface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Pangolin PNG-USDT", "daoPngUSDT",
-                pngRouterAddr, pngStakingContractAddr, PNGAddr, 999, true,
-                treasury.address, community.address, admin.address,
-            ]
-        )
-        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataPNGUSDT)
-        await tx.wait()
-        const PNGUSDTVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
-        // const PNGUSDTVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        // const dataPNGUSDT = avaxVaultL1Interface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Pangolin PNG-USDT", "daoPngUSDT",
+        //         pngRouterAddr, pngStakingContractAddr, PNGAddr, 999, true,
+        //         treasury.address, community.address, admin.address,
+        //     ]
+        // )
+        // tx = await avaxVaultL1Factory.connect(multisig).createVault(dataPNGUSDT)
+        // await tx.wait()
+        // const PNGUSDTVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        const PNGUSDTVaultAddr = "0x12bD78eF81bd767B9014aD4Ec61a6F209DDB659F"
         const PNGUSDTVault = await ethers.getContractAt("AvaxVaultL1", PNGUSDTVaultAddr, deployer)
 
         // Deploy LYD-DAI
-        const dataLYDDAI = avaxVaultL1Interface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Lydia LYD-DAI", "daolydDAI",
-                lydRouterAddr, lydStakingContractAddr, LYDAddr, 26, false,
-                treasury.address, community.address, admin.address,
-            ]
-        )
-        tx = await avaxVaultL1Factory.connect(multisig).createVault(dataLYDDAI)
-        await tx.wait()
-        const LYDDAIVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
-        // const LYDDAIVaultAddr = "0x0B9C62D3365F6fa56Dd8249975D4aCd75fA9774F"
+        // const dataLYDDAI = avaxVaultL1Interface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Lydia LYD-DAI", "daolydDAI",
+        //         lydRouterAddr, lydStakingContractAddr, LYDAddr, 26, false,
+        //         treasury.address, community.address, admin.address,
+        //     ]
+        // )
+        // tx = await avaxVaultL1Factory.connect(multisig).createVault(dataLYDDAI)
+        // await tx.wait()
+        // const LYDDAIVaultAddr = await avaxVaultL1Factory.getVault((await avaxVaultL1Factory.getVaultLength()).sub(1))
+        const LYDDAIVaultAddr = "0x469b5620675a9988c24cDd57B1E7136E162D6a53"
         const LYDDAIVault = await ethers.getContractAt("AvaxVaultL1", LYDDAIVaultAddr, deployer)
 
         // Deploy proxy admin
-        const proxyAdminFac = await ethers.getContractFactory("DAOProxyAdmin", deployer)
-        const proxyAdmin = await proxyAdminFac.deploy()
+        // const proxyAdminFac = await ethers.getContractFactory("DAOProxyAdmin", deployer)
+        // const proxyAdmin = await proxyAdminFac.deploy()
 
         // Deploy DeX-Stable strategy
-        const DeXStableStrategyFac = await ethers.getContractFactory("DeXStableStrategy", deployer)
-        const deXStableStrategyImpl = await DeXStableStrategyFac.deploy()
-        const deXStableStrategyArtifact = await artifacts.readArtifact("DeXStableStrategy")
-        const deXStableStrategyInterface = new ethers.utils.Interface(deXStableStrategyArtifact.abi)
-        const dataDeXStableStrategy = deXStableStrategyInterface.encodeFunctionData(
-            "initialize",
-            [JOEUSDCVaultAddr, PNGUSDTVaultAddr, LYDDAIVaultAddr]
-        )
-        const DeXStableStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
-        const deXStableStrategyProxy = await DeXStableStrategyProxy.deploy(
-            deXStableStrategyImpl.address, proxyAdmin.address, dataDeXStableStrategy,
-        )
-        const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxy.address, deployer)
-        // const deXStableStrategyProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
-        // const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxyAddr, deployer)
+        // const DeXStableStrategyFac = await ethers.getContractFactory("DeXStableStrategy", deployer)
+        // const deXStableStrategyImpl = await DeXStableStrategyFac.deploy()
+        // const deXStableStrategyArtifact = await artifacts.readArtifact("DeXStableStrategy")
+        // const deXStableStrategyInterface = new ethers.utils.Interface(deXStableStrategyArtifact.abi)
+        // const dataDeXStableStrategy = deXStableStrategyInterface.encodeFunctionData(
+        //     "initialize",
+        //     [JOEUSDCVaultAddr, PNGUSDTVaultAddr, LYDDAIVaultAddr]
+        // )
+        // const DeXStableStrategyProxy = await ethers.getContractFactory("AvaxProxy", deployer)
+        // const deXStableStrategyProxy = await DeXStableStrategyProxy.deploy(
+        //     deXStableStrategyImpl.address, proxyAdmin.address, dataDeXStableStrategy,
+        // )
+        // const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxy.address, deployer)
+        const deXStableStrategyProxyAddr = "0xB309805d4dE558042b537D7Cc35e06ae5601E3af"
+        const deXStableStrategy = await ethers.getContractAt("DeXStableStrategy", deXStableStrategyProxyAddr, deployer)
 
-        const AvaxStableVaultFac = await ethers.getContractFactory("AvaxStableVault", deployer)
-        const avaxStableVaultImpl = await AvaxStableVaultFac.deploy()
-        const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVault")
-        const avaxStableVaultInterface = new ethers.utils.Interface(avaxStableVaultArtifact.abi)
-        const dataAvaxStableVault = avaxStableVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L2 Avalanche DeX-Stable", "daoAXS",
-                treasury.address, community.address, admin.address, deXStableStrategy.address
-            ]
-        )
-        const AvaxStableVaultProxy = await ethers.getContractFactory("AvaxProxy", deployer)
-        const avaxStableVaultProxy = await AvaxStableVaultProxy.deploy(
-            avaxStableVaultImpl.address, proxyAdmin.address, dataAvaxStableVault,
-        )
-        const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxy.address, deployer)
-        // const avaxStableVaultProxyAddr = "0x3845d7c09374Df1ae6Ce4728c99DD20D3d75F414"
-        // const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxyAddr, deployer)
+        // const AvaxStableVaultFac = await ethers.getContractFactory("AvaxStableVault", deployer)
+        // const avaxStableVaultImpl = await AvaxStableVaultFac.deploy()
+        // const avaxStableVaultArtifact = await artifacts.readArtifact("AvaxStableVault")
+        // const avaxStableVaultInterface = new ethers.utils.Interface(avaxStableVaultArtifact.abi)
+        // const dataAvaxStableVault = avaxStableVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L2 Avalanche DeX-Stable", "daoAXS",
+        //         treasury.address, community.address, admin.address, deXStableStrategy.address
+        //     ]
+        // )
+        // const AvaxStableVaultProxy = await ethers.getContractFactory("AvaxProxy", deployer)
+        // const avaxStableVaultProxy = await AvaxStableVaultProxy.deploy(
+        //     avaxStableVaultImpl.address, proxyAdmin.address, dataAvaxStableVault,
+        // )
+        // const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxy.address, deployer)
+        const avaxStableVaultProxyAddr = "0x6fD8c0c6caFB7B99c47BbE332cAE42b32017CD58"
+        const avaxStableVault = await ethers.getContractAt("AvaxStableVault", avaxStableVaultProxyAddr, deployer)
 
-        await deXStableStrategy.connect(admin).setVault(avaxStableVault.address)
+        // await deXStableStrategy.connect(admin).setVault(avaxStableVault.address)
 
         // Set whitelist
-        await JOEUSDCVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
-        await PNGUSDTVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
-        await LYDDAIVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
+        // await JOEUSDCVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
+        // await PNGUSDTVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
+        // await LYDDAIVault.connect(admin).setWhitelistAddress(deXStableStrategy.address, true)
 
         // Swap & transfer Stablecoins to client
         const joeRouter = new ethers.Contract(joeRouterAddr, router_ABI, deployer)    
