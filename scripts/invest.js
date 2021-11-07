@@ -12,15 +12,15 @@ async function main() {
     // await network.provider.request({method: "hardhat_impersonateAccount", params: ["0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"]})
     // const deployer = await ethers.getSigner("0x3f68A3c1023d736D8Be867CA49Cb18c543373B99")
 
-    const AXSETHProxyContract = await ethers.getContractAt("Sushi", AXSETHProxyAddr, deployer)
-    tx = await AXSETHProxyContract.invest()
-    receipt = await tx.wait()
-    console.log("Successfully called invest function for AXSETHVault at", receipt.transactionHash)
+    // const AXSETHProxyContract = await ethers.getContractAt("Sushi", AXSETHProxyAddr, deployer)
+    // tx = await AXSETHProxyContract.invest()
+    // receipt = await tx.wait()
+    // console.log("Successfully called invest function for AXSETHVault at", receipt.transactionHash)
 
-    const SLPETHProxyContract = await ethers.getContractAt("Sushi", SLPETHProxyAddr, deployer)
-    tx = await SLPETHProxyContract.invest()
-    receipt = await tx.wait()
-    console.log("Successfully called invest function for SLPETHVault at", receipt.transactionHash)
+    // const SLPETHProxyContract = await ethers.getContractAt("Sushi", SLPETHProxyAddr, deployer)
+    // tx = await SLPETHProxyContract.invest()
+    // receipt = await tx.wait()
+    // console.log("Successfully called invest function for SLPETHVault at", receipt.transactionHash)
 
     // ILVETH vault can call through MetaMask with Eden network
     // const ILVETHProxyContract = await ethers.getContractAt("ILVETHVault", ILVETHProxyAddr, deployer)
