@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -34,7 +35,7 @@ interface IStrategy {
     function withdraw(uint sharePerc, uint[] calldata tokenPriceMin) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc, uint tokenPriceMin) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint[] calldata tokenPriceMin) external returns (uint);
     function emergencyWithdraw() external;
     function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
@@ -159,6 +160,9 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint tokenAmtInVault = token.balanceOf(address(this));
         if (token != DAI) tokenAmtInVault *= 1e12;
         if (withdrawAmt < tokenAmtInVault) {
+            // console.log(withdrawAmt); // 9899.999999999999991771
+            // console.log(tokenAmtInVault); // 10891.000000000000000000
+            // console.log("checkpoint");
             // Enough token in vault to withdraw
             if (token != DAI) withdrawAmt /= 1e12;
             token.safeTransfer(msg.sender, withdrawAmt);
@@ -190,6 +194,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
+                    // console.log("checkpoint");
                     withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, amountsOutMin);
                 } else {
                     // When paused there is always enough Stablecoins in vault
@@ -245,16 +250,31 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (fee > 0) fees = fees + fee;
     }
 
+    // function distributeLPToken(uint pool) private {
+    //     pool = totalSupply() != 0 ? pool - totalPendingDepositAmt : 0;
+    //     address[] memory _addresses = addresses;
+    //     for (uint i; i < _addresses.length; i ++) {
+    //         address depositAcc = _addresses[i];
+    //         uint _depositAmt = depositAmt[depositAcc];
+    //         uint _totalSupply = totalSupply();
+    //         uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
+    //         _mint(depositAcc, share);
+    //         pool = pool + _depositAmt;
+    //         depositAmt[depositAcc] = 0;
+    //         emit DistributeLPToken(depositAcc, share);
+    //     }
+    //     delete addresses;
+    //     totalPendingDepositAmt = 0;
+    // }
+
     function distributeLPToken(uint pool) private {
-        pool = totalSupply() != 0 ? pool - totalPendingDepositAmt : 0;
+        uint _pool = totalSupply() == 0 ? getAllPoolInUSD() : getAllPoolInUSD() - (pool - totalPendingDepositAmt);
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
-            uint _totalSupply = totalSupply();
-            uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
+            uint share = totalSupply() == 0 ? _pool : _pool * _depositAmt / totalPendingDepositAmt;
             _mint(depositAcc, share);
-            pool = pool + _depositAmt;
             depositAmt[depositAcc] = 0;
             emit DistributeLPToken(depositAcc, share);
         }
@@ -303,6 +323,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     ) private returns (uint WAVAXAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD();
+        // console.log(pool);
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
@@ -336,8 +357,8 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     function reimburse(uint farmIndex, address token, uint amount, uint[] calldata amountsOutMin) external onlyOwnerOrAdmin {
         uint WAVAXAmt;
         WAVAXAmt = joeRouter.getAmountsOut(amount, getPath(token, address(WAVAX)))[1];
-        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt, amountsOutMin[0]);
-        swap(address(WAVAX), token, WAVAXAmt, amountsOutMin[1]);
+        WAVAXAmt = strategy.reimburse(farmIndex, WAVAXAmt, amountsOutMin);
+        swap(address(WAVAX), token, WAVAXAmt, amountsOutMin[0]);
 
         if (token != address(DAI)) amount *= 1e12;
         strategy.adjustWatermark(amount, false);
@@ -473,6 +494,7 @@ contract AvaxVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
         if (paused()) return WAVAX.balanceOf(address(this)) * AVAXPriceInUSD / 1e8 + tokenKeepInVault - fees;
         uint strategyPoolInUSD = strategy.getAllPoolInAVAX() * AVAXPriceInUSD / 1e8;
+        // console.log(strategyPoolInUSD); // 348156513.278949696047944233
         
         return strategyPoolInUSD + tokenKeepInVault - fees;
     }
