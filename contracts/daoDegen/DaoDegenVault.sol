@@ -234,16 +234,16 @@ contract DaoDegenVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        pool = totalSupply() != 0 ? pool - totalDepositAmt : 0;
-
+        pool -= totalDepositAmt; // Pool before new invest
+        uint _newInvestedPool = totalSupply() == 0 ? getAllPoolInUSD() : getAllPoolInUSD() - pool;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
-            uint _totalSupply = totalSupply();
-            uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
+            uint _depositAmtAfterSlippage = _newInvestedPool * _depositAmt / totalDepositAmt;
+            uint share = totalSupply() == 0 ? _depositAmtAfterSlippage : _depositAmtAfterSlippage * totalSupply() / pool;
             _mint(depositAcc, share);
-            pool = pool + _depositAmt;
+            pool += _depositAmtAfterSlippage; // Update pool for next loop
             depositAmt[depositAcc] = 0;
             emit DistributeLPToken(depositAcc, share);
         }
