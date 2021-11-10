@@ -344,14 +344,25 @@ contract DaoDegenStrategy is Initializable, OwnableUpgradeable {
         emit AdjustWatermark(watermark, lastWatermark);
     }
 
+    function _getPath(address _tokenA, address _tokenB) internal returns (address[] memory path) {
+
+        if(_tokenA == address(CHESS) || _tokenB == address(CHESS)) {
+            //route through usdc for CHESS pairs - low liquidity
+            path = new address[](3);
+            path[0] = _tokenA;
+            path[1] = address(USDC);
+            path[2] = _tokenB;
+        } else {
+            path = new address[](2);
+            path[0] = _tokenA;
+            path[1] = _tokenB;
+        }
+
+    }
+
     function _swap(address _tokenA, address _tokenB, uint _amt, uint _minAmount) private returns (uint) {
-        address[] memory path = new address[](2);
-
-        path[0] = _tokenA;
-        path[1] = _tokenB;
-
-
-        return (PnckRouter.swapExactTokensForTokens(_amt , _minAmount, path, address(this), block.timestamp))[1];
+        address[] memory path = _getPath(_tokenA, _tokenB);
+        return (PnckRouter.swapExactTokensForTokens(_amt , _minAmount, path, address(this), block.timestamp))[path.length - 1];
     }
 
     function _addLiquidity(address _tokenA, address _tokenB, uint _amtA, uint _amtB) private returns (uint liquidity) {
