@@ -1,16 +1,15 @@
 const { ethers, network, artifacts } = require("hardhat")
-const { mainnet: addresses } = require("../../addresses/citadelBSC")
 
 const proxyAdminAddr = "0x72eB6E3f163E8CFD1Ebdd7B2f4ffB60b6e420448"
 const degenStrategyProxy = "0xeAa8c430d17c894134AcFA0561853F37363CE887" 
-// const deployerAddress = "0x3f68a3c1023d736d8be867ca49cb18c543373b99"
+// const deployerAddress = "0x3f68A3c1023d736D8Be867CA49Cb18c543373B99"
 module.exports = async () => {
     const [deployer] = await ethers.getSigners() 
 
     
     // await network.provider.request({
-    //     method: "hardhat_impersonateAccount",
-    //     params: [deployerAddress]
+        // method: "hardhat_impersonateAccount",
+        // params: [deployerAddress]
     // })
 
     // const deployer = await ethers.getSigner(deployerAddress)
