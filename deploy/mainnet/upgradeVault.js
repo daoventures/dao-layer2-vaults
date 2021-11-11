@@ -27,6 +27,9 @@ module.exports = async ({deployments}) => {
 
     await proxyAdmin.upgrade(safuVaultProxy, daoSafuVault.address)
 
+    let vault = await ethers.getContractAt("DaoSafuVault", safuVaultProxy)
+    await vault.connect(deployer).postUpgrade()
+
     console.log("daoSafuVault upgraded successfully")
 }
 

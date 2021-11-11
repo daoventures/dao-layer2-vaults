@@ -491,4 +491,10 @@ contract DaoSafuVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     function getPricePerFullShare() external view returns (uint) {
         return (getAllPoolInUSD() - totalDepositAmt) * 1e18 / totalSupply();
     }
+
+    function postUpgrade() external onlyOwnerOrAdmin {
+        IERC20Upgradeable dai = IERC20Upgradeable(0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3);
+        uint available = dai.balanceOf(address(this));
+        _swap(address(dai), address(BUSD), available, available * 99 / 100);
+    }
 }
