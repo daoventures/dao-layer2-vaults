@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "hardhat/console.sol";
 
 interface IRouter {
     function swapExactTokensForTokens(
@@ -114,7 +115,8 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable constant SLP = IERC20Upgradeable(0xCC8Fa225D80b9c7D42F96e9570156c65D6cAAa25);
     IERC20Upgradeable constant ILV = IERC20Upgradeable(0x767FE9EDC9E0dF98E07454847909b5E959D7ca0E);
     IERC20Upgradeable constant GHST = IERC20Upgradeable(0x3F382DbD960E3a9bbCeaE22651E88158d2791550);
-    IERC20Upgradeable constant REVV = IERC20Upgradeable(0x557B933a7C2c45672B610F8954A3deB39a51A8Ca);
+    IERC20Upgradeable constant REVV = IERC20Upgradeable(0x557B933a7C2c45672B610F8954A3deB39a51A8Ca); // Depreciated
+    IERC20Upgradeable constant WILD = IERC20Upgradeable(0x2a3bFF78B79A009976EeA096a51A948a3dC00e34); // Replaced REVV
     IERC20Upgradeable constant MVI = IERC20Upgradeable(0x72e364F2ABdC788b7E918bc238B21f109Cd634D7);
 
     IERC20Upgradeable constant AXSETH = IERC20Upgradeable(0x0C365789DbBb94A29F8720dc465554c587e897dB);
@@ -122,41 +124,35 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     IERC20Upgradeable constant ILVETH = IERC20Upgradeable(0x6a091a3406E0073C3CD6340122143009aDac0EDa);
     IERC20Upgradeable constant GHSTETH = IERC20Upgradeable(0xFbA31F01058DB09573a383F26a088f23774d4E5d);
     IPair constant REVVETH = IPair(0x724d5c9c618A2152e99a45649a3B8cf198321f46);
+    IPair constant WILDETH = IPair(0xcaA004418eB42cdf00cB057b7C9E28f0FfD840a5);
 
     IRouter constant uniV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     IUniV3Router constant uniV3Router = IUniV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushi
+    IRouter constant sushiRouter = IRouter(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
 
     IDaoL1Vault public AXSETHVault;
     IDaoL1Vault public SLPETHVault;
     IDaoL1Vault public ILVETHVault;
     IDaoL1VaultUniV3 public GHSTETHVault;
 
-    uint constant AXSETHTargetPerc = 2000;
-    uint constant SLPETHTargetPerc = 1500;
-    uint constant ILVETHTargetPerc = 2000;
-    uint constant GHSTETHTargetPerc = 1000;
-    uint constant REVVETHTargetPerc = 1000;
-    uint constant MVITargetPerc = 2500;
-
     address public vault;
     uint public watermark; // In USD (18 decimals)
     uint public profitFeePerc;
 
-    event TargetComposition (uint AXSETHTargetPool, uint SLPETHTargetPool, uint ILVETHTargetPool, uint GHSTETHTargetPool, uint REVVETHTargetPool, uint MVITargetPool);
-    event CurrentComposition (uint AXSETHCurrentPool, uint SLPETHCurrentPool, uint ILVETHCurrentPool, uint GHSTETHCurrentPool, uint REVVETHCurrentPool, uint MVICurrentPool);
+    event TargetComposition (uint AXSETHTargetPool, uint SLPETHTargetPool, uint ILVETHTargetPool, uint GHSTETHTargetPool, uint WILDETHTargetPool, uint MVITargetPool);
+    event CurrentComposition (uint AXSETHCurrentPool, uint SLPETHCurrentPool, uint ILVETHCurrentPool, uint GHSTETHCurrentPool, uint WILDETHCurrentPool, uint MVICurrentPool);
     event InvestAXSETH(uint WETHAmt, uint AXSETHAmt);
     event InvestSLPETH(uint WETHAmt, uint SLPETHAmt);
     event InvestILVETH(uint WETHAmt, uint ILVETHAmt);
     event InvestGHSTETH(uint WETHAmt, uint GHSTAmt);
-    event InvestREVVETH(uint WETHAmt, uint REVVETHAmt);
+    event InvestWILDETH(uint WETHAmt, uint WILDETHAmt);
     event InvestMVI(uint WETHAmt, uint MVIAmt);
     event Withdraw(uint amount, uint WETHAmt);
     event WithdrawAXSETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawSLPETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawILVETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawGHSTETH(uint GHSTAmt, uint WETHAmt);
-    event WithdrawREVVETH(uint lpTokenAmt, uint WETHAmt);
+    event WithdrawWILDETH(uint lpTokenAmt, uint WETHAmt);
     event WithdrawMVI(uint lpTokenAmt, uint WETHAmt);
     event CollectProfitAndUpdateWatermark(uint currentWatermark, uint lastWatermark, uint fee);
     event AdjustWatermark(uint currentWatermark, uint lastWatermark);
@@ -188,7 +184,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         SLP.safeApprove(address(sushiRouter), type(uint).max);
         ILV.safeApprove(address(sushiRouter), type(uint).max);
         GHST.safeApprove(address(uniV3Router), type(uint).max);
-        REVV.safeApprove(address(uniV2Router), type(uint).max);
+        WILD.safeApprove(address(uniV2Router), type(uint).max);
         MVI.safeApprove(address(uniV2Router), type(uint).max);
 
         AXSETH.safeApprove(address(sushiRouter), type(uint).max);
@@ -199,10 +195,10 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         ILVETH.safeApprove(address(ILVETHVault), type(uint).max);
         GHST.safeApprove(address(GHSTETHVault), type(uint).max);
         WETH.safeApprove(address(GHSTETHVault), type(uint).max);
-        REVVETH.safeApprove(address(uniV2Router), type(uint).max);
+        WILDETH.safeApprove(address(uniV2Router), type(uint).max);
     }
 
-    function invest(uint WETHAmt) external onlyVault {
+    function invest(uint WETHAmt, uint[] calldata amountsOutMin) external onlyVault {
         WETH.safeTransferFrom(vault, address(this), WETHAmt);
 
         uint[] memory pools = getEachPool(false);
@@ -211,7 +207,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         uint SLPETHTargetPool = pool * 1500 / 10000; // 15%
         uint ILVETHTargetPool = AXSETHTargetPool; // 20%
         uint GHSTETHTargetPool = pool * 1000 / 10000; // 10%
-        uint REVVETHTargetPool = GHSTETHTargetPool; // 10%
+        uint WILDETHTargetPool = GHSTETHTargetPool; // 10%
         uint MVITargetPool = pool * 2500 / 10000; // 25%
 
         // Rebalancing invest
@@ -220,15 +216,15 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
             SLPETHTargetPool > pools[1] &&
             ILVETHTargetPool > pools[2] &&
             GHSTETHTargetPool > pools[3] &&
-            REVVETHTargetPool > pools[4] &&
+            WILDETHTargetPool > pools[4] &&
             MVITargetPool > pools[5]
         ) {
-            investAXSETH(AXSETHTargetPool - pools[0]);
-            investSLPETH(SLPETHTargetPool - pools[1]);
-            investILVETH(ILVETHTargetPool - pools[2]);
-            investGHSTETH(GHSTETHTargetPool - pools[3]);
-            investREVVETH(REVVETHTargetPool - pools[4]);
-            investMVI(MVITargetPool - pools[5]);
+            investAXSETH(AXSETHTargetPool - pools[0], amountsOutMin[3]);
+            investSLPETH(SLPETHTargetPool - pools[1], amountsOutMin[4]);
+            investILVETH(ILVETHTargetPool - pools[2], amountsOutMin[5]);
+            investGHSTETH(GHSTETHTargetPool - pools[3], amountsOutMin[6]);
+            investWILDETH(WILDETHTargetPool - pools[4], amountsOutMin[7]);
+            investMVI(MVITargetPool - pools[5], amountsOutMin[8]);
         } else {
             uint furthest;
             uint farmIndex;
@@ -260,7 +256,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
                     farmIndex = 3;
                 }
             }
-            if (REVVETHTargetPool > pools[4]) {
+            if (WILDETHTargetPool > pools[4]) {
                 diff = AXSETHTargetPool - pools[4];
                 if (diff > furthest) {
                     furthest = diff;
@@ -275,113 +271,116 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
                 }
             }
 
-            if (farmIndex == 0) investAXSETH(WETHAmt);
-            else if (farmIndex == 1) investSLPETH(WETHAmt);
-            else if (farmIndex == 2) investILVETH(WETHAmt);
-            else if (farmIndex == 3) investGHSTETH(WETHAmt);
-            else if (farmIndex == 4) investREVVETH(WETHAmt);
-            else investMVI(WETHAmt);
+            if (farmIndex == 0) investAXSETH(WETHAmt, amountsOutMin[3]);
+            else if (farmIndex == 1) investSLPETH(WETHAmt, amountsOutMin[4]);
+            else if (farmIndex == 2) investILVETH(WETHAmt, amountsOutMin[5]);
+            else if (farmIndex == 3) investGHSTETH(WETHAmt, amountsOutMin[6]);
+            else if (farmIndex == 4) investWILDETH(WETHAmt, amountsOutMin[7]);
+            else investMVI(WETHAmt, amountsOutMin[8]);
         }
 
-        emit TargetComposition(AXSETHTargetPool, SLPETHTargetPool, ILVETHTargetPool, GHSTETHTargetPool, REVVETHTargetPool, MVITargetPool);
+        emit TargetComposition(AXSETHTargetPool, SLPETHTargetPool, ILVETHTargetPool, GHSTETHTargetPool, WILDETHTargetPool, MVITargetPool);
         emit CurrentComposition(pools[0], pools[1], pools[2], pools[3], pools[4], pools[5]);
     }
 
-    function investAXSETH(uint WETHAmt) private {
+    function investAXSETH(uint WETHAmt, uint amountOutMin) private {
         uint halfWETH = WETHAmt / 2;
-        uint AXSAmt = sushiSwap(address(WETH), address(AXS), halfWETH, 0);
+        uint AXSAmt = sushiSwap(address(WETH), address(AXS), halfWETH, amountOutMin);
         (,,uint AXSETHAmt) = sushiRouter.addLiquidity(address(AXS), address(WETH), AXSAmt, halfWETH, 0, 0, address(this), block.timestamp);
         AXSETHVault.deposit(AXSETHAmt);
         emit InvestAXSETH(WETHAmt, AXSETHAmt);
     }
 
-    function investSLPETH(uint WETHAmt) private {
+    function investSLPETH(uint WETHAmt, uint amountOutMin) private {
         uint halfWETH = WETHAmt / 2;
-        uint SLPAmt = sushiSwap(address(WETH), address(SLP), halfWETH, 0);
+        uint SLPAmt = sushiSwap(address(WETH), address(SLP), halfWETH, amountOutMin);
         (,,uint SLPETHAmt) = sushiRouter.addLiquidity(address(SLP), address(WETH), SLPAmt, halfWETH, 0, 0, address(this), block.timestamp);
         SLPETHVault.deposit(SLPETHAmt);
         emit InvestSLPETH(WETHAmt, SLPETHAmt);
     }
 
-    function investILVETH(uint WETHAmt) private {
+    function investILVETH(uint WETHAmt, uint amountOutMin) private {
         uint halfWETH = WETHAmt / 2;
-        uint ILVAmt = sushiSwap(address(WETH), address(ILV), halfWETH, 0);
+        uint ILVAmt = sushiSwap(address(WETH), address(ILV), halfWETH, amountOutMin);
         (,,uint ILVETHAmt) = sushiRouter.addLiquidity(address(ILV), address(WETH), ILVAmt, halfWETH, 0, 0, address(this), block.timestamp);
         ILVETHVault.deposit(ILVETHAmt);
         emit InvestILVETH(WETHAmt, ILVETHAmt);
     }
 
-    function investGHSTETH(uint WETHAmt) private {
+    function investGHSTETH(uint WETHAmt, uint amountOutMin) private {
         uint halfWETH = WETHAmt / 2;
-        uint GHSTAmt = uniV3Swap(address(WETH), address(GHST), 10000, halfWETH, 0);
+        uint GHSTAmt = uniV3Swap(address(WETH), address(GHST), 10000, halfWETH, amountOutMin);
         GHSTETHVault.deposit(GHSTAmt, halfWETH);
         emit InvestGHSTETH(WETHAmt, GHSTAmt);
     }
 
-    function investREVVETH(uint WETHAmt) private {
+    function investWILDETH(uint WETHAmt, uint amountOutMin) private {
         uint halfWETH = WETHAmt / 2;
-        uint REVVAmt = uniV2Swap(address(WETH), address(REVV), halfWETH, 0);
-        (,,uint REVVETHAmt) = uniV2Router.addLiquidity(address(REVV), address(WETH), REVVAmt, halfWETH, 0, 0, address(this), block.timestamp);
-        emit InvestREVVETH(WETHAmt, REVVETHAmt);
+        uint WILDAmt = uniV2Swap(address(WETH), address(WILD), halfWETH, amountOutMin);
+        (,,uint WILDETHAmt) = uniV2Router.addLiquidity(address(WILD), address(WETH), WILDAmt, halfWETH, 0, 0, address(this), block.timestamp);
+        emit InvestWILDETH(WETHAmt, WILDETHAmt);
     }
 
-    function investMVI(uint WETHAmt) private {
-        uint MVIAmt = uniV2Swap(address(WETH), address(MVI), WETHAmt, 0);
+    function investMVI(uint WETHAmt, uint amountOutMin) private {
+        uint MVIAmt = uniV2Swap(address(WETH), address(MVI), WETHAmt, amountOutMin);
         emit InvestMVI(WETHAmt, MVIAmt);
     }
 
     /// @param amount Amount to withdraw in USD
-    function withdraw(uint amount, uint[] calldata tokenPrice) external onlyVault returns (uint WETHAmt) {
+    function withdraw(uint amount, uint[] calldata amountsOutMin) external onlyVault returns (uint WETHAmt) {
         uint sharePerc = amount * 1e18 / getAllPoolInUSD(false);
+
         uint WETHAmtBefore = WETH.balanceOf(address(this));
-        withdrawAXSETH(sharePerc, tokenPrice[1]);
-        withdrawSLPETH(sharePerc, tokenPrice[2]);
-        withdrawILVETH(sharePerc, tokenPrice[3]);
-        withdrawGHSTETH(sharePerc, tokenPrice[4]);
-        withdrawREVVETH(sharePerc, tokenPrice[5]);
-        withdrawMVI(sharePerc, tokenPrice[6]);
+        withdrawAXSETH(sharePerc, amountsOutMin[1]);
+        withdrawSLPETH(sharePerc, amountsOutMin[2]);
+        withdrawILVETH(sharePerc, amountsOutMin[3]);
+        withdrawGHSTETH(sharePerc, amountsOutMin[4]);
+        withdrawWILDETH(sharePerc, amountsOutMin[5]);
+        withdrawMVI(sharePerc, amountsOutMin[6]);
         WETHAmt = WETH.balanceOf(address(this)) - WETHAmtBefore;
+
         WETH.safeTransfer(vault, WETHAmt);
+
         emit Withdraw(amount, WETHAmt);
     }
 
-    function withdrawAXSETH(uint sharePerc, uint AXSPriceInWETHMin) private {
+    function withdrawAXSETH(uint sharePerc, uint amountOutMin) private {
         uint AXSETHAmt = AXSETHVault.withdraw(AXSETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint AXSAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(AXS), address(WETH), AXSETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(AXS), address(WETH), AXSAmt, AXSAmt * AXSPriceInWETHMin / 1e18);
+        uint _WETHAmt = sushiSwap(address(AXS), address(WETH), AXSAmt, amountOutMin);
         emit WithdrawAXSETH(AXSETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawSLPETH(uint sharePerc, uint SLPPriceInWETHMin) private {
+    function withdrawSLPETH(uint sharePerc, uint amountOutMin) private {
         uint SLPETHAmt = SLPETHVault.withdraw(SLPETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint SLPAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(SLP), address(WETH), SLPETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(SLP), address(WETH), SLPAmt, SLPAmt * SLPPriceInWETHMin);
+        uint _WETHAmt = sushiSwap(address(SLP), address(WETH), SLPAmt, amountOutMin);
         emit WithdrawSLPETH(SLPETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawILVETH(uint sharePerc, uint ILVPriceInWETHMin) private {
+    function withdrawILVETH(uint sharePerc, uint amountOutMin) private {
         uint ILVETHAmt = ILVETHVault.withdraw(ILVETHVault.balanceOf(address(this)) * sharePerc / 1e18);
         (uint ILVAmt, uint WETHAmt) = sushiRouter.removeLiquidity(address(ILV), address(WETH), ILVETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = sushiSwap(address(ILV), address(WETH), ILVAmt, ILVAmt * ILVPriceInWETHMin / 1e18);
+        uint _WETHAmt = sushiSwap(address(ILV), address(WETH), ILVAmt, amountOutMin);
         emit WithdrawILVETH(ILVETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawGHSTETH(uint sharePerc, uint GHSTPriceInWETHMin) private {
+    function withdrawGHSTETH(uint sharePerc, uint amountOutMin) private {
         (uint GHSTAmt, uint WETHAmt) = GHSTETHVault.withdraw(GHSTETHVault.balanceOf(address(this)) * sharePerc / 1e18);
-        uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt, GHSTAmt * GHSTPriceInWETHMin / 1e18);
+        uniV3Swap(address(GHST), address(WETH), 10000, GHSTAmt, amountOutMin);
         emit WithdrawGHSTETH(GHSTAmt, WETHAmt);
     }
 
-    function withdrawREVVETH(uint sharePerc, uint REVVPriceInWETHMin) private {
-        uint REVVETHAmt = REVVETH.balanceOf(address(this)) * sharePerc / 1e18;
-        (uint REVVAmt, uint WETHAmt) = uniV2Router.removeLiquidity(address(REVV), address(WETH), REVVETHAmt, 0, 0, address(this), block.timestamp);
-        uint _WETHAmt = uniV2Swap(address(REVV), address(WETH), REVVAmt, REVVAmt * REVVPriceInWETHMin / 1e18);
-        emit WithdrawREVVETH(REVVETHAmt, WETHAmt + _WETHAmt);
+    function withdrawWILDETH(uint sharePerc, uint amountOutMin) private {
+        uint WILDETHAmt = WILDETH.balanceOf(address(this)) * sharePerc / 1e18;
+        (uint WILDAmt, uint WETHAmt) = uniV2Router.removeLiquidity(address(WILD), address(WETH), WILDETHAmt, 0, 0, address(this), block.timestamp);
+        uint _WETHAmt = uniV2Swap(address(WILD), address(WETH), WILDAmt, amountOutMin);
+        emit WithdrawWILDETH(WILDETHAmt, WETHAmt + _WETHAmt);
     }
 
-    function withdrawMVI(uint sharePerc, uint MVIPriceInWETHMin) private {
+    function withdrawMVI(uint sharePerc, uint amountOutMin) private {
         uint MVIAmt = MVI.balanceOf(address(this)) * sharePerc / 1e18;
-        uint WETHAmt = uniV2Swap(address(MVI), address(WETH), MVIAmt, MVIAmt * MVIPriceInWETHMin / 1e18);
+        uint WETHAmt = uniV2Swap(address(MVI), address(WETH), MVIAmt, amountOutMin);
         emit WithdrawMVI(MVIAmt, WETHAmt);
     }
 
@@ -404,15 +403,17 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     }
 
     /// @param amount Amount to reimburse to vault contract in ETH
-    function reimburse(uint farmIndex, uint amount) external onlyVault returns (uint WETHAmt) {
-        if (farmIndex == 0) withdrawAXSETH(amount * 1e18 / getAXSETHPool(), 0);
-        else if (farmIndex == 1) withdrawSLPETH(amount * 1e18 / getSLPETHPool(), 0);
-        else if (farmIndex == 2) withdrawILVETH(amount * 1e18 / getILVETHPool(false), 0);
-        else if (farmIndex == 3) withdrawGHSTETH(amount * 1e18 / getGHSTETHPool(), 0);
-        else if (farmIndex == 4) withdrawREVVETH(amount * 1e18 / getREVVETHPool(), 0);
-        else if (farmIndex == 5) withdrawMVI(amount * 1e18 / getMVIPool(), 0);
+    function reimburse(uint farmIndex, uint amount, uint amountOutMin) external onlyVault returns (uint WETHAmt) {
+        if (farmIndex == 0) withdrawAXSETH(amount * 1e18 / getAXSETHPool(), amountOutMin);
+        else if (farmIndex == 1) withdrawSLPETH(amount * 1e18 / getSLPETHPool(), amountOutMin);
+        else if (farmIndex == 2) withdrawILVETH(amount * 1e18 / getILVETHPool(false), amountOutMin);
+        else if (farmIndex == 3) withdrawGHSTETH(amount * 1e18 / getGHSTETHPool(), amountOutMin);
+        else if (farmIndex == 4) withdrawWILDETH(amount * 1e18 / getWILDETHPool(), amountOutMin);
+        else if (farmIndex == 5) withdrawMVI(amount * 1e18 / getMVIPool(), amountOutMin);
+
         WETHAmt = WETH.balanceOf(address(this));
         WETH.safeTransfer(vault, WETHAmt);
+
         emit Reimburse(WETHAmt);
     }
 
@@ -422,26 +423,22 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         withdrawSLPETH(1e18, 0);
         withdrawILVETH(1e18, 0);
         withdrawGHSTETH(1e18, 0);
-        withdrawREVVETH(1e18, 0);
+        withdrawWILDETH(1e18, 0);
         withdrawMVI(1e18, 0);
+
         uint WETHAmt = WETH.balanceOf(address(this));
         WETH.safeTransfer(vault, WETHAmt);
         watermark = 0;
+
         emit EmergencyWithdraw(WETHAmt);
     }
 
     function sushiSwap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
-        address[] memory path = new address[](2);
-        path[0] = from;
-        path[1] = to;
-        return sushiRouter.swapExactTokensForTokens(amount, amountOutMin, path, address(this), block.timestamp)[1];
+        return sushiRouter.swapExactTokensForTokens(amount, amountOutMin, getPath(from, to), address(this), block.timestamp)[1];
     }
 
     function uniV2Swap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
-        address[] memory path = new address[](2);
-        path[0] = from;
-        path[1] = to;
-        return uniV2Router.swapExactTokensForTokens(amount, amountOutMin, path, address(this), block.timestamp)[1];
+        return uniV2Router.swapExactTokensForTokens(amount, amountOutMin, getPath(from, to), address(this), block.timestamp)[1];
     }
 
     function uniV3Swap(address tokenIn, address tokenOut, uint24 fee, uint amountIn, uint amountOutMin) private returns (uint amountOut) {
@@ -457,6 +454,17 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
                 sqrtPriceLimitX96: 0
             });
         amountOut = uniV3Router.exactInputSingle(params);
+    }
+
+    function swapREVVToWILD(uint[] calldata amountOutMin) external {
+        uint REVVETHAmt = REVVETH.balanceOf(address(this));
+        (uint REVVAmt, uint WETHAmt) = uniV2Router.removeLiquidity(address(REVV), address(WETH), REVVETHAmt, 0, 0, address(this), block.timestamp);
+        WETHAmt += uniV2Swap(address(REVV), address(WETH), REVVAmt, amountOutMin[0]);
+        uint halfWETHAmt = WETHAmt / 2;
+        uint WILDAmt = uniV2Swap(address(WETH), address(WILD), halfWETHAmt, amountOutMin[1]);
+        WILD.safeApprove(address(uniV2Router), type(uint).max);
+        uniV2Router.addLiquidity(address(WILD), address(WETH), WILDAmt, halfWETHAmt, 0, 0, address(this), block.timestamp);
+        WILDETH.safeApprove(address(uniV2Router), type(uint).max);
     }
 
     function setVault(address _vault) external onlyOwner {
@@ -487,11 +495,12 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     }
 
     function getILVETHPool(bool includeVestedILV) private view returns (uint) {
+        uint _totalSupply = ILVETHVault.totalSupply();
+        if (_totalSupply == 0) return 0;
         uint ILVETHVaultPool =  includeVestedILV ? 
             ILVETHVault.getAllPoolInETH(): 
             ILVETHVault.getAllPoolInETHExcludeVestedILV();
-        if (ILVETHVaultPool == 0) return 0;
-        return ILVETHVaultPool * ILVETHVault.balanceOf(address(this)) / ILVETHVault.totalSupply();
+        return ILVETHVaultPool * ILVETHVault.balanceOf(address(this)) / _totalSupply;
     }
 
     function getGHSTETHPool() private view returns (uint) {
@@ -500,14 +509,14 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         return GHSTETHVaultPool * GHSTETHVault.balanceOf(address(this)) / GHSTETHVault.totalSupply();
     }
 
-    function getREVVETHPool() private view returns (uint) {
-        uint REVVETHAmt = REVVETH.balanceOf(address(this));
-        if (REVVETHAmt == 0) return 0;
-        uint REVVPrice = uniV2Router.getAmountsOut(1e18, getPath(address(REVV), address(WETH)))[1];
-        (uint112 reserveREVV, uint112 reserveWETH,) = REVVETH.getReserves();
-        uint totalReserve = reserveREVV * REVVPrice / 1e18 + reserveWETH;
-        uint pricePerFullShare = totalReserve * 1e18 / REVVETH.totalSupply();
-        return REVVETHAmt * pricePerFullShare / 1e18;
+    function getWILDETHPool() private view returns (uint) {
+        uint WILDETHAmt = WILDETH.balanceOf(address(this));
+        if (WILDETHAmt == 0) return 0;
+        uint WILDPrice = uniV2Router.getAmountsOut(1e18, getPath(address(WILD), address(WETH)))[1];
+        (uint112 reserveWILD, uint112 reserveWETH,) = WILDETH.getReserves();
+        uint totalReserve = reserveWILD * WILDPrice / 1e18 + reserveWETH;
+        uint pricePerFullShare = totalReserve * 1e18 / WILDETH.totalSupply();
+        return WILDETHAmt * pricePerFullShare / 1e18;
     }
 
     function getMVIPool() private view returns (uint) {
@@ -521,14 +530,16 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
         pools = new uint[](6);
         pools[0] = getAXSETHPool();
         pools[1] = getSLPETHPool();
+        // console.log("checkpoint1");
         pools[2] = getILVETHPool(includeVestedILV);
+        // console.log("checkpoint2");
         pools[3] = getGHSTETHPool();
-        pools[4] = getREVVETHPool();
+        pools[4] = getWILDETHPool();
         pools[5] = getMVIPool();
     }
 
     /// @notice This function return only farms TVL in ETH
-    function getAllPool(bool includeVestedILV) public view returns (uint) {
+    function getAllPoolInETH(bool includeVestedILV) public view returns (uint) {
         uint[] memory pools = getEachPool(includeVestedILV);
         return pools[0] + pools[1] + pools[2] + pools[3] + pools[4] + pools[5]; 
     }
@@ -536,7 +547,7 @@ contract MVFStrategy is Initializable, OwnableUpgradeable {
     function getAllPoolInUSD(bool includeVestedILV) public view returns (uint) {
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer()); // 8 decimals
         require(ETHPriceInUSD > 0, "ChainLink error");
-        return getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
+        return getAllPoolInETH(includeVestedILV) * ETHPriceInUSD / 1e8;
     }
 
     function getCurrentCompositionPerc() external view returns (uint[] memory percentages) {

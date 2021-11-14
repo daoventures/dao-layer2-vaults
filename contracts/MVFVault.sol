@@ -31,16 +31,16 @@ interface IChainlink {
 }
 
 interface IStrategy {
-    function invest(uint amount) external;
-    function withdraw(uint sharePerc, uint[] calldata tokenPrice) external;
+    function invest(uint amount, uint[] calldata amountOutMin) external;
+    function withdraw(uint sharePerc, uint[] calldata amountOutMin) external;
     function collectProfitAndUpdateWatermark() external returns (uint);
     function adjustWatermark(uint amount, bool signs) external; 
-    function reimburse(uint farmIndex, uint sharePerc) external returns (uint);
+    function reimburse(uint farmIndex, uint sharePerc, uint amountOutMin) external returns (uint);
     function emergencyWithdraw() external;
     function profitFeePerc() external view returns (uint);
     function setProfitFeePerc(uint profitFeePerc) external;
     function watermark() external view returns (uint);
-    function getAllPool(bool includeVestedILV) external view returns (uint);
+    function getAllPoolInETH(bool includeVestedILV) external view returns (uint);
 }
 
 contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable, 
@@ -66,7 +66,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     // Temporarily variable for LP token distribution only
     address[] addresses;
     mapping(address => uint) public depositAmt; // Amount in USD (18 decimals)
-    uint totalDepositAmt;
+    uint public totalPendingDepositAmt; // Total pending amount to invest
 
     address public treasuryWallet;
     address public communityWallet;
@@ -86,10 +86,12 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     event SetCustomNetworkFeePerc(uint oldCustomNetworkFeePerc, uint newCustomNetworkFeePerc);
     event SetProfitFeePerc(uint oldProfitFeePerc, uint newProfitFeePerc);
     event SetPercKeepInVault(uint[] oldPercKeepInVault, uint[] newPercKeepInVault);
-    event SetTreasuryWallet(address oldTreasuryWallet, address newTreasuryWallet);
-    event SetCommunityWallet(address oldCommunityWallet, address newCommunityWallet);
     event SetStrategistWallet(address oldStrategistWallet, address newStrategistWallet);
-    event SetAdminWallet(address oldAdmin, address newAdmin);
+    event SetAddresses(
+        address oldTreasuryWallet, address newTreasuryWallet,
+        address oldCommunityWallet, address newCommunityWallet,
+        address oldAdmin, address newAdmin
+    );
     event SetBiconomy(address oldBiconomy, address newBiconomy);
     
     modifier onlyOwnerOrAdmin {
@@ -127,14 +129,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         WETH.safeApprove(address(strategy), type(uint).max);
     }
 
-    function approveCurve() external {
-        USDT.safeApprove(address(curve), type(uint).max);
-        USDC.safeApprove(address(curve), type(uint).max);
-        DAI.safeApprove(address(curve), type(uint).max);
-    }
-
     function deposit(uint amount, IERC20Upgradeable token) external nonReentrant whenNotPaused {
-        require(msg.sender == tx.origin || isTrustedForwarder(msg.sender), "Only EOA or Biconomy");
         require(amount > 0, "Amount must > 0");
         require(token == USDT || token == USDC || token == DAI, "Invalid token deposit");
 
@@ -156,18 +151,18 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             addresses.push(msgSender);
             depositAmt[msgSender] = amount;
         } else depositAmt[msgSender] += amount;
-        totalDepositAmt += amount;
+        totalPendingDepositAmt += amount;
 
         emit Deposit(msgSender, amtDeposit, address(token));
     }
 
-    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata tokenPrice) external nonReentrant {
+    function withdraw(uint share, IERC20Upgradeable token, uint[] calldata amountsOutMin) external nonReentrant {
         require(msg.sender == tx.origin, "Only EOA");
         require(share > 0 || share <= balanceOf(msg.sender), "Invalid share amount");
         require(token == USDT || token == USDC || token == DAI, "Invalid token withdraw");
 
         uint _totalSupply = totalSupply();
-        uint withdrawAmt = (getAllPoolInUSD(false) - totalDepositAmt) * share / _totalSupply;
+        uint withdrawAmt = (getAllPoolInUSD(false) - totalPendingDepositAmt) * share / _totalSupply;
         _burn(msg.sender, share);
 
         uint tokenAmtInVault = token.balanceOf(address(this));
@@ -204,9 +199,9 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             } else {
                 // Not enough if swap from token1 + token2 in vault, need to withdraw from strategy
                 if (!paused()) {
-                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, tokenPrice);
+                    withdrawAmt = withdrawFromStrategy(token, withdrawAmt, tokenAmtInVault, amountsOutMin);
                 } else {
-                    withdrawAmt = withdrawWhenPaused(token, share, _totalSupply, tokenPrice);
+                    // When paused there is always enough Stablecoins in vault
                 }
             }
         }
@@ -215,31 +210,21 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function withdrawFromStrategy(
-        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata tokenPrice
+        IERC20Upgradeable token, uint withdrawAmt, uint tokenAmtInVault, uint[] calldata amountsOutMin
     ) private returns (uint) {
-        strategy.withdraw(withdrawAmt - tokenAmtInVault, tokenPrice);
+        strategy.withdraw(withdrawAmt - tokenAmtInVault, amountsOutMin);
         strategy.adjustWatermark(withdrawAmt - tokenAmtInVault, false);
         if (token != DAI) tokenAmtInVault /= 1e12;
         uint WETHAmt = WETH.balanceOf(address(this));
-        uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
         withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-            WETHAmt, amountOutMin, getPath(address(WETH), address(token)), address(this), block.timestamp
+            WETHAmt, amountsOutMin[0], getPath(address(WETH), address(token)), address(this), block.timestamp
         )[1]) + tokenAmtInVault;
+        
         token.safeTransfer(msg.sender, withdrawAmt);
         return withdrawAmt;
     }
 
-    function withdrawWhenPaused(
-        IERC20Upgradeable token, uint share, uint _totalSupply, uint[] calldata tokenPrice
-    ) private returns (uint withdrawAmt) {
-        uint WETHAmt = WETH.balanceOf(address(this));
-        uint amountOutMin = WETHAmt * tokenPrice[0] / 1e18;
-        withdrawAmt = (sushiRouter.swapExactTokensForTokens(
-            WETHAmt * share / _totalSupply, amountOutMin, getPath(address(WETH), address(token)), msg.sender, block.timestamp
-        ))[1];
-    }
-
-    function invest() public whenNotPaused {
+    function invest(uint[] calldata amountsOutMin) public whenNotPaused {
         require(
             msg.sender == admin ||
             msg.sender == owner() ||
@@ -249,9 +234,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         if (strategy.watermark() > 0) collectProfitAndUpdateWatermark();
         (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
 
-        (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt);
-        strategy.invest(WETHAmt);
-        strategy.adjustWatermark(tokenAmtToInvest, true);
+        (uint WETHAmt, uint tokenAmtToInvest, uint pool) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt, amountsOutMin);
+        if (tokenAmtToInvest > 0) {
+            strategy.invest(WETHAmt, amountsOutMin);
+            strategy.adjustWatermark(tokenAmtToInvest, true);
+        }
         distributeLPToken(pool);
 
         emit Invest(WETHAmt);
@@ -268,20 +255,21 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     function distributeLPToken(uint pool) private {
-        if (totalSupply() != 0) pool -= totalDepositAmt;
+        pool -= totalPendingDepositAmt; // Pool before new invest
+        uint _newInvestedPool = totalSupply() == 0 ? getAllPoolInUSD(true) : getAllPoolInUSD(true) - pool;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
             uint _depositAmt = depositAmt[depositAcc];
-            uint _totalSupply = totalSupply();
-            uint share = _totalSupply == 0 ? _depositAmt : _depositAmt * _totalSupply / pool;
+            uint _depositAmtAfterSlippage = _newInvestedPool * _depositAmt / totalPendingDepositAmt;
+            uint share = totalSupply() == 0 ? _depositAmtAfterSlippage : _depositAmtAfterSlippage * totalSupply() / pool;
             _mint(depositAcc, share);
-            pool = pool + _depositAmt;
+            pool += _depositAmtAfterSlippage; // Update pool for next loop
             depositAmt[depositAcc] = 0;
             emit DistributeLPToken(depositAcc, share);
         }
         delete addresses;
-        totalDepositAmt = 0;
+        totalPendingDepositAmt = 0;
     }
 
     function transferOutFees() public returns (uint USDTAmt, uint USDCAmt, uint DAIAmt) {
@@ -321,30 +309,32 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         }
     }
 
-    function swapTokenToWETH(uint USDTAmt, uint USDCAmt, uint DAIAmt) private returns (uint WETHAmt, uint tokenAmtToInvest, uint pool) {
+    function swapTokenToWETH(
+        uint USDTAmt, uint USDCAmt, uint DAIAmt, uint[] calldata amountsOutMin
+    ) private returns (uint WETHAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
         pool = getAllPoolInUSD(true);
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
-            USDTAmt = USDTAmt - USDTAmtKeepInVault;
-            WETHAmt = sushiSwap(address(USDT), address(WETH), USDTAmt);
+            USDTAmt -= USDTAmtKeepInVault;
+            WETHAmt = swap(address(USDT), address(WETH), USDTAmt, amountsOutMin[0]);
             tokenAmtToInvest = USDTAmt * 1e12;
         }
 
         uint USDCAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[1], pool) / 1e12;
         if (USDCAmt > USDCAmtKeepInVault + 1e6) {
-            USDCAmt = USDCAmt - USDCAmtKeepInVault;
-            uint _WETHAmt = sushiSwap(address(USDC), address(WETH), USDCAmt);
-            WETHAmt = WETHAmt + _WETHAmt;
+            USDCAmt -= USDCAmtKeepInVault;
+            uint _WETHAmt = swap(address(USDC), address(WETH), USDCAmt, amountsOutMin[1]);
+            WETHAmt += _WETHAmt;
             tokenAmtToInvest = tokenAmtToInvest + USDCAmt * 1e12;
         }
 
         uint DAIAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[2], pool);
         if (DAIAmt > DAIAmtKeepInVault + 1e18) {
-            DAIAmt = DAIAmt - DAIAmtKeepInVault;
-            uint _WETHAmt = sushiSwap(address(DAI), address(WETH), DAIAmt);
-            WETHAmt = WETHAmt + _WETHAmt;
+            DAIAmt -= DAIAmtKeepInVault;
+            uint _WETHAmt = swap(address(DAI), address(WETH), DAIAmt, amountsOutMin[2]);
+            WETHAmt += _WETHAmt;
             tokenAmtToInvest = tokenAmtToInvest + DAIAmt;
         }
     }
@@ -354,11 +344,11 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
     }
 
     /// @param amount Amount to reimburse (decimal follow token)
-    function reimburse(uint farmIndex, address token, uint amount) external onlyOwnerOrAdmin {
+    function reimburse(uint farmIndex, address token, uint amount, uint[] calldata amountsOutMin) external onlyOwnerOrAdmin {
         uint WETHAmt;
         WETHAmt = sushiRouter.getAmountsOut(amount, getPath(token, address(WETH)))[1];
-        WETHAmt = strategy.reimburse(farmIndex, WETHAmt);
-        sushiSwap(address(WETH), token, WETHAmt);
+        WETHAmt = strategy.reimburse(farmIndex, WETHAmt, amountsOutMin[1]);
+        swap(address(WETH), token, WETHAmt, amountsOutMin[0]);
 
         if (token != address(DAI)) amount *= 1e12;
         strategy.adjustWatermark(amount, false);
@@ -368,25 +358,36 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function emergencyWithdraw() external onlyOwnerOrAdmin whenNotPaused {
         _pause();
+        
         strategy.emergencyWithdraw();
+        uint portionWETHAmt = WETH.balanceOf(address(this)) / 3;
+        swap(address(WETH), address(USDT), portionWETHAmt, 0);
+        swap(address(WETH), address(USDC), portionWETHAmt, 0);
+        swap(address(WETH), address(DAI), portionWETHAmt, 0);
     }
 
-    function reinvest() external onlyOwnerOrAdmin whenPaused {
+    function reinvest(uint[] calldata amountsOutMin) external onlyOwnerOrAdmin whenPaused {
         _unpause();
 
-        uint WETHAmt = WETH.balanceOf(address(this));
-        strategy.invest(WETHAmt);
-        uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
-        require(ETHPriceInUSD > 0, "ChainLink error");
-        strategy.adjustWatermark(WETHAmt * ETHPriceInUSD / 1e8, true);
+        (uint USDTAmt, uint USDCAmt, uint DAIAmt) = transferOutFees();
+        (uint WETHAmt, uint tokenAmtToInvest,) = swapTokenToWETH(USDTAmt, USDCAmt, DAIAmt, amountsOutMin);
+        strategy.invest(WETHAmt, amountsOutMin);
+        strategy.adjustWatermark(tokenAmtToInvest, true);
 
         emit Reinvest(WETHAmt);
     }
+    
+    //  This function release the LP token if the contract is in paused mode
+    function releaseLPToken() external onlyOwner {
+        require(paused(), "Not paused");
+        
+        distributeLPToken(getAllPoolInUSD(true));
+    }
 
-    function sushiSwap(address from, address to, uint amount) private returns (uint) {
-        return (sushiRouter.swapExactTokensForTokens(
-            amount, 0, getPath(from, to), address(this), block.timestamp
-        ))[1];
+    function swap(address from, address to, uint amount, uint amountOutMin) private returns (uint) {
+        return sushiRouter.swapExactTokensForTokens(
+            amount, amountOutMin, getPath(from, to), address(this), block.timestamp
+        )[1];
     }
 
     function setNetworkFeeTier2(uint[] calldata _networkFeeTier2) external onlyOwner {
@@ -432,27 +433,18 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function setProfitFeePerc(uint profitFeePerc) external onlyOwner {
         require(profitFeePerc < 3001, "Profit fee cannot > 30%");
+
         uint oldProfitFeePerc = strategy.profitFeePerc();
         strategy.setProfitFeePerc(profitFeePerc);
+
         emit SetProfitFeePerc(oldProfitFeePerc, profitFeePerc);
     }
 
     function setPercKeepInVault(uint[] calldata _percKeepInVault) external onlyOwner {
         uint[] memory oldPercKeepInVault = percKeepInVault;
         percKeepInVault = _percKeepInVault;
+
         emit SetPercKeepInVault(oldPercKeepInVault, _percKeepInVault);
-    }
-
-    function setTreasuryWallet(address _treasuryWallet) external onlyOwner {
-        address oldTreasuryWallet = treasuryWallet;
-        treasuryWallet = _treasuryWallet;
-        emit SetTreasuryWallet(oldTreasuryWallet, _treasuryWallet);
-    }
-
-    function setCommunityWallet(address _communityWallet) external onlyOwner {
-        address oldCommunityWallet = communityWallet;
-        communityWallet = _communityWallet;
-        emit SetCommunityWallet(oldCommunityWallet, _communityWallet);
     }
 
     function setStrategist(address _strategist) external {
@@ -462,10 +454,16 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         emit SetStrategistWallet(oldStrategist, _strategist);
     }
 
-    function setAdmin(address _admin) external onlyOwner {
+    function setAddresses(address _treasuryWallet, address _communityWallet, address _admin) external onlyOwner {
+        address oldTreasuryWallet = treasuryWallet;
+        address oldCommunityWallet = communityWallet;
         address oldAdmin = admin;
+
+        treasuryWallet = _treasuryWallet;
+        communityWallet = _communityWallet;
         admin = _admin;
-        emit SetAdminWallet(oldAdmin, _admin);
+
+        emit SetAddresses(oldTreasuryWallet, _treasuryWallet, oldCommunityWallet, _communityWallet, oldAdmin, _admin);
     }
 
     function setBiconomy(address _biconomy) external onlyOwner {
@@ -482,7 +480,9 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return "1";
     }
 
-    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (address token1, uint token1AmtInVault, address token2, uint token2AmtInVault) {
+    function getOtherTokenAndBal(IERC20Upgradeable token) private view returns (
+        address token1, uint token1AmtInVault, address token2, uint token2AmtInVault
+    ) {
         if (token == USDT) {
             token1 = address(USDC);
             token1AmtInVault = USDC.balanceOf(address(this)) * 1e12;
@@ -517,7 +517,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         return addresses.length;
     }
 
-    function getAllPoolInUSD(bool includeVestedILV) private view returns (uint) {
+    function getAllPoolInUSD(bool includeVestedILV) public view returns (uint) {
         // ETHPriceInUSD amount in 8 decimals
         uint ETHPriceInUSD = uint(IChainlink(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419).latestAnswer());
         require(ETHPriceInUSD > 0, "ChainLink error");
@@ -526,7 +526,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
             USDC.balanceOf(address(this)) * 1e12 + DAI.balanceOf(address(this));
 
         if (paused()) return WETH.balanceOf(address(this)) * ETHPriceInUSD / 1e8 + tokenKeepInVault - fees;
-        uint strategyPoolInUSD = strategy.getAllPool(includeVestedILV) * ETHPriceInUSD / 1e8;
+        uint strategyPoolInUSD = strategy.getAllPoolInETH(includeVestedILV) * ETHPriceInUSD / 1e8;
         
         return strategyPoolInUSD + tokenKeepInVault - fees;
     }
@@ -537,6 +537,6 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     /// @notice Can be use for calculate both user shares & APR    
     function getPricePerFullShare() external view returns (uint) {
-        return (getAllPoolInUSD(false) - totalDepositAmt) * 1e18 / totalSupply();
+        return (getAllPoolInUSD(false) - totalPendingDepositAmt) * 1e18 / totalSupply();
     }
 }
