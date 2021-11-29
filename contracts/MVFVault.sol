@@ -256,7 +256,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
 
     function distributeLPToken(uint pool) private {
         pool -= totalPendingDepositAmt; // Pool before new invest
-        uint _newInvestedPool = totalSupply() == 0 ? getAllPoolInUSD(true) : getAllPoolInUSD(true) - pool;
+        uint _newInvestedPool = totalSupply() == 0 ? getAllPoolInUSD(false) : getAllPoolInUSD(false) - pool;
         address[] memory _addresses = addresses;
         for (uint i; i < _addresses.length; i ++) {
             address depositAcc = _addresses[i];
@@ -313,7 +313,7 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint USDTAmt, uint USDCAmt, uint DAIAmt, uint[] calldata amountsOutMin
     ) private returns (uint WETHAmt, uint tokenAmtToInvest, uint pool) {
         uint[] memory _percKeepInVault = percKeepInVault;
-        pool = getAllPoolInUSD(true);
+        pool = getAllPoolInUSD(false);
 
         uint USDTAmtKeepInVault = calcTokenKeepInVault(_percKeepInVault[0], pool) / 1e12;
         if (USDTAmt > USDTAmtKeepInVault + 1e6) {
@@ -529,10 +529,6 @@ contract MVFVault is Initializable, ERC20Upgradeable, OwnableUpgradeable,
         uint strategyPoolInUSD = strategy.getAllPoolInETH(includeVestedILV) * ETHPriceInUSD / 1e8;
         
         return strategyPoolInUSD + tokenKeepInVault - fees;
-    }
-
-    function getAllPoolInUSD() external view returns (uint) {
-        return getAllPoolInUSD(true);
     }
 
     /// @notice Can be use for calculate both user shares & APR    
