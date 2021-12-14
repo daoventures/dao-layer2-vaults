@@ -44,7 +44,7 @@ describe("Metaverse-Farmer", () => {
         const admin = await ethers.getSigner(adminAddr)
         await deployer.sendTransaction({to: admin.address, value: ethers.utils.parseEther("10")})
 
-        // // Deploy Sushi
+        // Deploy Sushi
         // const SushiVault = await ethers.getContractFactory("Sushi", deployer)
         // const sushiVault = await SushiVault.deploy()
         const sushiVaultArtifact = await artifacts.readArtifact("Sushi")
@@ -79,16 +79,17 @@ describe("Metaverse-Farmer", () => {
         // const SLPETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
         // const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
 
-        // Deploy MANA-ETH
-        const dataMANAETH = sushiVaultInterface.encodeFunctionData(
-            "initialize",
-            [
-                "DAO L1 Sushi MANA-ETH", "daoSushiMANA", 240,
-                treasury.address, community.address, strategist.address, admin.address,
-            ]
-        )
-        await sushiFactory.connect(admin).createVault(dataMANAETH)
-        const MANAETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        // // Deploy MANA-ETH
+        // const dataMANAETH = sushiVaultInterface.encodeFunctionData(
+        //     "initialize",
+        //     [
+        //         "DAO L1 Sushi MANA-ETH", "daoSushiMANA", 240,
+        //         treasury.address, community.address, strategist.address, admin.address,
+        //     ]
+        // )
+        // await sushiFactory.connect(admin).createVault(dataMANAETH)
+        // const MANAETHVaultAddr = await sushiFactory.getVault((await sushiFactory.getVaultLength()).sub(1))
+        const MANAETHVaultAddr = "0x5eF6d1CEfdd8Cff9945fA72CC065185758690A69"
         const MANAETHVault = await ethers.getContractAt("Sushi", MANAETHVaultAddr, deployer)
         
         // // Deploy ILV-ETH
@@ -149,28 +150,28 @@ describe("Metaverse-Farmer", () => {
         // await ILVETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
         // await GHSTETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
         // await GHSTETHVault.connect(admin).setWhitelistAddress(mvfStrategy.address, true)
-        await MANAETHVault.connect(admin).setWhitelistAddress("0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2", true)
+        // await MANAETHVault.connect(admin).setWhitelistAddress("0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2", true)
 
         // Upgrade contracts
-        const proxyAdminAddr = "0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44"
-        const proxyAdmin = await ethers.getContractAt("DAOProxyAdmin", proxyAdminAddr, admin)
+        // const proxyAdminAddr = "0xfdCfa2B7F6318b09Ce1a6dc82008410659211B44"
+        // const proxyAdmin = await ethers.getContractAt("DAOProxyAdmin", proxyAdminAddr, admin)
 
         const mvfVaultProxyAddr = "0x5b3ae8b672a753906b1592d44741f71fbd05ba8c"
-        const mvfVaultFac = await ethers.getContractFactory("MVFVault")
-        const mvfVaultImpl = await mvfVaultFac.deploy()
-        await proxyAdmin.upgrade(mvfVaultProxyAddr, mvfVaultImpl.address)
+        // const mvfVaultFac = await ethers.getContractFactory("MVFVault")
+        // const mvfVaultImpl = await mvfVaultFac.deploy()
+        // await proxyAdmin.upgrade(mvfVaultProxyAddr, mvfVaultImpl.address)
         const mvfVault = await ethers.getContractAt("MVFVault", mvfVaultProxyAddr, deployer)
 
         const mvfStrategyProxyAddr = "0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2"
-        const mvfStrategyFac = await ethers.getContractFactory("MVFStrategy", deployer)
-        const mvfStrategyImpl = await mvfStrategyFac.deploy()
-        await proxyAdmin.upgrade(mvfStrategyProxyAddr, mvfStrategyImpl.address)
+        // const mvfStrategyFac = await ethers.getContractFactory("MVFStrategy", deployer)
+        // const mvfStrategyImpl = await mvfStrategyFac.deploy()
+        // await proxyAdmin.upgrade(mvfStrategyProxyAddr, mvfStrategyImpl.address)
         const mvfStrategy = await ethers.getContractAt("MVFStrategy", mvfStrategyProxyAddr, deployer)
 
-        await mvfVault.connect(admin).reimburse(4, USDCAddr, ethers.utils.parseUnits("4000", 6), [0, 0])
+        // await mvfVault.connect(admin).reimburse(4, USDCAddr, ethers.utils.parseUnits("4000", 6), [0, 0])
 
         // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString())
-        await mvfStrategy.swapTokensAndInvest(MANAETHVaultAddr, [0, 0, 0, 0, 0, 0, 0, 0, 0])
+        // await mvfStrategy.swapTokensAndInvest(MANAETHVaultAddr, [0, 0, 0, 0, 0, 0, 0, 0, 0])
         // console.log((await mvfStrategy.getCurrentCompositionPerc()).toString())
 
         // const REVVContract = new ethers.Contract(REVVAddr, IERC20_ABI, deployer)
@@ -398,149 +399,149 @@ describe("Metaverse-Farmer", () => {
         console.log("-----withdraw-----")
         amountsOutMin = [0, 0, 0, 0, 0, 0]
 
-        // const getAmountsOutMin = async (amountWithdrawInLP, stablecoinAddr, _provider) => {
-            const amountWithdrawInLP = await mvfVault.balanceOf(client.address)
-            const stablecoinAddr = USDTAddr
-            const sushi_ABI = require("../abis/sushi_ABI.json")
-            const ILVETH_ABI = require("../abis/ILVETH_ABI.json")
+        // // const getAmountsOutMin = async (amountWithdrawInLP, stablecoinAddr, _provider) => {
+        //     const amountWithdrawInLP = await mvfVault.balanceOf(client.address)
+        //     const stablecoinAddr = USDTAddr
+        //     const sushi_ABI = require("../abis/sushi_ABI.json")
+        //     const ILVETH_ABI = require("../abis/ILVETH_ABI.json")
 
-            const AXSETHVaultAddr = "0xcE097910Fc2DB329683353dcebF881A48cbA181e"
-            const ILVETHVaultAddr = "0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e"
-            // const MANAETHVaultAddr = ""
+        //     const AXSETHVaultAddr = "0xcE097910Fc2DB329683353dcebF881A48cbA181e"
+        //     const ILVETHVaultAddr = "0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e"
+        //     // const MANAETHVaultAddr = ""
 
-            // const provider = new ethers.providers.Web3Provider(_provider)
-            const provider = deployer
-            const sRouter = new ethers.Contract(sRouterAddr, router_ABI, provider)
-            const uRouter = new ethers.Contract(uniRouterAddr, router_ABI, provider)
+        //     // const provider = new ethers.providers.Web3Provider(_provider)
+        //     const provider = deployer
+        //     const sRouter = new ethers.Contract(sRouterAddr, router_ABI, provider)
+        //     const uRouter = new ethers.Contract(uniRouterAddr, router_ABI, provider)
             
-            // const share = new ethers.BigNumber.from(amountWithdrawInLP)
-            const share = amountWithdrawInLP
-            const allPoolInUSD = await mvfVault["getAllPoolInUSD(bool)"](false)
-            const amtWithdrawInUSD = (allPoolInUSD.sub(await mvfVault.totalPendingDepositAmt())).mul(share).div(await mvfVault.totalSupply())
+        //     // const share = new ethers.BigNumber.from(amountWithdrawInLP)
+        //     const share = amountWithdrawInLP
+        //     const allPoolInUSD = await mvfVault["getAllPoolInUSD(bool)"](false)
+        //     const amtWithdrawInUSD = (allPoolInUSD.sub(await mvfVault.totalPendingDepositAmt())).mul(share).div(await mvfVault.totalSupply())
             
-            // const USDTContract = new ethers.Contract(USDTAddr, IERC20_ABI, provider)
-            // const USDCContract = new ethers.Contract(USDCAddr, IERC20_ABI, provider)
-            // const DAIContract = new ethers.Contract(DAIAddr, IERC20_ABI, provider)
+        //     // const USDTContract = new ethers.Contract(USDTAddr, IERC20_ABI, provider)
+        //     // const USDCContract = new ethers.Contract(USDCAddr, IERC20_ABI, provider)
+        //     // const DAIContract = new ethers.Contract(DAIAddr, IERC20_ABI, provider)
 
-            const USDTAmtInVault = (await USDTContract.balanceOf(mvfVault.address)).mul(ethers.utils.parseUnits("1", 12))
-            const USDCAmtInVault = (await USDCContract.balanceOf(mvfVault.address)).mul(ethers.utils.parseUnits("1", 12))
-            const DAIAmtInVault = await DAIContract.balanceOf(mvfVault.address)
-            const totalAmtInVault = (USDTAmtInVault).add(USDCAmtInVault).add(DAIAmtInVault).sub(await mvfVault.fees())
+        //     const USDTAmtInVault = (await USDTContract.balanceOf(mvfVault.address)).mul(ethers.utils.parseUnits("1", 12))
+        //     const USDCAmtInVault = (await USDCContract.balanceOf(mvfVault.address)).mul(ethers.utils.parseUnits("1", 12))
+        //     const DAIAmtInVault = await DAIContract.balanceOf(mvfVault.address)
+        //     const totalAmtInVault = (USDTAmtInVault).add(USDCAmtInVault).add(DAIAmtInVault).sub(await mvfVault.fees())
 
-            // let amountsOutMin
-            // if (amtWithdrawInUSD.gt(totalAmtInVault)) {
-                const oneEther = ethers.utils.parseEther("1")
+        //     // let amountsOutMin
+        //     // if (amtWithdrawInUSD.gt(totalAmtInVault)) {
+        //         const oneEther = ethers.utils.parseEther("1")
 
-                let stablecoinAmtInVault
-                if (stablecoinAddr == USDTAddr) stablecoinAmtInVault = USDTAmtInVault
-                else if (stablecoinAddr == USDCAddr) stablecoinAmtInVault = USDCAmtInVault
-                else stablecoinAmtInVault = DAIAmtInVault
-                const amtToWithdrawFromStrategy = amtWithdrawInUSD.sub(stablecoinAmtInVault)
-                // Strategy contract
-                const strategyAllPoolInUSD = await mvfStrategy.getAllPoolInUSD(false)
-                const sharePerc = amtToWithdrawFromStrategy.mul(oneEther).div(strategyAllPoolInUSD)
+        //         let stablecoinAmtInVault
+        //         if (stablecoinAddr == USDTAddr) stablecoinAmtInVault = USDTAmtInVault
+        //         else if (stablecoinAddr == USDCAddr) stablecoinAmtInVault = USDCAmtInVault
+        //         else stablecoinAmtInVault = DAIAmtInVault
+        //         const amtToWithdrawFromStrategy = amtWithdrawInUSD.sub(stablecoinAmtInVault)
+        //         // Strategy contract
+        //         const strategyAllPoolInUSD = await mvfStrategy.getAllPoolInUSD(false)
+        //         const sharePerc = amtToWithdrawFromStrategy.mul(oneEther).div(strategyAllPoolInUSD)
 
-                let totalWithdrawWETH = ethers.constants.Zero
-                let WETHAmt, _WETHAmt
+        //         let totalWithdrawWETH = ethers.constants.Zero
+        //         let WETHAmt, _WETHAmt
 
-                // const AXSETHVault = new ethers.Contract(AXSETHVaultAddr, sushi_ABI, provider)
-                const AXSETHVaultAmt = (await AXSETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther) // Calculate AXSETHVault LP
-                // console.log(AXSETHVaultAmt.toString())
-                // console.log((await AXSETHVault.balanceOf(mvfStrategy.address)).toString())
-                // console.log(sharePerc.toString())
-                const AXSETHAmt = (await AXSETHVault.getAllPool()).mul(AXSETHVaultAmt).div(await AXSETHVault.totalSupply()) // L1 contract
-                // console.log(AXSETHAmt.toString())
-                const AXSETH = new ethers.Contract(AXSETHAddr, pair_ABI, provider)
-                const [AXSReserve, WETHReserveAXS] = await AXSETH.getReserves()
-                const AXSAmt = AXSReserve.mul(AXSETHAmt).div(await AXSETH.totalSupply())
-                // console.log(AXSAmt.toString())
-                WETHAmt = WETHReserveAXS.mul(AXSETHAmt).div(await AXSETH.totalSupply())
-                totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
-                _WETHAmt = (await sRouter.getAmountsOut(AXSAmt, [AXSAddr, WETHAddr]))[1]
-                const _WETHAmtMinAXS = _WETHAmt.mul(995).div(1000)
-                totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
+        //         // const AXSETHVault = new ethers.Contract(AXSETHVaultAddr, sushi_ABI, provider)
+        //         const AXSETHVaultAmt = (await AXSETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther) // Calculate AXSETHVault LP
+        //         // console.log(AXSETHVaultAmt.toString())
+        //         // console.log((await AXSETHVault.balanceOf(mvfStrategy.address)).toString())
+        //         // console.log(sharePerc.toString())
+        //         const AXSETHAmt = (await AXSETHVault.getAllPool()).mul(AXSETHVaultAmt).div(await AXSETHVault.totalSupply()) // L1 contract
+        //         // console.log(AXSETHAmt.toString())
+        //         const AXSETH = new ethers.Contract(AXSETHAddr, pair_ABI, provider)
+        //         const [AXSReserve, WETHReserveAXS] = await AXSETH.getReserves()
+        //         const AXSAmt = AXSReserve.mul(AXSETHAmt).div(await AXSETH.totalSupply())
+        //         // console.log(AXSAmt.toString())
+        //         WETHAmt = WETHReserveAXS.mul(AXSETHAmt).div(await AXSETH.totalSupply())
+        //         totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
+        //         _WETHAmt = (await sRouter.getAmountsOut(AXSAmt, [AXSAddr, WETHAddr]))[1]
+        //         const _WETHAmtMinAXS = _WETHAmt.mul(995).div(1000)
+        //         totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
 
-                // const ILVETHVault = new ethers.Contract(ILVETHVaultAddr, ILVETH_ABI, provider)
-                const ILVETHVaultAmt = (await ILVETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
-                // console.log(ILVETHVaultAmt.toString())
-                // console.log((await ILVETHVault.balanceOf(mvfStrategy.address)).toString())
-                // console.log(sharePerc.toString())
-                const ILVETH = new ethers.Contract(ILVETHAddr, pair_ABI, provider)
-                const ILVETHPool = new ethers.Contract(ilvEthPoolAddr, IERC20_ABI, provider)
-                const ILVETHAmt = ((await ILVETH.balanceOf(ILVETHVaultAddr)).add(await ILVETHPool.balanceOf(ILVETHVaultAddr))).mul(ILVETHVaultAmt).div(await ILVETHVault.totalSupply())
-                // console.log(ILVETHAmt.toString())
-                const [ILVReserve, WETHReserveILV] = await ILVETH.getReserves()
-                const ILVAmt = ILVReserve.mul(ILVETHAmt).div(await ILVETH.totalSupply())
-                // console.log(ILVAmt.toString())
-                WETHAmt = WETHReserveILV.mul(ILVETHAmt).div(await ILVETH.totalSupply())
-                totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
-                _WETHAmt = (await sRouter.getAmountsOut(ILVAmt, [ILVAddr, WETHAddr]))[1]
-                // console.log(_WETHAmt.toString())
-                const _WETHAmtMinILV = _WETHAmt.mul(995).div(1000)
-                totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
+        //         // const ILVETHVault = new ethers.Contract(ILVETHVaultAddr, ILVETH_ABI, provider)
+        //         const ILVETHVaultAmt = (await ILVETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
+        //         // console.log(ILVETHVaultAmt.toString())
+        //         // console.log((await ILVETHVault.balanceOf(mvfStrategy.address)).toString())
+        //         // console.log(sharePerc.toString())
+        //         const ILVETH = new ethers.Contract(ILVETHAddr, pair_ABI, provider)
+        //         const ILVETHPool = new ethers.Contract(ilvEthPoolAddr, IERC20_ABI, provider)
+        //         const ILVETHAmt = ((await ILVETH.balanceOf(ILVETHVaultAddr)).add(await ILVETHPool.balanceOf(ILVETHVaultAddr))).mul(ILVETHVaultAmt).div(await ILVETHVault.totalSupply())
+        //         // console.log(ILVETHAmt.toString())
+        //         const [ILVReserve, WETHReserveILV] = await ILVETH.getReserves()
+        //         const ILVAmt = ILVReserve.mul(ILVETHAmt).div(await ILVETH.totalSupply())
+        //         // console.log(ILVAmt.toString())
+        //         WETHAmt = WETHReserveILV.mul(ILVETHAmt).div(await ILVETH.totalSupply())
+        //         totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
+        //         _WETHAmt = (await sRouter.getAmountsOut(ILVAmt, [ILVAddr, WETHAddr]))[1]
+        //         // console.log(_WETHAmt.toString())
+        //         const _WETHAmtMinILV = _WETHAmt.mul(995).div(1000)
+        //         totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
 
-                // const MANAETHVault = new ethers.Contract(MANAETHVaultAddr, sushi_ABI, provider)
-                const MANAETHVaultAmt = (await MANAETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
-                const MANAETHAmt = (await MANAETHVault.getAllPool()).mul(MANAETHVaultAmt).div(await MANAETHVault.totalSupply())
-                const MANAETH = new ethers.Contract(MANAETHAddr, pair_ABI, provider)
-                const [MANAReserve, WETHReserveMANA] = await MANAETH.getReserves()
-                const MANAAmt = MANAReserve.mul(MANAETHAmt).div(await MANAETH.totalSupply())
-                WETHAmt = WETHReserveMANA.mul(MANAETHAmt).div(await MANAETH.totalSupply())
-                totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
-                _WETHAmt = (await sRouter.getAmountsOut(MANAAmt, [MANAAddr, WETHAddr]))[1]
-                // console.log(_WETHAmt.toString())
-                const _WETHAmtMinMANA = _WETHAmt.mul(995).div(1000)
-                totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
+        //         // const MANAETHVault = new ethers.Contract(MANAETHVaultAddr, sushi_ABI, provider)
+        //         const MANAETHVaultAmt = (await MANAETHVault.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
+        //         const MANAETHAmt = (await MANAETHVault.getAllPool()).mul(MANAETHVaultAmt).div(await MANAETHVault.totalSupply())
+        //         const MANAETH = new ethers.Contract(MANAETHAddr, pair_ABI, provider)
+        //         const [MANAReserve, WETHReserveMANA] = await MANAETH.getReserves()
+        //         const MANAAmt = MANAReserve.mul(MANAETHAmt).div(await MANAETH.totalSupply())
+        //         WETHAmt = WETHReserveMANA.mul(MANAETHAmt).div(await MANAETH.totalSupply())
+        //         totalWithdrawWETH = totalWithdrawWETH.add(WETHAmt)
+        //         _WETHAmt = (await sRouter.getAmountsOut(MANAAmt, [MANAAddr, WETHAddr]))[1]
+        //         // console.log(_WETHAmt.toString())
+        //         const _WETHAmtMinMANA = _WETHAmt.mul(995).div(1000)
+        //         totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
 
-                const WILD = new ethers.Contract(WILDAddr, IERC20_ABI, provider)
-                const WILDAmt = (await WILD.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
-                _WETHAmt = (await uRouter.getAmountsOut(WILDAmt, [WILDAddr, WETHAddr]))[1]
-                // console.log(_WETHAmt.toString())
-                const _WETHAmtMinWILD = _WETHAmt.mul(995).div(1000)
-                totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
+        //         const WILD = new ethers.Contract(WILDAddr, IERC20_ABI, provider)
+        //         const WILDAmt = (await WILD.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
+        //         _WETHAmt = (await uRouter.getAmountsOut(WILDAmt, [WILDAddr, WETHAddr]))[1]
+        //         // console.log(_WETHAmt.toString())
+        //         const _WETHAmtMinWILD = _WETHAmt.mul(995).div(1000)
+        //         totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
 
-                const MVI = new ethers.Contract(MVIAddr, IERC20_ABI, provider)
-                const MVIAmt = (await MVI.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
-                _WETHAmt = (await uRouter.getAmountsOut(MVIAmt, [MVIAddr, WETHAddr]))[1]
-                // console.log(_WETHAmt.toString())
-                const _WETHAmtMinMVI = _WETHAmt.mul(995).div(1000)
-                totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
+        //         const MVI = new ethers.Contract(MVIAddr, IERC20_ABI, provider)
+        //         const MVIAmt = (await MVI.balanceOf(mvfStrategy.address)).mul(sharePerc).div(oneEther)
+        //         _WETHAmt = (await uRouter.getAmountsOut(MVIAmt, [MVIAddr, WETHAddr]))[1]
+        //         // console.log(_WETHAmt.toString())
+        //         const _WETHAmtMinMVI = _WETHAmt.mul(995).div(1000)
+        //         totalWithdrawWETH = totalWithdrawWETH.add(_WETHAmt)
 
-                const withdrawAmtInStablecoin = (await sRouter.getAmountsOut(totalWithdrawWETH, [WETHAddr, stablecoinAddr]))[1]
-                const withdrawAmtInStablecoinMin = withdrawAmtInStablecoin.mul(995).div(1000)
+        //         const withdrawAmtInStablecoin = (await sRouter.getAmountsOut(totalWithdrawWETH, [WETHAddr, stablecoinAddr]))[1]
+        //         const withdrawAmtInStablecoinMin = withdrawAmtInStablecoin.mul(995).div(1000)
 
-                // console.log(_WETHAmtMinAXS.toString())
-                // console.log(_WETHAmtMinILV.toString())
-                // console.log(_WETHAmtMinMANA.toString())
-                // console.log(_WETHAmtMinWILD.toString())
-                // console.log(_WETHAmtMinMVI.toString())
-                // console.log(withdrawAmtInStablecoinMin.toString())
+        //         // console.log(_WETHAmtMinAXS.toString())
+        //         // console.log(_WETHAmtMinILV.toString())
+        //         // console.log(_WETHAmtMinMANA.toString())
+        //         // console.log(_WETHAmtMinWILD.toString())
+        //         // console.log(_WETHAmtMinMVI.toString())
+        //         // console.log(withdrawAmtInStablecoinMin.toString())
                 
-                amountsOutMin = [
-                    withdrawAmtInStablecoinMin,
-                    _WETHAmtMinAXS,
-                    _WETHAmtMinILV,
-                    _WETHAmtMinMANA,
-                    _WETHAmtMinWILD,
-                    _WETHAmtMinMVI
-                ]
+        //         amountsOutMin = [
+        //             withdrawAmtInStablecoinMin,
+        //             _WETHAmtMinAXS,
+        //             _WETHAmtMinILV,
+        //             _WETHAmtMinMANA,
+        //             _WETHAmtMinWILD,
+        //             _WETHAmtMinMVI
+        //         ]
 
-        //     } else {
-        //         amountsOutMin = []
-        //     }
+        // //     } else {
+        // //         amountsOutMin = []
+        // //     }
 
-        //     return amountsOutMin
-        // }
+        // //     return amountsOutMin
+        // // }
 
         // const provider = new Web3.providers.HttpProvider(process.env.ALCHEMY_URL_MAINNET)
         // amountsOutMin = await getAmountsOutMin(((await mvfVault.balanceOf(client.address)).div(3)).toString(), USDTAddr, provider)
         // await mvfVault.connect(client).withdraw(await mvfVault.balanceOf(client.address), USDTAddr, amountsOutMin)
         await mvfVault.connect(client).withdraw((await mvfVault.balanceOf(client.address)).div(3), USDTAddr, amountsOutMin)
-        // await mvfVault.connect(client2).withdraw(mvfVault.balanceOf(client2.address), USDTAddr, amountsOutMin)
-        // await mvfVault.connect(client3).withdraw(mvfVault.balanceOf(client3.address), USDTAddr, amountsOutMin)
-        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9911.146548
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9874.529643
-        // console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9865.432779
+        await mvfVault.connect(client2).withdraw(mvfVault.balanceOf(client2.address), USDTAddr, amountsOutMin)
+        await mvfVault.connect(client3).withdraw(mvfVault.balanceOf(client3.address), USDTAddr, amountsOutMin)
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client.address), 6)) // 9917.884943
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client2.address), 6)) // 9938.42035
+        console.log(ethers.utils.formatUnits(await USDTContract.balanceOf(client3.address), 6)) // 9917.112952
 
         // amountsOutMin = [0, 0, 0, 0, 0, 0, 0]
         // await mvfVault.connect(client).withdraw((await mvfVault.balanceOf(client.address)).div(3), USDCAddr, amountsOutMin)

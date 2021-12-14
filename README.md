@@ -12,7 +12,7 @@ Sushi AXS-ETH vault (proxy) contract address: 0xcE097910Fc2DB329683353dcebF881A4
 
 Sushi SLP-ETH vault (proxy) contract address: 0x4aE61842Eb4E4634F533cb35B697a01319C457e2
 
-Sushi MANA-ETH vault (proxy) contract address: 
+Sushi MANA-ETH vault (proxy) contract address: 0x5eF6d1CEfdd8Cff9945fA72CC065185758690A69
 
 Uniswap V3 vault (implementation) contract address: 0x33755362194248a5870CE1cf90B26bD21a3bA06d
 
@@ -24,11 +24,11 @@ Sushi ILV-ETH vault (implementation) contract address: 0x16a6AfEdFb08689Af316a74
 
 Sushi ILV-ETH vault (proxy) contract address: 0x42Dd4b36eAD524f88cBf7f7702bAe3234d8eA46e
 
-Metaverse-Farmer vault (implementation) contract address: 0x4F86c3b78976E3f6Bd0067eB94aAC627140f924c
+Metaverse-Farmer vault (implementation) contract address: 0x853F5d3c3850bD422FEB38D774827B609b4Cc84e
 
 Metaverse-Farmer vault (proxy) contract address: 0x5b3ae8b672a753906b1592d44741f71fbd05ba8c
 
-Metaverse-Farmer strategy (implementation) contract address: 0x907Fc92AfBca1879FaC0Ec724684465a3c143c17
+Metaverse-Farmer strategy (implementation) contract address: 0x219996d7a069Cba2fADfC3775cF9233152066b5a
 
 Metaverse-Farmer strategy (proxy) contract address: 0xfa83CA66FDaCC4028DAB383de4adc8aB7DB21FF2
 

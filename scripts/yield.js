@@ -15,18 +15,18 @@ async function main() {
     // const [me] = await ethers.getSigners()
     // await me.sendTransaction({to: deployer.address, value: ethers.utils.parseEther("10")})
 
-    const AXSETHVault = await ethers.getContractAt("Sushi", AXSETHVaultAddr, deployer)
-    tx = await AXSETHVault.yield()
-    await tx.wait()
-    console.log("Success call yield for DAO L1 Sushi AXS-ETH vault contract")
+    // const AXSETHVault = await ethers.getContractAt("Sushi", AXSETHVaultAddr, deployer)
+    // tx = await AXSETHVault.yield()
+    // await tx.wait()
+    // console.log("Success call yield for DAO L1 Sushi AXS-ETH vault contract")
 
-    const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
-    tx = await SLPETHVault.yield()
-    await tx.wait()
-    console.log("Success call yield for DAO L1 Sushi SLP-ETH vault contract")
+    // const SLPETHVault = await ethers.getContractAt("Sushi", SLPETHVaultAddr, deployer)
+    // tx = await SLPETHVault.yield()
+    // await tx.wait()
+    // console.log("Success call yield for DAO L1 Sushi SLP-ETH vault contract")
 
     const ILVVault = await ethers.getContractAt("ILVETHVault", ILVVaultAddr, deployer)
-    tx = await ILVVault.harvest()
+    tx = await ILVVault.harvest({gasLimit: 400000})
     await tx.wait()
     console.log("Success call yield for DAO L1 Sushi ILV-ETH vault contract")
 }
